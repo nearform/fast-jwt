@@ -1,0 +1,56 @@
+{
+  "name": "fast-jwt",
+  "version": "0.1.0",
+  "description": "Fast JSON Web Token implementation",
+  "author": "NearForm Ltd",
+  "homepage": "https://github.com/nearform/fast-jwt",
+  "contributors": [
+    {
+      "name": "Paolo Insogna",
+      "url": "https://github.com/ShogunPanda"
+    }
+  ],
+  "license": "Apache-2.0",
+  "licenses": [
+    {
+      "type": "Apache-2.0",
+      "url": "http://www.apache.org/licenses/LICENSE-2.0"
+    }
+  ],
+  "keywords": [
+    "jwt"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/nearform/fast-jwt.git"
+  },
+  "bugs": {
+    "url": "https://github.com/nearform/fast-jwt/issues"
+  },
+  "main": "src/index.js",
+  "scripts": {
+    "test": "nyc -r html -r text ava -v test/*.spec.js",
+    "test:watch": "ava --watch -v test/*.spec.js",
+    "ci": "npm run lint && nyc -check-coverage --branches 90 --functions 90 --lines 90 --statements 90 -r json ava -v --no-color test/*.spec.js",
+    "lint": "eslint src/**/*.js test/**/*.js",
+    "prepublishOnly": "npm run ci",
+    "postpublish": "git push origin && git push origin -f --tags"
+  },
+  "dependencies": {
+    "ecdsa-sig-formatter": "^1.0.11"
+  },
+  "devDependencies": {
+    "ava": "^2.4.0",
+    "eslint": "^6.8.0",
+    "eslint-config-standard": "^14.1.0",
+    "eslint-plugin-import": "^2.20.0",
+    "eslint-plugin-node": "^11.0.0",
+    "eslint-plugin-promise": "^4.2.1",
+    "eslint-plugin-standard": "^4.0.1",
+    "nyc": "^15.0.0",
+    "prettier": "^1.19.1"
+  },
+  "engines": {
+    "node": ">= 10.0.0"
+  }
+}
