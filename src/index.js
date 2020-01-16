@@ -1,3 +1,5 @@
+'use strict'
+
 const TokenError = require('./error')
 const createDecoder = require('./decoder')
 const createVerifier = require('./verifier')

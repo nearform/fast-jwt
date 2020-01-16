@@ -1,3 +1,5 @@
+'use strict'
+
 const test = require('ava')
 
 const { createDecoder, TokenError } = require('../src')
@@ -24,7 +26,8 @@ test('should return a valid token', t => {
       name: 'OK',
       iat: 9876543210
     },
-    signature: 'gWCa6uhcbaAgVmJC46OAIl+9yTBDAdIphDq/NP6fenY='
+    signature: 'gWCa6uhcbaAgVmJC46OAIl+9yTBDAdIphDq/NP6fenY=',
+    input: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6Ik9LIiwiaWF0Ijo5ODc2NTQzMjEwfQ'
   })
 
   t.deepEqual(defaultDecoder(nonJwtToken), '{"sub":"1234567890","name":"OK","iat":9876543210}')

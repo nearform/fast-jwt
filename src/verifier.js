@@ -1,7 +1,9 @@
+'use strict'
+
 const { supportsWorkerThreads, getSupportedAlgorithms, verifySignature } = require('./crypto')
 const createDecoder = require('./decoder')
 const TokenError = require('./error')
-const getAsyncSecret = require('./secret')
+const { getAsyncSecret } = require('./utils')
 
 function ensureStringClaimMatcher(raw) {
   if (!Array.isArray(raw)) {
@@ -28,33 +30,48 @@ function verifyAlgorithm(secret, header, signature, allowedAlgorithms) {
 }
 
 function verifyPayload(payload, validators, clockTimestamp, clockTolerance) {
-  const now = clockTimestamp || Date.now() + clockTolerance
+  const now = clockTimestamp || Date.now() + (clockTolerance || 0)
 
   for (const validator of validators) {
-    const { type, claim, allowed, modifier, greater, errorCode, errorVerb } = validator
+    const { type, claim, allowed, array, modifier, greater, errorCode, errorVerb } = validator
     const value = payload[claim]
-    const claimType = typeof value
+    const arrayValue = Array.isArray(value)
+    const claimType = array && arrayValue ? value.map(v => typeof v) : typeof value
     const claimRequestedType = type === 'date' ? 'number' : 'string'
 
     // Check that the value exists (otherwise skip the validation) and that is of the valid value
     if (claimType === 'undefined') {
       continue
+    }
+
+    // Check the type
+    if (arrayValue) {
+      if (claimType.some(t => t !== claimRequestedType)) {
+        throw new TokenError(
+          TokenError.codes.invalidClaimType,
+          `The ${claim} claim must be a ${claimRequestedType} or an array of ${claimRequestedType}s.`
+        )
+      }
     } else if (claimType !== claimRequestedType) {
       throw new TokenError(TokenError.codes.invalidClaimType, `The ${claim} claim must be a ${claimType}.`)
     }
 
     if (type === 'date') {
-      const before = value * 1000 + modifier < now
-      const valid = greater ? !before : before
+      const adjusted = value * 1000 + (modifier || 0)
+      const valid = greater ? now >= adjusted : now <= adjusted
 
       if (!valid) {
         throw new TokenError(
           TokenError.codes[errorCode],
-          `The token ${errorVerb} at ${new Date(value * 1000 + modifier).toISOString}.`
+          `The token ${errorVerb} at ${new Date(adjusted).toISOString()}.`
         )
       }
     } else {
-      if (!allowed.some(a => a.test(value))) {
+      if (arrayValue) {
+        if (!value.some(v => allowed.some(a => a.test(v)))) {
+          throw new TokenError(TokenError.codes.invalidClaimValue, `None of ${claim} claim values is allowed.`)
+        }
+      } else if (!allowed.some(a => a.test(value))) {
         throw new TokenError(TokenError.codes.invalidClaimValue, `The ${claim} claim value is not allowed.`)
       }
     }
@@ -80,7 +97,7 @@ function verifyPayload(payload, validators, clockTimestamp, clockTolerance) {
 */
 module.exports = function createVerifier(options) {
   let {
-    secret: getSecret,
+    secret,
     algorithms: allowedAlgorithms,
     complete,
     encoding,
@@ -98,18 +115,19 @@ module.exports = function createVerifier(options) {
   } = { clockTimestamp: 0, ...options }
 
   // Validate options
-  if (
-    !getSecret ||
-    (typeof getSecret !== 'string' && typeof getSecret !== 'object' && typeof getSecret !== 'function')
-  ) {
+  if (typeof secret !== 'string' && typeof secret !== 'object' && typeof secret !== 'function') {
     throw new TokenError(
       TokenError.codes.INVALID_OPTION,
       'The secret option must be a string, buffer, object or callback containing a secret or a public key.'
     )
   }
 
-  if (typeof clockTimestamp !== 'number' || isNaN(clockTimestamp) || clockTimestamp < 0) {
+  if (clockTimestamp && (typeof clockTimestamp !== 'number' || clockTimestamp < 0)) {
     throw new TokenError(TokenError.codes.invalidOption, 'The clockTimestamp option must be a positive number.')
+  }
+
+  if (clockTolerance && (typeof clockTolerance !== 'number' || clockTolerance < 0)) {
+    throw new TokenError(TokenError.codes.invalidOption, 'The clockTolerance option must be a positive number.')
   }
 
   if (encoding && typeof encoding !== 'string') {
@@ -140,7 +158,7 @@ module.exports = function createVerifier(options) {
   }
 
   if (allowedAud) {
-    validators.push({ type: 'string', claim: 'aud', allowed: ensureStringClaimMatcher(allowedAud) })
+    validators.push({ type: 'string', claim: 'aud', allowed: ensureStringClaimMatcher(allowedAud), array: true })
   }
 
   if (allowedIss) {
@@ -158,17 +176,16 @@ module.exports = function createVerifier(options) {
   const decodeJwt = createDecoder({ complete: true, encoding })
 
   // Return the verifier
-  if (typeof getSecret !== 'function' && (!useWorkerThreads || !supportsWorkerThreads)) {
-    return async function verifyJwt(token) {
+  if (typeof secret !== 'function' && (!useWorkerThreads || !supportsWorkerThreads)) {
+    return function verifyJwt(token) {
       // As very first thing, decode the token - If invalid, everything else is useless
-      const { header, payload, signature } = decodeJwt(token)
-      const input = token.split('.', 2).join('.')
+      const { header, payload, signature, input } = decodeJwt(token)
 
       // Now verify the algorithm
-      verifyAlgorithm(getSecret, header, signature, allowedAlgorithms)
+      verifyAlgorithm(secret, header, signature, allowedAlgorithms)
 
       // Verify the signature, if present
-      if (signature && !verifySignature(header.alg, getSecret, input, signature)) {
+      if (signature && !verifySignature(header.alg, secret, input, signature)) {
         throw new TokenError(TokenError.codes.invalidSignature, 'The token signature is invalid.')
       }
 
@@ -183,17 +200,24 @@ module.exports = function createVerifier(options) {
   return async function verifyJwt(token, callback) {
     try {
       // As very first thing, decode the token - If invalid, everything else is useless
-      const { header, payload, signature } = decodeJwt(token)
+      const { header, payload, signature, input } = decodeJwt(token)
 
       // Get the secret
-      const secret = typeof getSecret === 'function' ? await getAsyncSecret(getSecret, header) : getSecret
-      const input = token.split('.', 2).join('.')
+      let currentSecret = secret
+
+      if (typeof currentSecret === 'function') {
+        try {
+          currentSecret = await getAsyncSecret(secret, header)
+        } catch (e) {
+          throw new TokenError(TokenError.codes.secretFetchingError, 'Cannot fetch secret.', { error: e })
+        }
+      }
 
       // Now verify the algorithm
-      verifyAlgorithm(secret, header, signature, allowedAlgorithms)
+      verifyAlgorithm(currentSecret, header, signature, allowedAlgorithms)
 
       // Verify the signature, if present
-      if (signature && !(await verifySignature(header.alg, secret, input, signature, useWorkerThreads))) {
+      if (signature && !(await verifySignature(header.alg, currentSecret, input, signature, useWorkerThreads))) {
         throw new TokenError(TokenError.codes.invalidSignature, 'The token signature is invalid.')
       }
 

@@ -1,4 +1,5 @@
-const { base64UrlEncode } = require('./base64url')
+'use strict'
+
 const {
   publicKeyAlgorithms,
   rsaKeyAlgorithms,
@@ -7,7 +8,7 @@ const {
   createSignature
 } = require('./crypto')
 const TokenError = require('./error')
-const getAsyncSecret = require('./secret')
+const { base64UrlEncode, getAsyncSecret } = require('./utils')
 
 function encodeHeader(alg, kid, additionalHeader, payload, encoding) {
   if (typeof payload !== 'string' && typeof payload !== 'object') {
@@ -27,7 +28,7 @@ function encodePayload(payload, encoding, fixedPayload, noTimestamp, expiresIn, 
   }
 
   if (typeof payload === 'string') {
-    return base64UrlEncode(Buffer.from(JSON.stringify(payload)).toString('base64'))
+    return base64UrlEncode(Buffer.from(payload).toString('base64'))
   }
 
   const iat = payload.iat * 1000 || Date.now()
@@ -124,11 +125,11 @@ module.exports = function createSigner(options) {
     throw new TokenError(TokenError.codes.invalidOption, 'The encoding option must be a string.')
   }
 
-  if (expiresIn && (typeof expiresIn !== 'number' || isNaN(expiresIn) || expiresIn < 0)) {
+  if (expiresIn && (typeof expiresIn !== 'number' || expiresIn < 0)) {
     throw new TokenError(TokenError.codes.invalidOption, 'The expiresIn option must be a positive number.')
   }
 
-  if (notBefore && (typeof notBefore !== 'number' || isNaN(notBefore) || notBefore < 0)) {
+  if (notBefore && (typeof notBefore !== 'number' || notBefore < 0)) {
     throw new TokenError(TokenError.codes.invalidOption, 'The notBefore option must be a positive number.')
   }
 
@@ -184,7 +185,7 @@ module.exports = function createSigner(options) {
         mutatePayload
       )
 
-      const encodedSignature = createSignature(algorithm, secret, encodedHeader, encodedPayload)
+      const encodedSignature = base64UrlEncode(createSignature(algorithm, secret, encodedHeader, encodedPayload))
 
       return `${encodedHeader}.${encodedPayload}.${encodedSignature}`
     }
@@ -215,12 +216,8 @@ module.exports = function createSigner(options) {
         mutatePayload
       )
 
-      const encodedSignature = await createSignature(
-        algorithm,
-        currentSecret,
-        encodedHeader,
-        encodedPayload,
-        useWorkerThreads
+      const encodedSignature = base64UrlEncode(
+        await createSignature(algorithm, currentSecret, encodedHeader, encodedPayload, useWorkerThreads)
       )
 
       const rv = `${encodedHeader}.${encodedPayload}.${encodedSignature}`

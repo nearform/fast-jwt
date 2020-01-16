@@ -1,3 +1,5 @@
+'use strict'
+
 class TokenError extends Error {
   constructor(code, message, additional) {
     super(message)

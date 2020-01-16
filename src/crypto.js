@@ -1,3 +1,5 @@
+'use strict'
+
 const {
   createHmac,
   createVerify,
@@ -7,7 +9,6 @@ const {
 } = require('crypto')
 const { joseToDer, derToJose } = require('ecdsa-sig-formatter')
 
-const { base64UrlDecode, base64UrlEncode } = require('./base64url')
 const TokenError = require('./error')
 
 const publicKeyAlgorithms = ['RS256', 'RS384', 'RS512', 'ES256', 'ES384', 'ES512', 'PS256', 'PS384', 'PS512']
@@ -92,7 +93,7 @@ function signWithHmac(algorithm, bits, secret, input) {
 
   const hmac = createHmac(`SHA${bits}`, secret)
   hmac.update(input)
-  return base64UrlEncode(hmac.digest('base64'))
+  return hmac.digest('base64')
 }
 
 function signWithRSA(algorithm, bits, secret, input, asJose = false) {
@@ -107,7 +108,7 @@ function signWithRSA(algorithm, bits, secret, input, asJose = false) {
     signature = derToJose(signature, `ES${bits}`).toString('base64')
   }
 
-  return base64UrlEncode(signature)
+  return signature
 }
 
 function signWithPS(algorithm, bits, secret, input) {
@@ -125,7 +126,7 @@ function signWithPS(algorithm, bits, secret, input) {
     'base64'
   )
 
-  return base64UrlEncode(signature)
+  return signature
 }
 
 function verifyWithRSA(algorithm, bits, secret, input, signature) {
@@ -134,7 +135,7 @@ function verifyWithRSA(algorithm, bits, secret, input, signature) {
   const verifier = createVerify(`RSA-SHA${bits}`)
   verifier.update(input)
 
-  return verifier.verify(secret, base64UrlDecode(signature), 'base64')
+  return verifier.verify(secret, signature, 'base64')
 }
 
 function verifyWithPS(algorithm, bits, secret, input, signature) {
@@ -149,7 +150,7 @@ function verifyWithPS(algorithm, bits, secret, input, signature) {
       padding: RSA_PKCS1_PSS_PADDING,
       saltLength: RSA_PSS_SALTLEN_DIGEST
     },
-    base64UrlDecode(signature),
+    signature,
     'base64'
   )
 }

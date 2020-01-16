@@ -7,7 +7,7 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v1
-      - name: Use Node.js LTS
+      - name: Use Node.js 10.x
         uses: actions/setup-node@v1
         with:
           node-version: 10.x
@@ -15,7 +15,7 @@ jobs:
         uses: actions/cache@v1
         with:
           path: node_modules
-          key: node-modules-${{ hashFiles('**/package-lock.json') }}
+          key: node-modules-${{ hashFiles('./package.json') }}
       - name: Install dependencies
         run: npm install
       - name: Run Tests

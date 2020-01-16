@@ -1,10 +1,12 @@
-const { base64UrlDecode } = require('./base64url')
+'use strict'
+
+const { base64UrlDecode } = require('./utils')
 const TokenError = require('./error')
 
-const jwtMatcher = /^([a-zA-Z0-9\-_]+)\.([a-zA-Z0-9\-_]+)\.([a-zA-Z0-9\-_]+)$/
+const jwtMatcher = /^([a-zA-Z0-9\-_]+)\.([a-zA-Z0-9\-_]+)\.([a-zA-Z0-9\-_]*)$/
 
 /*
-complete: Return an object with the decoded payload, header and signature instead of only the content of the payload.
+complete: Return an object with the decoded payload, header, signature and input (the token part before the signature), instead of only the content of the payload.
 json: Always parse the payload as JSON even if the typ claim of the header is not "JWT".
 encoding: The token encoding.
 */
@@ -18,7 +20,7 @@ module.exports = function createDecoder(options) {
         throw new TokenError(TokenError.codes.invalidType, 'The token must be a string or a buffer.')
       }
 
-      token = token.toString()
+      token = token.toString(encoding)
     }
 
     // Get the components
@@ -29,6 +31,7 @@ module.exports = function createDecoder(options) {
     }
 
     const [, rawHeader, rawPayload, rawSignature] = match
+    const input = `${rawHeader}.${rawPayload}`
 
     // Decode header and payload
     let header
@@ -55,6 +58,6 @@ module.exports = function createDecoder(options) {
       }
     }
 
-    return complete ? { header, payload, signature: base64UrlDecode(rawSignature) } : payload
+    return complete ? { header, payload, signature: base64UrlDecode(rawSignature), input } : payload
   }
 }
