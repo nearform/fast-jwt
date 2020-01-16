@@ -9,7 +9,7 @@ function verify(token, options, callback) {
   return verifier(token, callback)
 }
 
-test.only('it correctly verifies a token - sync', t => {
+test('it correctly verifies a token - sync', t => {
   t.deepEqual(
     verify('eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxfQ.57TF7smP9XDhIexBqPC-F1toZReYZLWb_YRU5tv0sxM', {
       noTimestamp: true
