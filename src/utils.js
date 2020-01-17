@@ -35,7 +35,7 @@ function getAsyncSecret(handler, header) {
 
   const rv = handler(header, callback)
 
-  return rv && typeof rv.then === 'function' ? rv : callbackPromise
+  return rv && (typeof rv === 'string' || Buffer.isBuffer(rv) || typeof rv.then === 'function') ? rv : callbackPromise
 }
 
 module.exports = {

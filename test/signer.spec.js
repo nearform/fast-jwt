@@ -1,6 +1,6 @@
 'use strict'
 
-const test = require('ava')
+const { test } = require('tap')
 
 const { createSigner, TokenError } = require('../src')
 
@@ -10,23 +10,25 @@ function sign(payload, options, callback) {
 }
 
 test('it correctly returns a token - sync', t => {
-  t.is(
+  t.equal(
     sign({ a: 1 }, { noTimestamp: true }),
     'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxfQ.57TF7smP9XDhIexBqPC-F1toZReYZLWb_YRU5tv0sxM'
   )
 
-  t.is(sign('123', { noTimestamp: true }), 'eyJhbGciOiJIUzI1NiJ9.MTIz.UqiZ2LDYZqYB3xJgkHaihGQnJ_WPTz3hERDpA7bWYjA')
+  t.equal(sign('123', { noTimestamp: true }), 'eyJhbGciOiJIUzI1NiJ9.MTIz.UqiZ2LDYZqYB3xJgkHaihGQnJ_WPTz3hERDpA7bWYjA')
 
-  t.is(
+  t.equal(
     sign(Buffer.from('123'), { noTimestamp: true }),
     'eyJhbGciOiJIUzI1NiJ9.MTIz.UqiZ2LDYZqYB3xJgkHaihGQnJ_WPTz3hERDpA7bWYjA'
   )
 
-  t.is(sign({ a: 1 }, { noTimestamp: true, algorithm: 'none' }), 'eyJhbGciOiJub25lIiwidHlwIjoiSldUIn0=.eyJhIjoxfQ.')
+  t.equal(sign({ a: 1 }, { noTimestamp: true, algorithm: 'none' }), 'eyJhbGciOiJub25lIiwidHlwIjoiSldUIn0=.eyJhIjoxfQ.')
+
+  t.end()
 })
 
 test('it correctly returns a token - async - secret with callback', async t => {
-  t.is(
+  t.equal(
     await sign(
       { a: 1 },
       { secret: (_h, callback) => setTimeout(() => callback(null, 'secret'), 10), noTimestamp: true }
@@ -36,190 +38,211 @@ test('it correctly returns a token - async - secret with callback', async t => {
 })
 
 test('it correctly returns a token - async - secret as promise', async t => {
-  t.is(
+  t.equal(
     await sign({ a: 1 }, { secret: async () => 'secret', noTimestamp: true }),
     'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxfQ.57TF7smP9XDhIexBqPC-F1toZReYZLWb_YRU5tv0sxM'
   )
 })
 
 test('it correctly returns a token - async - static secret', async t => {
-  t.is(
-    await sign({ a: 1 }, { noTimestamp: true, useWorkerThreads: true }),
+  t.equal(
+    await sign({ a: 1 }, { noTimestamp: true, useWorkers: true }),
     'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxfQ.57TF7smP9XDhIexBqPC-F1toZReYZLWb_YRU5tv0sxM'
   )
 })
 
-test.cb('it correctly returns a token - callback - secret as promise', t => {
+test('it correctly returns a token - callback - secret as promise', t => {
   sign({ a: 1 }, { secret: async () => 'secret', noTimestamp: true }, (error, token) => {
-    t.is(token, 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxfQ.57TF7smP9XDhIexBqPC-F1toZReYZLWb_YRU5tv0sxM')
-    t.end(error)
+    t.type(error, 'null')
+    t.equal(token, 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxfQ.57TF7smP9XDhIexBqPC-F1toZReYZLWb_YRU5tv0sxM')
+    t.end()
   })
 })
 
-test('it correctly set a timestamp', async t => {
-  const first = sign({ a: 1 }, {})
-  await new Promise(resolve => setTimeout(resolve, 1000))
-  const second = sign({ a: 1 }, {})
+test('it correctly set a timestamp', t => {
+  const ts = [100000, 200000]
+  const originalNow = Date.now
 
-  t.not(first, second)
+  Date.now = () => ts.shift()
+  t.not(sign({ a: 1 }, {}), sign({ a: 1 }, {}))
+  Date.now = originalNow
+
+  t.end()
 })
 
 test('it respect the payload iat, if one is set', t => {
-  t.is(
+  t.equal(
     sign({ a: 1, iat: 123 }, {}),
     'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxLCJpYXQiOjEyM30.J-5nCdVMKQ0yqIIkKTPBuQf46vPXcbwdLpAcYBZ9EqU'
   )
+
+  t.end()
 })
 
 test('it adds a exp claim, overriding the payload one, only if the payload is a object', t => {
-  t.is(
+  t.equal(
     sign({ a: 1, iat: 100 }, { expiresIn: 1000 }),
     'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxLCJpYXQiOjEwMCwiZXhwIjoxMDF9.ULKqTsvUYm7iNOKA6bP5NXsa1A8vofgPIGiC182Vf_Q'
   )
 
-  t.is(
+  t.equal(
     sign({ a: 1, iat: 100, exp: 200 }, { expiresIn: 1000 }),
     'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxLCJpYXQiOjEwMCwiZXhwIjoxMDF9.ULKqTsvUYm7iNOKA6bP5NXsa1A8vofgPIGiC182Vf_Q'
   )
 
-  t.is(sign('123', { expiresIn: 1000 }), 'eyJhbGciOiJIUzI1NiJ9.MTIz.UqiZ2LDYZqYB3xJgkHaihGQnJ_WPTz3hERDpA7bWYjA')
+  t.equal(sign('123', { expiresIn: 1000 }), 'eyJhbGciOiJIUzI1NiJ9.MTIz.UqiZ2LDYZqYB3xJgkHaihGQnJ_WPTz3hERDpA7bWYjA')
+
+  t.end()
 })
 
 test('it adds a nbf claim, overriding the payload one, only if the payload is a object', t => {
-  t.is(
+  t.equal(
     sign({ a: 1, iat: 100 }, { notBefore: 1000 }),
     'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxLCJpYXQiOjEwMCwibmJmIjoxMDF9.WhZeNowse7q1s5FSlcMcs_4KcxXpSdQ4yqv0xrGB3sU'
   )
 
-  t.is(
+  t.equal(
     sign({ a: 1, iat: 100, nbf: 200 }, { notBefore: 1000 }),
     'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxLCJpYXQiOjEwMCwibmJmIjoxMDF9.WhZeNowse7q1s5FSlcMcs_4KcxXpSdQ4yqv0xrGB3sU'
   )
 
-  t.is(sign('123', { notBefore: 1000 }), 'eyJhbGciOiJIUzI1NiJ9.MTIz.UqiZ2LDYZqYB3xJgkHaihGQnJ_WPTz3hERDpA7bWYjA')
+  t.equal(sign('123', { notBefore: 1000 }), 'eyJhbGciOiJIUzI1NiJ9.MTIz.UqiZ2LDYZqYB3xJgkHaihGQnJ_WPTz3hERDpA7bWYjA')
+
+  t.end()
 })
 
 test('it adds a jti claim, overriding the payload one, only if the payload is a object', t => {
-  t.is(
+  t.equal(
     sign({ a: 1 }, { jti: 'JTI', noTimestamp: true }),
     'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxLCJqdGkiOiJKVEkifQ.Ew1eS3Pn9R0hqV0JCA5AECTSvaEm9glggxWlmq0cYl4'
   )
 
-  t.is(
+  t.equal(
     sign({ a: 1, jti: 'original' }, { jti: 'JTI', noTimestamp: true }),
     'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxLCJqdGkiOiJKVEkifQ.Ew1eS3Pn9R0hqV0JCA5AECTSvaEm9glggxWlmq0cYl4'
   )
 
-  t.is(sign('123', { jti: 'JTI' }), 'eyJhbGciOiJIUzI1NiJ9.MTIz.UqiZ2LDYZqYB3xJgkHaihGQnJ_WPTz3hERDpA7bWYjA')
+  t.equal(sign('123', { jti: 'JTI' }), 'eyJhbGciOiJIUzI1NiJ9.MTIz.UqiZ2LDYZqYB3xJgkHaihGQnJ_WPTz3hERDpA7bWYjA')
+
+  t.end()
 })
 
 test('it adds a aud claim, overriding the payload one, only if the payload is a object', t => {
-  t.is(
+  t.equal(
     sign({ a: 1 }, { aud: 'AUD1', noTimestamp: true }),
     'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxLCJhdWQiOiJBVUQxIn0.fplBCKNjVH2jjpk-hFQZ9jnG96nVFZqOeU-C97AvKAI'
   )
 
-  t.is(
+  t.equal(
     sign({ a: 1, aud: 'original' }, { aud: 'AUD1', noTimestamp: true }),
     'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxLCJhdWQiOiJBVUQxIn0.fplBCKNjVH2jjpk-hFQZ9jnG96nVFZqOeU-C97AvKAI'
   )
 
-  t.is(
+  t.equal(
     sign({ a: 1, aud: 'original' }, { aud: ['AUD1', 'AUD2'], noTimestamp: true }),
     'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxLCJhdWQiOlsiQVVEMSIsIkFVRDIiXX0.zRcmqvl1hRzaWa8qX_ge7mHeJNSH-Th-TLu0-62jFxc'
   )
 
-  t.is(sign('123', { aud: 'AUD1' }), 'eyJhbGciOiJIUzI1NiJ9.MTIz.UqiZ2LDYZqYB3xJgkHaihGQnJ_WPTz3hERDpA7bWYjA')
+  t.equal(sign('123', { aud: 'AUD1' }), 'eyJhbGciOiJIUzI1NiJ9.MTIz.UqiZ2LDYZqYB3xJgkHaihGQnJ_WPTz3hERDpA7bWYjA')
+
+  t.end()
 })
 
 test('it adds a iss claim, overriding the payload one, only if the payload is a object', t => {
-  t.is(
+  t.equal(
     sign({ a: 1 }, { iss: 'ISS', noTimestamp: true }),
     'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxLCJpc3MiOiJJU1MifQ.YLEisGRTlJL9Y7KLHbIahXr1Zqu0of5w1mJf4aGphTE'
   )
 
-  t.is(
+  t.equal(
     sign({ a: 1, iss: 'original' }, { iss: 'ISS', noTimestamp: true }),
     'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxLCJpc3MiOiJJU1MifQ.YLEisGRTlJL9Y7KLHbIahXr1Zqu0of5w1mJf4aGphTE'
   )
 
-  t.is(sign('123', { iss: 'ISS' }), 'eyJhbGciOiJIUzI1NiJ9.MTIz.UqiZ2LDYZqYB3xJgkHaihGQnJ_WPTz3hERDpA7bWYjA')
+  t.equal(sign('123', { iss: 'ISS' }), 'eyJhbGciOiJIUzI1NiJ9.MTIz.UqiZ2LDYZqYB3xJgkHaihGQnJ_WPTz3hERDpA7bWYjA')
+
+  t.end()
 })
 
 test('it adds a sub claim, overriding the payload one, only if the payload is a object', t => {
-  t.is(
+  t.equal(
     sign({ a: 1 }, { sub: 'SUB', noTimestamp: true }),
     'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxLCJzdWIiOiJTVUIifQ.wweP9vNGt77bBGwZ_PLXfPxy2qcx2mnjUa0AWVA5bEM'
   )
 
-  t.is(
+  t.equal(
     sign({ a: 1, sub: 'original' }, { sub: 'SUB', noTimestamp: true }),
     'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxLCJzdWIiOiJTVUIifQ.wweP9vNGt77bBGwZ_PLXfPxy2qcx2mnjUa0AWVA5bEM'
   )
 
-  t.is(sign('123', { sub: 'SUB' }), 'eyJhbGciOiJIUzI1NiJ9.MTIz.UqiZ2LDYZqYB3xJgkHaihGQnJ_WPTz3hERDpA7bWYjA')
+  t.equal(sign('123', { sub: 'SUB' }), 'eyJhbGciOiJIUzI1NiJ9.MTIz.UqiZ2LDYZqYB3xJgkHaihGQnJ_WPTz3hERDpA7bWYjA')
+
+  t.end()
 })
 
 test('it adds a nonce claim, overriding the payload one, only if the payload is a object', t => {
-  t.is(
+  t.equal(
     sign({ a: 1 }, { nonce: 'NONCE', noTimestamp: true }),
     'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxLCJub25jZSI6Ik5PTkNFIn0.NvCriFYuVDq0fTSf5t_92EwbxnwgjZVMBEMfW-RVl_k'
   )
 
-  t.is(
+  t.equal(
     sign({ a: 1, nonce: 'original' }, { nonce: 'NONCE', noTimestamp: true }),
     'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxLCJub25jZSI6Ik5PTkNFIn0.NvCriFYuVDq0fTSf5t_92EwbxnwgjZVMBEMfW-RVl_k'
   )
 
-  t.is(sign('123', { nonce: 'NONCE' }), 'eyJhbGciOiJIUzI1NiJ9.MTIz.UqiZ2LDYZqYB3xJgkHaihGQnJ_WPTz3hERDpA7bWYjA')
+  t.equal(sign('123', { nonce: 'NONCE' }), 'eyJhbGciOiJIUzI1NiJ9.MTIz.UqiZ2LDYZqYB3xJgkHaihGQnJ_WPTz3hERDpA7bWYjA')
+
+  t.end()
 })
 
 test('it adds a kid to the header', t => {
-  t.is(
+  t.equal(
     sign({ a: 1 }, { kid: '123', noTimestamp: true }),
     'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCIsImtpZCI6IjEyMyJ9.eyJhIjoxfQ.7tQHnTc72lr2wAQeb7n-bDesok0WUHXCDGyNfOMA8CA'
   )
+
+  t.end()
 })
 
 test('it adds additional arbitrary fields to the header', t => {
-  t.is(
+  t.equal(
     sign({ a: 1 }, { header: { b: 2, c: 3 }, noTimestamp: true }),
     'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCIsImIiOjIsImMiOjN9.eyJhIjoxfQ.pfoXZ4zIsYNDmvhFy7pX6dUaK7SV6NfwxTTISwqeFeY'
   )
+
+  t.end()
 })
 
 test('it mutates the payload if asked to', t => {
   const payload = { a: 1, iat: 100 }
 
-  t.is(
+  t.equal(
     sign(payload, { mutatePayload: true, expiresIn: 1000 }),
     'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxLCJpYXQiOjEwMCwiZXhwIjoxMDF9.ULKqTsvUYm7iNOKA6bP5NXsa1A8vofgPIGiC182Vf_Q'
   )
 
-  t.is(payload.exp, 101)
+  t.equal(payload.exp, 101)
+
+  t.end()
 })
 
 test('it correctly handle errors - async', async t => {
-  await t.throwsAsync(
-    () => {
-      return sign(
-        { a: 1 },
-        {
-          secret: async () => {
-            throw new Error('FAILED')
-          },
-          noTimestamp: true
-        }
-      )
-    },
-    {
-      instanceOf: TokenError,
-      message: 'Cannot fetch secret.'
-    }
+  await t.rejects(
+    sign(
+      { a: 1 },
+      {
+        secret: async () => {
+          throw new Error('FAILED')
+        },
+        noTimestamp: true
+      }
+    ),
+    { message: 'Cannot fetch secret.' }
   )
 })
 
-test.cb('it correctly handle errors - callback', t => {
+test('it correctly handle errors - callback', t => {
   sign(
     { a: 1 },
     {
@@ -230,91 +253,113 @@ test.cb('it correctly handle errors - callback', t => {
     },
     (error, token) => {
       t.true(error instanceof TokenError)
-      t.is(error.message, 'Cannot fetch secret.')
+      t.equal(error.message, 'Cannot fetch secret.')
 
       t.end()
     }
   )
 })
 
-test('returns a different function type according to secret or useWorkerThreads options', t => {
-  t.is(createSigner({ secret: 'secret' }).constructor.name, 'Function')
-  t.is(createSigner({ secret: 'secret', useWorkerThreads: true }).constructor.name, 'AsyncFunction')
-  t.is(createSigner({ secret: async () => 'secret' }).constructor.name, 'AsyncFunction')
+test('returns a different function type according to secret or useWorkers options', t => {
+  const s1 = createSigner({ secret: 'secret' })('PAYLOAD')
+  const s2 = createSigner({ secret: 'secret', useWorkers: true })('PAYLOAD')
+  const s3 = createSigner({ secret: async () => 'secret' })('PAYLOAD')
+
+  s2.then(
+    () => false,
+    () => false
+  )
+  s3.then(
+    () => false,
+    () => false
+  )
+
+  t.true(typeof s1.then === 'undefined')
+  t.true(typeof s2.then === 'function')
+  t.true(typeof s3.then === 'function')
+
+  t.end()
 })
 
 test('payload validation', t => {
   t.throws(() => createSigner({ secret: 'secret' })(123), {
-    instanceOf: TokenError,
     message: 'The payload must be a object, a string or a buffer.'
   })
+
+  t.end()
 })
 
 test('options validation - algorithm', t => {
   t.throws(() => createSigner({ secret: 'secret', algorithm: 'FOO' }), {
-    instanceOf: TokenError,
     message:
       'The algorithm option must be one of the following values: RS256, RS384, RS512, ES256, ES384, ES512, PS256, PS384, PS512, HS256, HS384, HS512, none.'
   })
+
+  t.end()
 })
 
 test('options validation - secret', t => {
   t.throws(() => createSigner({ secret: 123 }), {
-    instanceOf: TokenError,
     message: 'The secret option must be a string, buffer, object or callback containing a secret or a private key.'
   })
+
+  t.end()
 })
 
 test('options validation - encoding', t => {
   t.throws(() => createSigner({ secret: 'secret', encoding: 123 }), {
-    instanceOf: TokenError,
     message: 'The encoding option must be a string.'
   })
+
+  t.end()
 })
 
 test('options validation - expiresIn', t => {
   t.throws(() => createSigner({ secret: 'secret', expiresIn: '123' }), {
-    instanceOf: TokenError,
     message: 'The expiresIn option must be a positive number.'
   })
 
   t.throws(() => createSigner({ secret: 'secret', expiresIn: -1 }), {
-    instanceOf: TokenError,
     message: 'The expiresIn option must be a positive number.'
   })
+
+  t.end()
 })
 
 test('options validation - notBefore', t => {
   t.throws(() => createSigner({ secret: 'secret', notBefore: '123' }), {
-    instanceOf: TokenError,
     message: 'The notBefore option must be a positive number.'
   })
 
   t.throws(() => createSigner({ secret: 'secret', notBefore: -1 }), {
-    instanceOf: TokenError,
     message: 'The notBefore option must be a positive number.'
   })
+
+  t.end()
 })
 
 test('options validation - aud', t => {
   t.throws(() => createSigner({ secret: 'secret', aud: 123 }), {
-    instanceOf: TokenError,
     message: 'The aud option must be a string or an array of strings.'
   })
+
+  t.end()
 })
 
 for (const option of ['jti', 'iss', 'sub', 'nonce', 'kid']) {
   test(`options validation - ${option}`, t => {
     t.throws(() => createSigner({ secret: 'secret', [option]: 123 }), {
-      instanceOf: TokenError,
       message: `The ${option} option must be a string.`
     })
+
+    t.end()
   })
 }
 
 test('options validation - header', t => {
   t.throws(() => createSigner({ secret: 'secret', header: 123 }), {
-    instanceOf: TokenError,
     message: 'The header option must be a object.'
   })
+
+  t.end()
 })

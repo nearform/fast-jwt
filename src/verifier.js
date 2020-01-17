@@ -1,6 +1,6 @@
 'use strict'
 
-const { supportsWorkerThreads, getSupportedAlgorithms, verifySignature } = require('./crypto')
+const { supportsWorkers, getSupportedAlgorithms, verifySignature } = require('./crypto')
 const createDecoder = require('./decoder')
 const TokenError = require('./error')
 const { getAsyncSecret } = require('./utils')
@@ -14,17 +14,19 @@ function ensureStringClaimMatcher(raw) {
 }
 
 function verifyAlgorithm(secret, header, signature, allowedAlgorithms) {
-  if (secret && !signature) {
+  const hasSecret = Buffer.isBuffer(secret) ? secret.length : !!secret
+
+  if (hasSecret && !signature) {
     throw new TokenError(TokenError.codes.missingSignature, 'The token signature is missing.')
-  } else if (!secret && signature) {
+  } else if (!hasSecret && signature) {
     throw new TokenError(TokenError.codes.missingSecret, 'The secret is missing.')
   }
 
   // According to the signature and secret, check with algorithms are supported
-  const algorithms = signature ? getSupportedAlgorithms(secret) : ['none']
+  const algorithms = allowedAlgorithms.length ? allowedAlgorithms : getSupportedAlgorithms(secret)
 
-  // Verify the token is supported and allowed
-  if (!algorithms.includes(header.alg) || (allowedAlgorithms.length && !allowedAlgorithms.includes(header.alg))) {
+  // Verify the token is allowed
+  if (!algorithms.includes(header.alg)) {
     throw new TokenError(TokenError.codes.invalidAlgorithm, 'The token algorithm is invalid.')
   }
 }
@@ -45,15 +47,16 @@ function verifyPayload(payload, validators, clockTimestamp, clockTolerance) {
     }
 
     // Check the type
+    const typeFailureMessage = array
+      ? `The ${claim} claim must be a ${claimRequestedType} or an array of ${claimRequestedType}s.`
+      : `The ${claim} claim must be a ${claimRequestedType}.`
+
     if (arrayValue) {
       if (claimType.some(t => t !== claimRequestedType)) {
-        throw new TokenError(
-          TokenError.codes.invalidClaimType,
-          `The ${claim} claim must be a ${claimRequestedType} or an array of ${claimRequestedType}s.`
-        )
+        throw new TokenError(TokenError.codes.invalidClaimType, typeFailureMessage)
       }
     } else if (claimType !== claimRequestedType) {
-      throw new TokenError(TokenError.codes.invalidClaimType, `The ${claim} claim must be a ${claimType}.`)
+      throw new TokenError(TokenError.codes.invalidClaimType, typeFailureMessage)
     }
 
     if (type === 'date') {
@@ -79,11 +82,11 @@ function verifyPayload(payload, validators, clockTimestamp, clockTolerance) {
 }
 
 /*
-  secret: It is a string, buffer or object containing the secret for HMAC algorithms or the PEM encoded private key for RSA and ECDSA keys (whose format is defined by the Node's crypto module documentation).
+  secret: It is a string or a buffer containing the secret for HMAC algorithms or the PEM encoded public key for RSA and ECDSA algorithms.
   algorithms: List of strings with the names of the allowed algorithms.
   complete: return an object with the decoded payload, header and signature instead of only the content of the payload.
   encoding: The token encoding.
-  useWorkerThreads: Use worker threads (Node > 10.5.0) for crypto operator, if they are available. This will force the returned function to be async (with callback support) even if the secret is not a callback.
+  useWorkers: Use worker threads (Node > 10.5.0) for crypto operator, if they are available. This will force the returned function to be async (with callback support) even if the secret is not a callback.
   clockTimestamp: Epoch time in millseconds (like the output of Date.now()) that should be used as the current time for all necessary comparisons.
   clockTolerance: Number of milliseconds to tolerate when checking the iat, nbf and exp claims, to deal time synchronization.
   ignoreExpiration: Do not validate the expiration of the token.
@@ -101,7 +104,7 @@ module.exports = function createVerifier(options) {
     algorithms: allowedAlgorithms,
     complete,
     encoding,
-    useWorkerThreads,
+    useWorkers,
     clockTimestamp,
     clockTolerance,
     ignoreExpiration,
@@ -115,10 +118,10 @@ module.exports = function createVerifier(options) {
   } = { clockTimestamp: 0, ...options }
 
   // Validate options
-  if (typeof secret !== 'string' && typeof secret !== 'object' && typeof secret !== 'function') {
+  if (typeof secret !== 'string' && !Buffer.isBuffer(secret) && typeof secret !== 'function') {
     throw new TokenError(
       TokenError.codes.INVALID_OPTION,
-      'The secret option must be a string, buffer, object or callback containing a secret or a public key.'
+      'The secret option must be a string, a buffer or a function returning the algorithm secret or public key.'
     )
   }
 
@@ -176,7 +179,7 @@ module.exports = function createVerifier(options) {
   const decodeJwt = createDecoder({ complete: true, encoding })
 
   // Return the verifier
-  if (typeof secret !== 'function' && (!useWorkerThreads || !supportsWorkerThreads)) {
+  if (typeof secret !== 'function' && (!useWorkers || !supportsWorkers)) {
     return function verifyJwt(token) {
       // As very first thing, decode the token - If invalid, everything else is useless
       const { header, payload, signature, input } = decodeJwt(token)
@@ -209,7 +212,7 @@ module.exports = function createVerifier(options) {
         try {
           currentSecret = await getAsyncSecret(secret, header)
         } catch (e) {
-          throw new TokenError(TokenError.codes.secretFetchingError, 'Cannot fetch secret.', { error: e })
+          throw new TokenError(TokenError.codes.secretFetchingError, 'Cannot fetch secret.', { originalError: e })
         }
       }
 
@@ -217,7 +220,7 @@ module.exports = function createVerifier(options) {
       verifyAlgorithm(currentSecret, header, signature, allowedAlgorithms)
 
       // Verify the signature, if present
-      if (signature && !(await verifySignature(header.alg, currentSecret, input, signature, useWorkerThreads))) {
+      if (signature && !(await verifySignature(header.alg, currentSecret, input, signature, useWorkers))) {
         throw new TokenError(TokenError.codes.invalidSignature, 'The token signature is invalid.')
       }
 
