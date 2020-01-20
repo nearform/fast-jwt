@@ -9,8 +9,8 @@ const { createVerifier, createSigner } = require('../../src')
 const start = Math.floor(Date.now() / 1000)
 
 for (const method of ['RS', 'PS', 'ES']) {
-  const privateKey = readFileSync(resolve(__dirname, `../fixtures/keys/${method.toLowerCase()}/private.key`))
-  const publicKey = readFileSync(resolve(__dirname, `../fixtures/keys/${method.toLowerCase()}/public.key`))
+  const privateKey = readFileSync(resolve(__dirname, `../../benchmarks/keys/${method.toLowerCase()}-private.key`))
+  const publicKey = readFileSync(resolve(__dirname, `../../benchmarks/keys/${method.toLowerCase()}-public.key`))
 
   for (const bits of [256, 384, 512]) {
     const algorithm = `${method}${bits}`

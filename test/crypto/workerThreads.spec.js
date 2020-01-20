@@ -8,12 +8,12 @@ const { resolve } = require('path')
 const { createVerifier, createSigner, supportsWorkers, startWorkers, stopWorkers } = require('../../src')
 
 const start = Math.floor(Date.now() / 1000)
-const rsPrivateKey = readFileSync(resolve(process.cwd(), './test/fixtures/keys/rs/private.key'))
-const rsPublicKey = readFileSync(resolve(process.cwd(), './test/fixtures/keys/rs/public.key'))
-const psPrivateKey = readFileSync(resolve(process.cwd(), './test/fixtures/keys/ps/private.key'))
-const psPublicKey = readFileSync(resolve(process.cwd(), './test/fixtures/keys/ps/public.key'))
-const esPrivateKey = readFileSync(resolve(process.cwd(), './test/fixtures/keys/es/private.key'))
-const esPublicKey = readFileSync(resolve(process.cwd(), './test/fixtures/keys/es/public.key'))
+const rsPrivateKey = readFileSync(resolve(__dirname, '../../benchmarks/keys/rs-private.key'))
+const rsPublicKey = readFileSync(resolve(__dirname, '../../benchmarks/keys/rs-public.key'))
+const psPrivateKey = readFileSync(resolve(__dirname, '../../benchmarks/keys/ps-private.key'))
+const psPublicKey = readFileSync(resolve(__dirname, '../../benchmarks/keys/ps-public.key'))
+const esPrivateKey = readFileSync(resolve(__dirname, '../../benchmarks/keys/es-private.key'))
+const esPublicKey = readFileSync(resolve(__dirname, '../../benchmarks/keys/es-public.key'))
 
 test('worker threads based tokens round trip with buffer secrets', async t => {
   if (supportsWorkers) {
@@ -24,7 +24,7 @@ test('worker threads based tokens round trip with buffer secrets', async t => {
       // Once all tests are done, simulate filling up the queue
       const sign = createSigner({ algorithm: 'RS512', secret: rsPrivateKey.toString('utf-8'), useWorkers: true })
 
-      Promise.all(Array.from(Array(cpus().length * 5)).map(() => sign({ payload: 'PAYLOAD' }))).then(
+      Promise.all(Array.from(Array(cpus().length * 2)).map(() => sign({ payload: 'PAYLOAD' }))).then(
         () => false,
         () => false
       )

@@ -37,14 +37,27 @@ try {
       try {
         const { algorithm, secret, header, payload, input, signature } = { ...data }
 
-        if (type === 'sign') {
-          parentPort.postMessage({ type: 'result', data: createSignature(algorithm, secret, header, payload) })
-        } else {
-          parentPort.postMessage({ type: 'result', data: verifySignature(algorithm, secret, input, signature) })
-        }
+        parentPort.postMessage({
+          type: 'result',
+          data:
+            type === 'sign'
+              ? createSignature(algorithm, secret, header, payload)
+              : verifySignature(algorithm, secret, input, signature)
+        })
       } catch (e) {
-        const { code, message, originalError } = e
-        parentPort.postMessage({ type: 'error', data: { code, message, originalError } })
+        parentPort.postMessage({
+          type: 'error',
+          data: {
+            code: e.code,
+            message: e.message,
+            stack: e.stack,
+            originalError: {
+              code: e.originalError.code,
+              message: e.originalError.message,
+              stack: e.originalError.stack
+            }
+          }
+        })
       }
     })
   }
@@ -245,6 +258,17 @@ async function getAvailableWorker() {
   return availableWorkers.shift()
 }
 
+function deserializeWorkerError(serialized) {
+  const { code, message, stack } = serialized.originalError
+  const originalError = new Error(message)
+  originalError.code = code
+  originalError.stack = stack
+
+  const error = new TokenError(serialized.code, serialized.message, { originalError })
+
+  return error
+}
+
 async function createSignatureWithWorker(algorithm, secret, header, payload) {
   // Wait for a worker thread to be available
   const worker = await getAvailableWorker()
@@ -269,7 +293,7 @@ async function createSignatureWithWorker(algorithm, secret, header, payload) {
     })
 
     if (type === 'error') {
-      throw new TokenError(data.code, data.message, { originalError: data.originalError })
+      throw deserializeWorkerError(data)
     }
 
     availableWorkers.push(worker)
@@ -295,7 +319,7 @@ async function verifySignatureWithWorker(algorithm, secret, input, signature) {
     })
 
     if (type === 'error') {
-      throw new TokenError(data.code, data.message, { originalError: data.originalError })
+      throw deserializeWorkerError(data)
     }
 
     availableWorkers.push(worker)
