@@ -29,15 +29,19 @@
   },
   "main": "src/index.js",
   "scripts": {
-    "test": "tap --node-arg=--experimental-worker --reporter=spec --coverage-report=html --coverage-report=text --no-browser test/*.spec.js test/**/*.spec.js",
-    "test:watch": "tap --node-arg=--experimental-worker --watch --reporter=spec --coverage-report=html --coverage-report=text --no-browser test/*.spec.js test/**/*.spec.js",
+    "prepublishOnly": "npm run ci",
     "ci": "npm run lint && tap --node-arg=--experimental-worker --no-color --reporter=spec --coverage-report=json --coverage-report=text --branches 90 --functions 90 --lines 90 --statements 90 test/*.spec.js test/**/*.spec.js",
     "lint": "eslint src/**/*.js test/**/*.js",
-    "prepublishOnly": "npm run ci",
-    "postpublish": "git push origin && git push origin -f --tags"
+    "test": "tap --node-arg=--experimental-worker --reporter=spec --coverage-report=html --coverage-report=text --no-browser test/*.spec.js test/**/*.spec.js",
+    "test:watch": "tap --node-arg=--experimental-worker --watch --reporter=spec --coverage-report=html --coverage-report=text --no-browser test/*.spec.js test/**/*.spec.js",
+    "test:generate-keys": "cd benchmarks/keys && sh generate-keys.sh",
+    "postpublish": "git push origin && git push origin -f --tags",
+    "benchmark:sign": "cd benchmarks && node sign.js",
+    "benchmark:verify": "cd benchmarks && node verify.js",
+    "benchmark:auth0": "cd benchmarks && node auth0.js"
   },
   "dependencies": {
-    "ecdsa-sig-formatter": "^1.0.11"
+    "ecdsa-sig-formatter": "^1.0.11",
   },
   "devDependencies": {
     "benchmark": "^2.1.4",
