@@ -30,10 +30,10 @@
   "main": "src/index.js",
   "scripts": {
     "prepublishOnly": "npm run ci",
-    "ci": "npm run lint && tap --node-arg=--experimental-worker --no-color --reporter=spec --coverage-report=json --coverage-report=text --branches 90 --functions 90 --lines 90 --statements 90 test/*.spec.js test/**/*.spec.js",
+    "ci": "npm run lint && tap --no-color --reporter=spec --coverage-report=json --coverage-report=text --branches 90 --functions 90 --lines 90 --statements 90 test/*.spec.js test/**/*.spec.js",
     "lint": "eslint src/**/*.js test/**/*.js",
-    "test": "tap --node-arg=--experimental-worker --reporter=spec --coverage-report=html --coverage-report=text --no-browser test/*.spec.js test/**/*.spec.js",
-    "test:watch": "tap --node-arg=--experimental-worker --watch --reporter=spec --coverage-report=html --coverage-report=text --no-browser test/*.spec.js test/**/*.spec.js",
+    "test": "tap --reporter=spec --coverage-report=html --coverage-report=text --no-browser test/*.spec.js test/**/*.spec.js",
+    "test:watch": "tap --watch --reporter=spec --coverage-report=html --coverage-report=text --no-browser test/*.spec.js test/**/*.spec.js",
     "test:generate-keys": "cd benchmarks/keys && sh generate-keys.sh",
     "postpublish": "git push origin && git push origin -f --tags",
     "benchmark:sign": "cd benchmarks && node sign.js",
