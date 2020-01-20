@@ -22,7 +22,10 @@ test('it correctly returns a token - sync', t => {
     'eyJhbGciOiJIUzI1NiJ9.MTIz.UqiZ2LDYZqYB3xJgkHaihGQnJ_WPTz3hERDpA7bWYjA'
   )
 
-  t.equal(sign({ a: 1 }, { noTimestamp: true, algorithm: 'none' }), 'eyJhbGciOiJub25lIiwidHlwIjoiSldUIn0=.eyJhIjoxfQ.')
+  t.equal(
+    sign({ a: 1 }, { noTimestamp: true, algorithm: 'none', secret: null }),
+    'eyJhbGciOiJub25lIiwidHlwIjoiSldUIn0.eyJhIjoxfQ.'
+  )
 
   t.end()
 })
@@ -227,7 +230,22 @@ test('it mutates the payload if asked to', t => {
   t.end()
 })
 
-test('it correctly handle errors - async', async t => {
+test('it correctly handle errors - sync callback', async t => {
+  await t.rejects(
+    sign(
+      { a: 1 },
+      {
+        secret: () => {
+          throw new Error('FAILED')
+        },
+        noTimestamp: true
+      }
+    ),
+    { message: 'Cannot fetch secret.' }
+  )
+})
+
+test('it correctly handle errors - async callback', async t => {
   await t.rejects(
     sign(
       { a: 1 },
@@ -260,29 +278,27 @@ test('it correctly handle errors - callback', t => {
   )
 })
 
-test('returns a different function type according to secret or useWorkers options', t => {
+test('returns a promise according to secret option', t => {
   const s1 = createSigner({ secret: 'secret' })('PAYLOAD')
-  const s2 = createSigner({ secret: 'secret', useWorkers: true })('PAYLOAD')
-  const s3 = createSigner({ secret: async () => 'secret' })('PAYLOAD')
+  const s2 = createSigner({ secret: async () => 'secret' })('PAYLOAD')
+
+  t.true(typeof s1.then === 'undefined')
+  t.true(typeof s2.then === 'function')
 
   s2.then(
     () => false,
     () => false
   )
-  s3.then(
-    () => false,
-    () => false
-  )
-
-  t.true(typeof s1.then === 'undefined')
-  t.true(typeof s2.then === 'function')
-  t.true(typeof s3.then === 'function')
 
   t.end()
 })
 
 test('payload validation', t => {
   t.throws(() => createSigner({ secret: 'secret' })(123), {
+    message: 'The payload must be a object, a string or a buffer.'
+  })
+
+  t.rejects(() => createSigner({ secret: () => 'secret' })(123), {
     message: 'The payload must be a object, a string or a buffer.'
   })
 
@@ -301,6 +317,10 @@ test('options validation - algorithm', t => {
 test('options validation - secret', t => {
   t.throws(() => createSigner({ secret: 123 }), {
     message: 'The secret option must be a string, buffer, object or callback containing a secret or a private key.'
+  })
+
+  t.throws(() => createSigner({ algorithm: 'none', secret: 123 }), {
+    message: 'The secret option must not be provided when the algorithm option is "none".'
   })
 
   t.end()

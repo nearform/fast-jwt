@@ -16,30 +16,40 @@ function base64UrlDecode(base64url) {
     .replace(/_/g, '/')
 }
 
-function getAsyncSecret(handler, header) {
-  let promiseResolve
-  let promiseReject
+function getAsyncSecret(handler, header, callback) {
+  try {
+    const rv = handler(header, callback)
 
-  const callbackPromise = new Promise((resolve, reject) => {
+    if (rv && typeof rv.then === 'function') {
+      rv.then(secret => callback(null, secret)).catch(callback)
+    }
+  } catch (e) {
+    callback(e)
+  }
+}
+
+function createPromiseCallback() {
+  let promiseResolve, promiseReject
+
+  const promise = new Promise((resolve, reject) => {
     promiseResolve = resolve
     promiseReject = reject
   })
 
-  const callback = function(error, value) {
-    if (error) {
-      return promiseReject(error)
+  const callback = function(err, token) {
+    if (err) {
+      return promiseReject(err)
     }
 
-    promiseResolve(value)
+    return promiseResolve(token)
   }
 
-  const rv = handler(header, callback)
-
-  return rv && typeof rv.then === 'function' ? rv : callbackPromise
+  return [promise, callback]
 }
 
 module.exports = {
   base64UrlDecode,
   base64UrlEncode,
-  getAsyncSecret
+  getAsyncSecret,
+  createPromiseCallback
 }

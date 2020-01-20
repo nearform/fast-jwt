@@ -41,7 +41,7 @@
     "benchmark:auth0": "cd benchmarks && node auth0.js"
   },
   "dependencies": {
-    "ecdsa-sig-formatter": "^1.0.11",
+    "ecdsa-sig-formatter": "^1.0.11"
   },
   "devDependencies": {
     "benchmark": "^2.1.4",

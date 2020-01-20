@@ -1,22 +1,21 @@
 'use strict'
 
-const { publicKeyAlgorithms, rsaKeyAlgorithms, hashAlgorithms, supportsWorkers, createSignature } = require('./crypto')
+const { publicKeyAlgorithms, rsaKeyAlgorithms, hashAlgorithms, createSignature } = require('./crypto')
 const TokenError = require('./error')
-const { base64UrlEncode, getAsyncSecret } = require('./utils')
+const { base64UrlEncode, getAsyncSecret, createPromiseCallback } = require('./utils')
 
 const supportedAlgorithms = Array.from(
   new Set([...publicKeyAlgorithms, ...rsaKeyAlgorithms, ...hashAlgorithms, 'none'])
 ).join(', ')
 
-function encodeHeader(alg, kid, additionalHeader, payload, encoding) {
+function prepareHeader(alg, kid, additionalHeader, payload, encoding) {
   if (typeof payload !== 'string' && typeof payload !== 'object') {
     throw new TokenError(TokenError.codes.invalidType, 'The payload must be a object, a string or a buffer.')
   } else if (Buffer.isBuffer(payload)) {
     payload = payload.toString(encoding)
   }
 
-  const header = { alg, typ: typeof payload === 'object' ? 'JWT' : undefined, kid, ...additionalHeader }
-  return [Buffer.from(JSON.stringify(header)).toString('base64'), header]
+  return { alg, typ: typeof payload === 'object' ? 'JWT' : undefined, kid, ...additionalHeader }
 }
 
 function encodePayload(payload, encoding, fixedPayload, noTimestamp, expiresIn, notBefore, mutatePayload) {
@@ -65,7 +64,6 @@ function encodePayload(payload, encoding, fixedPayload, noTimestamp, expiresIn, 
   encoding: The token encoding.
   noTimestamp: If not to add the iat claim.
   mutatePayload: If the original payload must be modified in place (and therefore available to the caller function).
-  useWorkers: Use worker threads (Node > 10.5.0) for crypto operator, if they are available. This will force the returned function to be async (with callback support) even if the secret is not a callback.
   expiresIn: Time span in milliseconds after which the token expires, added as the "exp" claim in the payload. Note that this will override an existing value in the payload.
   notBefore: Time span in milliseconds before the token is active, added as the "nbf" claim in the payload. Note that this will override an existing value in the payload.
   jti: The token id, added as the "jti" claim in the payload. Note that this will override an existing value in the payload.
@@ -83,7 +81,6 @@ module.exports = function createSigner(options) {
     encoding,
     noTimestamp,
     mutatePayload,
-    useWorkers,
     expiresIn,
     notBefore,
     jti,
@@ -108,7 +105,14 @@ module.exports = function createSigner(options) {
     )
   }
 
-  if (!secret || (typeof secret !== 'string' && typeof secret !== 'object' && typeof secret !== 'function')) {
+  if (algorithm === 'none') {
+    if (secret) {
+      throw new TokenError(
+        TokenError.codes.invalidOption,
+        'The secret option must not be provided when the algorithm option is "none".'
+      )
+    }
+  } else if (!secret || (typeof secret !== 'string' && typeof secret !== 'object' && typeof secret !== 'function')) {
     throw new TokenError(
       TokenError.codes.invalidOption,
       'The secret option must be a string, buffer, object or callback containing a secret or a private key.'
@@ -165,10 +169,9 @@ module.exports = function createSigner(options) {
   }
 
   // Return the signer
-  if (algorithm === 'none' || (typeof secret !== 'function' && (!useWorkers || !supportsWorkers))) {
+  if (typeof secret !== 'function') {
     return function signJwt(payload) {
-      const [encodedHeader] = encodeHeader(algorithm, kid, additionalHeader, payload, encoding)
-
+      const header = prepareHeader(algorithm, kid, additionalHeader, payload, encoding)
       const encodedPayload = encodePayload(
         payload,
         encoding,
@@ -178,57 +181,50 @@ module.exports = function createSigner(options) {
         notBefore,
         mutatePayload
       )
-
-      const encodedSignature = base64UrlEncode(
-        algorithm !== 'none' ? createSignature(algorithm, secret, encodedHeader, encodedPayload) : ''
-      )
+      const encodedHeader = base64UrlEncode(Buffer.from(JSON.stringify(header)).toString('base64'))
+      const encodedSignature =
+        algorithm === 'none' ? '' : base64UrlEncode(createSignature(algorithm, secret, encodedHeader, encodedPayload))
 
       return `${encodedHeader}.${encodedPayload}.${encodedSignature}`
     }
   }
 
-  return async function signJwt(payload, callback) {
+  return function signJwt(payload, callback) {
+    let rv
+
+    // If no callback, wrap into promise
+    if (!callback) {
+      ;[rv, callback] = createPromiseCallback()
+    }
+
+    // Prepare header and payload
+    let header, encodedPayload, encodedHeader
     try {
-      const [encodedHeader, header] = encodeHeader(algorithm, kid, additionalHeader, payload, encoding)
+      header = prepareHeader(algorithm, kid, additionalHeader, payload, encoding)
+      encodedPayload = encodePayload(payload, encoding, fixedPayload, noTimestamp, expiresIn, notBefore, mutatePayload)
+      encodedHeader = base64UrlEncode(Buffer.from(JSON.stringify(header)).toString('base64'))
 
-      // Get the secret - Done after encoding the header since it verifies the payload value
-      let currentSecret = secret
-
-      if (typeof currentSecret === 'function') {
+      getAsyncSecret(secret, header, (err, currentSecret) => {
         try {
-          currentSecret = await getAsyncSecret(secret, header)
+          if (err) {
+            return callback(
+              new TokenError(TokenError.codes.secretFetchingError, 'Cannot fetch secret.', { originalError: err })
+            )
+          }
+
+          const encodedSignature = base64UrlEncode(
+            createSignature(algorithm, currentSecret, encodedHeader, encodedPayload)
+          )
+          callback(null, `${encodedHeader}.${encodedPayload}.${encodedSignature}`)
         } catch (e) {
-          throw new TokenError(TokenError.codes.secretFetchingError, 'Cannot fetch secret.', { originalError: e })
+          callback(e)
         }
-      }
-
-      const encodedPayload = encodePayload(
-        payload,
-        encoding,
-        fixedPayload,
-        noTimestamp,
-        expiresIn,
-        notBefore,
-        mutatePayload
-      )
-
-      const encodedSignature = base64UrlEncode(
-        await createSignature(algorithm, currentSecret, encodedHeader, encodedPayload, useWorkers)
-      )
-
-      const rv = `${encodedHeader}.${encodedPayload}.${encodedSignature}`
-
-      if (typeof callback === 'function') {
-        callback(null, rv)
-      }
+      })
 
       return rv
     } catch (e) {
-      if (typeof callback === 'function') {
-        return callback(e)
-      }
-
-      throw e
+      callback(e)
+      return rv
     }
   }
 }

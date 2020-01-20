@@ -1,9 +1,9 @@
 'use strict'
 
-const { supportsWorkers, getSupportedAlgorithms, verifySignature } = require('./crypto')
+const { getSupportedAlgorithms, verifySignature } = require('./crypto')
 const createDecoder = require('./decoder')
 const TokenError = require('./error')
-const { getAsyncSecret } = require('./utils')
+const { getAsyncSecret, createPromiseCallback } = require('./utils')
 
 function ensureStringClaimMatcher(raw) {
   if (!Array.isArray(raw)) {
@@ -86,7 +86,6 @@ function verifyPayload(payload, validators, clockTimestamp, clockTolerance) {
   algorithms: List of strings with the names of the allowed algorithms.
   complete: return an object with the decoded payload, header and signature instead of only the content of the payload.
   encoding: The token encoding.
-  useWorkers: Use worker threads (Node > 10.5.0) for crypto operator, if they are available. This will force the returned function to be async (with callback support) even if the secret is not a callback.
   clockTimestamp: Epoch time in millseconds (like the output of Date.now()) that should be used as the current time for all necessary comparisons.
   clockTolerance: Number of milliseconds to tolerate when checking the iat, nbf and exp claims, to deal time synchronization.
   ignoreExpiration: Do not validate the expiration of the token.
@@ -104,7 +103,6 @@ module.exports = function createVerifier(options) {
     algorithms: allowedAlgorithms,
     complete,
     encoding,
-    useWorkers,
     clockTimestamp,
     clockTolerance,
     ignoreExpiration,
@@ -179,7 +177,7 @@ module.exports = function createVerifier(options) {
   const decodeJwt = createDecoder({ complete: true, encoding })
 
   // Return the verifier
-  if (typeof secret !== 'function' && (!useWorkers || !supportsWorkers)) {
+  if (typeof secret !== 'function') {
     return function verifyJwt(token) {
       // As very first thing, decode the token - If invalid, everything else is useless
       const { header, payload, signature, input } = decodeJwt(token)
@@ -200,46 +198,47 @@ module.exports = function createVerifier(options) {
     }
   }
 
-  return async function verifyJwt(token, callback) {
+  return function verifyJwt(token, callback) {
+    let rv
+
+    // If no callback, wrap into promise
+    if (!callback) {
+      ;[rv, callback] = createPromiseCallback()
+    }
+
     try {
       // As very first thing, decode the token - If invalid, everything else is useless
       const { header, payload, signature, input } = decodeJwt(token)
 
-      // Get the secret
-      let currentSecret = secret
-
-      if (typeof currentSecret === 'function') {
+      getAsyncSecret(secret, header, (err, currentSecret) => {
         try {
-          currentSecret = await getAsyncSecret(secret, header)
+          if (err) {
+            return callback(
+              new TokenError(TokenError.codes.secretFetchingError, 'Cannot fetch secret.', { originalError: err })
+            )
+          }
+
+          // Now verify the algorithm
+          verifyAlgorithm(currentSecret, header, signature, allowedAlgorithms)
+
+          // Verify the signature, if present
+          if (signature && !verifySignature(header.alg, currentSecret, input, signature)) {
+            throw new TokenError(TokenError.codes.invalidSignature, 'The token signature is invalid.')
+          }
+
+          // Finally, verify the payload
+          verifyPayload(payload, validators, clockTimestamp, clockTolerance)
+
+          callback(null, complete ? { header, payload, signature } : payload)
         } catch (e) {
-          throw new TokenError(TokenError.codes.secretFetchingError, 'Cannot fetch secret.', { originalError: e })
+          callback(e)
         }
-      }
-
-      // Now verify the algorithm
-      verifyAlgorithm(currentSecret, header, signature, allowedAlgorithms)
-
-      // Verify the signature, if present
-      if (signature && !(await verifySignature(header.alg, currentSecret, input, signature, useWorkers))) {
-        throw new TokenError(TokenError.codes.invalidSignature, 'The token signature is invalid.')
-      }
-
-      // Finally, verify the payload
-      verifyPayload(payload, validators, clockTimestamp, clockTolerance)
-
-      const rv = complete ? { header, payload, signature } : payload
-
-      if (typeof callback === 'function') {
-        callback(null, rv)
-      }
+      })
 
       return rv
     } catch (e) {
-      if (typeof callback === 'function') {
-        return callback(e)
-      }
-
-      throw e
+      callback(e)
+      return rv
     }
   }
 }
