@@ -3,7 +3,7 @@
 const { getSupportedAlgorithms, verifySignature } = require('./crypto')
 const createDecoder = require('./decoder')
 const TokenError = require('./error')
-const { getAsyncSecret, createPromiseCallback } = require('./utils')
+const { getAsyncSecret, ensurePromiseCallback } = require('./utils')
 
 function ensureStringClaimMatcher(raw) {
   if (!Array.isArray(raw)) {
@@ -13,7 +13,18 @@ function ensureStringClaimMatcher(raw) {
   return raw.map(r => (r && typeof r.test === 'function' ? r : new RegExp(r.toString())))
 }
 
-function verifyAlgorithm(secret, header, signature, allowedAlgorithms) {
+function verifyToken(
+  secret,
+  input,
+  header,
+  payload,
+  signature,
+  validators,
+  allowedAlgorithms,
+  clockTimestamp,
+  clockTolerance
+) {
+  // Verify the secret
   const hasSecret = Buffer.isBuffer(secret) ? secret.length : !!secret
 
   if (hasSecret && !signature) {
@@ -29,9 +40,13 @@ function verifyAlgorithm(secret, header, signature, allowedAlgorithms) {
   if (!algorithms.includes(header.alg)) {
     throw new TokenError(TokenError.codes.invalidAlgorithm, 'The token algorithm is invalid.')
   }
-}
 
-function verifyPayload(payload, validators, clockTimestamp, clockTolerance) {
+  // Verify the signature, if present
+  if (signature && !verifySignature(header.alg, secret, input, signature)) {
+    throw new TokenError(TokenError.codes.invalidSignature, 'The token signature is invalid.')
+  }
+
+  // Verify the payload
   const now = clockTimestamp || Date.now() + (clockTolerance || 0)
 
   for (const validator of validators) {
@@ -177,38 +192,29 @@ module.exports = function createVerifier(options) {
   const decodeJwt = createDecoder({ complete: true, encoding })
 
   // Return the verifier
-  if (typeof secret !== 'function') {
-    return function verifyJwt(token) {
-      // As very first thing, decode the token - If invalid, everything else is useless
-      const { header, payload, signature, input } = decodeJwt(token)
-
-      // Now verify the algorithm
-      verifyAlgorithm(secret, header, signature, allowedAlgorithms)
-
-      // Verify the signature, if present
-      if (signature && !verifySignature(header.alg, secret, input, signature)) {
-        throw new TokenError(TokenError.codes.invalidSignature, 'The token signature is invalid.')
-      }
-
-      // Finally, verify the payload
-      verifyPayload(payload, validators, clockTimestamp, clockTolerance)
-
-      // Return
-      return complete ? { header, payload, signature } : payload
-    }
-  }
-
-  return function verifyJwt(token, callback) {
-    let rv
-
-    // If no callback, wrap into promise
-    if (!callback) {
-      ;[rv, callback] = createPromiseCallback()
-    }
+  return function verifyJwt(token, cb) {
+    const [callback, promise] = typeof secret === 'function' ? ensurePromiseCallback(cb) : []
 
     try {
       // As very first thing, decode the token - If invalid, everything else is useless
       const { header, payload, signature, input } = decodeJwt(token)
+
+      // We're get the secret synchronously
+      if (!callback) {
+        verifyToken(
+          secret,
+          input,
+          header,
+          payload,
+          signature,
+          validators,
+          allowedAlgorithms,
+          clockTimestamp,
+          clockTolerance
+        )
+
+        return complete ? { header, payload, signature } : payload
+      }
 
       getAsyncSecret(secret, header, (err, currentSecret) => {
         try {
@@ -218,27 +224,31 @@ module.exports = function createVerifier(options) {
             )
           }
 
-          // Now verify the algorithm
-          verifyAlgorithm(currentSecret, header, signature, allowedAlgorithms)
-
-          // Verify the signature, if present
-          if (signature && !verifySignature(header.alg, currentSecret, input, signature)) {
-            throw new TokenError(TokenError.codes.invalidSignature, 'The token signature is invalid.')
-          }
-
-          // Finally, verify the payload
-          verifyPayload(payload, validators, clockTimestamp, clockTolerance)
+          verifyToken(
+            currentSecret,
+            input,
+            header,
+            payload,
+            signature,
+            validators,
+            allowedAlgorithms,
+            clockTimestamp,
+            clockTolerance
+          )
 
           callback(null, complete ? { header, payload, signature } : payload)
         } catch (e) {
           callback(e)
         }
       })
-
-      return rv
     } catch (e) {
+      if (!callback) {
+        throw e
+      }
+
       callback(e)
-      return rv
     }
+
+    return promise
   }
 }

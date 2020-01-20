@@ -2,58 +2,11 @@
 
 const { publicKeyAlgorithms, rsaKeyAlgorithms, hashAlgorithms, createSignature } = require('./crypto')
 const TokenError = require('./error')
-const { base64UrlEncode, getAsyncSecret, createPromiseCallback } = require('./utils')
+const { base64UrlEncode, getAsyncSecret, ensurePromiseCallback } = require('./utils')
 
 const supportedAlgorithms = Array.from(
   new Set([...publicKeyAlgorithms, ...rsaKeyAlgorithms, ...hashAlgorithms, 'none'])
 ).join(', ')
-
-function prepareHeader(alg, kid, additionalHeader, payload, encoding) {
-  if (typeof payload !== 'string' && typeof payload !== 'object') {
-    throw new TokenError(TokenError.codes.invalidType, 'The payload must be a object, a string or a buffer.')
-  } else if (Buffer.isBuffer(payload)) {
-    payload = payload.toString(encoding)
-  }
-
-  return { alg, typ: typeof payload === 'object' ? 'JWT' : undefined, kid, ...additionalHeader }
-}
-
-function encodePayload(payload, encoding, fixedPayload, noTimestamp, expiresIn, notBefore, mutatePayload) {
-  if (Buffer.isBuffer(payload)) {
-    payload = payload.toString(encoding)
-  }
-
-  // All the claims are added only if the payload is not a string
-  if (typeof payload === 'string') {
-    return base64UrlEncode(Buffer.from(payload).toString('base64'))
-  }
-
-  const iat = payload.iat * 1000 || Date.now()
-  const additionalPayload = {}
-
-  if (!noTimestamp) {
-    additionalPayload.iat = Math.floor(iat / 1000)
-  }
-
-  if (expiresIn) {
-    additionalPayload.exp = Math.floor((iat + expiresIn) / 1000)
-  }
-
-  if (notBefore) {
-    additionalPayload.nbf = Math.floor((iat + notBefore) / 1000)
-  }
-
-  // Assign the final payload
-  let finalPayload
-
-  if (mutatePayload) {
-    finalPayload = Object.assign(payload, fixedPayload, additionalPayload)
-  } else {
-    finalPayload = { ...payload, ...fixedPayload, ...additionalPayload }
-  }
-
-  return base64UrlEncode(Buffer.from(JSON.stringify(finalPayload)).toString('base64'))
-}
 
 /*
   payload: A object or a serialized JSON as buffer or string. If not a object, none of the additional claim will be added. If "iat" property is present, it will be used instead of using "now".
@@ -169,40 +122,61 @@ module.exports = function createSigner(options) {
   }
 
   // Return the signer
-  if (typeof secret !== 'function') {
-    return function signJwt(payload) {
-      const header = prepareHeader(algorithm, kid, additionalHeader, payload, encoding)
-      const encodedPayload = encodePayload(
-        payload,
-        encoding,
-        fixedPayload,
-        noTimestamp,
-        expiresIn,
-        notBefore,
-        mutatePayload
-      )
-      const encodedHeader = base64UrlEncode(Buffer.from(JSON.stringify(header)).toString('base64'))
-      const encodedSignature =
-        algorithm === 'none' ? '' : base64UrlEncode(createSignature(algorithm, secret, encodedHeader, encodedPayload))
-
-      return `${encodedHeader}.${encodedPayload}.${encodedSignature}`
-    }
-  }
-
-  return function signJwt(payload, callback) {
-    let rv
-
-    // If no callback, wrap into promise
-    if (!callback) {
-      ;[rv, callback] = createPromiseCallback()
-    }
+  return function signJwt(payload, cb) {
+    const [callback, promise] = typeof secret === 'function' ? ensurePromiseCallback(cb) : []
 
     // Prepare header and payload
-    let header, encodedPayload, encodedHeader
     try {
-      header = prepareHeader(algorithm, kid, additionalHeader, payload, encoding)
-      encodedPayload = encodePayload(payload, encoding, fixedPayload, noTimestamp, expiresIn, notBefore, mutatePayload)
-      encodedHeader = base64UrlEncode(Buffer.from(JSON.stringify(header)).toString('base64'))
+      // Prepare the header
+      if (typeof payload !== 'string' && typeof payload !== 'object') {
+        throw new TokenError(TokenError.codes.invalidType, 'The payload must be a object, a string or a buffer.')
+      } else if (Buffer.isBuffer(payload)) {
+        payload = payload.toString(encoding)
+      }
+
+      const header = Object.assign(
+        { alg: algorithm, typ: typeof payload === 'object' ? 'JWT' : undefined, kid },
+        additionalHeader
+      )
+
+      // Prepare the payload
+      // All the claims are added only if the payload is not a string
+      let finalPayload = payload
+
+      if (typeof payload !== 'string') {
+        const iat = payload.iat * 1000 || Date.now()
+        const additionalPayload = {}
+
+        if (!noTimestamp) {
+          additionalPayload.iat = Math.floor(iat / 1000)
+        }
+
+        if (expiresIn) {
+          additionalPayload.exp = Math.floor((iat + expiresIn) / 1000)
+        }
+
+        if (notBefore) {
+          additionalPayload.nbf = Math.floor((iat + notBefore) / 1000)
+        }
+
+        // Assign the final payload
+        if (mutatePayload) {
+          finalPayload = JSON.stringify(Object.assign(payload, fixedPayload, additionalPayload))
+        } else {
+          finalPayload = JSON.stringify(Object.assign({}, payload, fixedPayload, additionalPayload))
+        }
+      }
+
+      const encodedHeader = base64UrlEncode(Buffer.from(JSON.stringify(header)).toString('base64'))
+      const encodedPayload = base64UrlEncode(Buffer.from(finalPayload).toString('base64'))
+
+      // We're get the secret synchronously
+      if (!callback) {
+        const encodedSignature =
+          algorithm === 'none' ? '' : base64UrlEncode(createSignature(algorithm, secret, encodedHeader, encodedPayload))
+
+        return `${encodedHeader}.${encodedPayload}.${encodedSignature}`
+      }
 
       getAsyncSecret(secret, header, (err, currentSecret) => {
         try {
@@ -215,16 +189,20 @@ module.exports = function createSigner(options) {
           const encodedSignature = base64UrlEncode(
             createSignature(algorithm, currentSecret, encodedHeader, encodedPayload)
           )
+
           callback(null, `${encodedHeader}.${encodedPayload}.${encodedSignature}`)
         } catch (e) {
           callback(e)
         }
       })
-
-      return rv
     } catch (e) {
+      if (!callback) {
+        throw e
+      }
+
       callback(e)
-      return rv
     }
+
+    return promise
   }
 }
