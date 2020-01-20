@@ -1,6 +1,6 @@
 'use strict'
 
-const { test } = require('TAP')
+const { test } = require('tap')
 
 const { createVerifier, createSigner } = require('../../src')
 

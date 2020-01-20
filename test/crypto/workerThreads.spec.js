@@ -1,6 +1,6 @@
 'use strict'
 
-const { test } = require('TAP')
+const { test } = require('tap')
 const { readFileSync } = require('fs')
 const { cpus } = require('os')
 const { resolve } = require('path')
