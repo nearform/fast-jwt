@@ -258,7 +258,7 @@ test('it correctly handle errors - async callback', async t => {
       { a: 1 },
       {
         secret: async () => {
-          throw new TokenError('FAILED')
+          throw new TokenError(null, 'FAILED')
         },
         noTimestamp: true
       }
