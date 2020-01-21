@@ -20,7 +20,7 @@ npm install fast-jwt --save
 
 ### Signing
 
-Create a signer object by calling `createSigner` and providing one or more of the following options:
+Create a signer function by calling `createSigner` and providing one or more of the following options:
 
 - `secret`: A string, buffer or object containing the secret for `HS*` algorithms or the PEM encoded public key for `RS*`, `PS*` and `ES*` algorithms (whose format is defined by the Node's crypto module documentation). The secret can also be a function accepting a Node style callback or a function returning a promise. This is the only mandatory option.
 - `algorithm`: The algorithm to use to sign the token, default is `HS256`.
@@ -72,7 +72,7 @@ async function test() {
 
 ### Decoding
 
-Create a decoder object by calling `createDecoder` and providing one or more of the following options:
+Create a decoder function by calling `createDecoder` and providing one or more of the following options:
 
 - `complete`: Return an object with the decoded header, payload, signature and input (the token part before the signature), instead of just the content of the payload. Default is `false`.
 - `json`: Always parse the payload as JSON even if the `typ` claim of the header is not `JWT`. Default is `false`.
@@ -107,7 +107,7 @@ const sections = decodeComplete(token)
 
 ### Verifying
 
-Create a verifier object by calling `createVerifier` and providing one or more of the following options:
+Create a verifier function by calling `createVerifier` and providing one or more of the following options:
 
 - `secret`: A string, buffer or object containing the secret for `HS*` algorithms or the PEM encoded public key for `RS*`, `PS*` and `ES*` algorithms (whose format is defined by the Node's crypto module documentation). The secret can also be a function accepting a Node style callback or a function returning a promise. This is the only mandatory option, which must NOT be provided if the token algorithm is `none`.
 - `algorithms`: List of strings with the names of the allowed algorithms. By default, all algorithms are accepted.
@@ -173,15 +173,15 @@ This is the lisf of currently supported algorithms:
 | `HS256` | HMAC using SHA-256 hash algorithm                        |
 | `HS384` | HMAC using SHA-384 hash algorithm                        |
 | `HS512` | HMAC using SHA-512 hash algorithm                        |
+| `ES256` | ECDSA using P-256 curve and SHA-256 hash algorithm       |
+| `ES384` | ECDSA using P-384 curve and SHA-384 hash algorithm       |
+| `ES512` | ECDSA using P-521 curve and SHA-512 hash algorithm       |
 | `RS256` | RSASSA-PKCS1-v1_5 using SHA-256 hash algorithm           |
 | `RS384` | RSASSA-PKCS1-v1_5 using SHA-384 hash algorithm           |
 | `RS512` | RSASSA-PKCS1-v1_5 using SHA-512 hash algorithm           |
 | `PS256` | RSASSA-PSS using SHA-256 hash algorithm                  |
 | `PS384` | RSASSA-PSS using SHA-384 hash algorithm                  |
 | `PS512` | RSASSA-PSS using SHA-512 hash algorithm                  |
-| `ES256` | ECDSA using P-256 curve and SHA-256 hash algorithm       |
-| `ES384` | ECDSA using P-384 curve and SHA-384 hash algorithm       |
-| `ES512` | ECDSA using P-521 curve and SHA-512 hash algorithm       |
 
 ## Contributing
 
