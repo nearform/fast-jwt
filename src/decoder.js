@@ -39,7 +39,8 @@ module.exports = function createDecoder(options) {
     } catch (e) {
       throw new TokenError(
         TokenError.codes.malformed,
-        `The token ${header ? 'payload' : 'header'} is not a valid base64url serialized JSON.`
+        `The token ${header ? 'payload' : 'header'} is not a valid base64url serialized JSON.`,
+        { originalError: e }
       )
     }
   }
