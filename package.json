@@ -29,26 +29,33 @@
   },
   "main": "src/index.js",
   "scripts": {
-    "test": "nyc -r html -r text ava -v test/*.spec.js",
-    "test:watch": "ava --watch -v test/*.spec.js",
-    "ci": "npm run lint && nyc -check-coverage --branches 90 --functions 90 --lines 90 --statements 90 -r json ava -v --no-color test/*.spec.js",
-    "lint": "eslint src/**/*.js test/**/*.js",
     "prepublishOnly": "npm run ci",
-    "postpublish": "git push origin && git push origin -f --tags"
+    "ci": "npm run lint && tap --no-color --reporter=spec --coverage-report=json --coverage-report=text --branches 90 --functions 90 --lines 90 --statements 90 test/*.spec.js test/**/*.spec.js",
+    "lint": "eslint src/**/*.js test/**/*.js",
+    "test": "tap --reporter=spec --coverage-report=html --coverage-report=text --no-browser test/*.spec.js test/**/*.spec.js",
+    "test:watch": "tap --watch --reporter=spec --coverage-report=html --coverage-report=text --no-browser test/*.spec.js test/**/*.spec.js",
+    "test:generate-keys": "cd benchmarks/keys && sh generate-keys.sh",
+    "postpublish": "git push origin && git push origin -f --tags",
+    "benchmark:sign": "cd benchmarks && node sign.js",
+    "benchmark:decode": "cd benchmarks && node decode.js",
+    "benchmark:verify": "cd benchmarks && node verify.js",
+    "benchmark:auth0": "cd benchmarks && node auth0.js"
   },
   "dependencies": {
     "ecdsa-sig-formatter": "^1.0.11"
   },
   "devDependencies": {
-    "ava": "^2.4.0",
+    "benchmark": "^2.1.4",
     "eslint": "^6.8.0",
     "eslint-config-standard": "^14.1.0",
     "eslint-plugin-import": "^2.20.0",
     "eslint-plugin-node": "^11.0.0",
     "eslint-plugin-promise": "^4.2.1",
     "eslint-plugin-standard": "^4.0.1",
-    "nyc": "^15.0.0",
-    "prettier": "^1.19.1"
+    "fastify": "^2.11.0",
+    "jsonwebtoken": "^8.5.1",
+    "prettier": "^1.19.1",
+    "tap": "^14.10.6"
   },
   "engines": {
     "node": ">= 10.0.0"
