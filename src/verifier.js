@@ -209,6 +209,7 @@ module.exports = function createVerifier(options) {
         )
       }
 
+      let verified
       try {
         verifyToken(
           currentSecret,
@@ -222,10 +223,12 @@ module.exports = function createVerifier(options) {
           clockTolerance
         )
 
-        callback(null, complete ? { header, payload, signature } : payload)
+        verified = complete ? { header, payload, signature } : payload
       } catch (e) {
-        callback(e)
+        return callback(e)
       }
+
+      callback(null, verified)
     })
 
     return promise
