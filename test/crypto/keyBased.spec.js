@@ -19,7 +19,7 @@ for (const method of ['RS', 'PS', 'ES']) {
       const token = createSigner({ algorithm: algorithm, secret: privateKey })({ payload: 'PAYLOAD' })
       const verified = createVerifier({ secret: publicKey })(token)
 
-      t.is(verified.payload, 'PAYLOAD')
+      t.equal(verified.payload, 'PAYLOAD')
 
       t.true(verified.iat >= start)
 
@@ -34,7 +34,7 @@ for (const method of ['RS', 'PS', 'ES']) {
       })
       const verified = createVerifier({ algorithms: [algorithm], secret: publicKey.toString('utf8') })(token)
 
-      t.is(verified.payload, 'PAYLOAD')
+      t.equal(verified.payload, 'PAYLOAD')
 
       t.true(verified.iat >= start)
 
@@ -53,7 +53,7 @@ for (const method of ['RS', 'PS', 'ES']) {
         })
         const verified = createVerifier({ algorithms: [algorithm], secret: publicKey.toString('utf8') })(token)
 
-        t.is(verified.payload, 'PAYLOAD')
+        t.equal(verified.payload, 'PAYLOAD')
 
         t.true(verified.iat >= start)
 
