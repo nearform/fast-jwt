@@ -209,19 +209,23 @@ module.exports = function createVerifier(options) {
         )
       }
 
-      verifyToken(
-        currentSecret,
-        input,
-        header,
-        payload,
-        signature,
-        validators,
-        allowedAlgorithms,
-        clockTimestamp,
-        clockTolerance
-      )
+      try {
+        verifyToken(
+          currentSecret,
+          input,
+          header,
+          payload,
+          signature,
+          validators,
+          allowedAlgorithms,
+          clockTimestamp,
+          clockTolerance
+        )
 
-      callback(null, complete ? { header, payload, signature } : payload)
+        callback(null, complete ? { header, payload, signature } : payload)
+      } catch (e) {
+        callback(e)
+      }
     })
 
     return promise

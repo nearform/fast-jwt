@@ -150,6 +150,15 @@ test('it correctly handle errors - async callback', async t => {
     }),
     { message: 'Cannot fetch secret.' }
   )
+
+  await t.rejects(
+    verify('eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxfQ.57TF7smP9XDhIexBqPC-F1toZReYZLWb_YRU5tv0sxM', {
+      secret: async () => {
+        throw new TokenError('FAILED')
+      }
+    }),
+    { message: 'FAILED' }
+  )
 })
 
 test('it correctly handle errors - callback', t => {
@@ -163,6 +172,23 @@ test('it correctly handle errors - callback', t => {
     (error, token) => {
       t.true(error instanceof TokenError)
       t.equal(error.message, 'Cannot fetch secret.')
+
+      t.end()
+    }
+  )
+})
+
+test('it correctly handle errors - evented callback', t => {
+  verify(
+    'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxfQ.57TF7smP9XDhIexBqPC-F1toZReYZLWb_YRU5tv0sxM',
+    {
+      secret: (header, callback) => {
+        process.nextTick(() => callback(null, 'FAILED'))
+      }
+    },
+    (error, token) => {
+      t.true(error instanceof TokenError)
+      t.equal(error.message, 'The token signature is invalid.')
 
       t.end()
     }

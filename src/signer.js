@@ -172,9 +172,15 @@ module.exports = function createSigner(options) {
         )
       }
 
-      const encodedSignature = base64UrlEncode(createSignature(algorithm, currentSecret, encodedHeader, encodedPayload))
+      try {
+        const encodedSignature = base64UrlEncode(
+          createSignature(algorithm, currentSecret, encodedHeader, encodedPayload)
+        )
 
-      callback(null, `${encodedHeader}.${encodedPayload}.${encodedSignature}`)
+        callback(null, `${encodedHeader}.${encodedPayload}.${encodedSignature}`)
+      } catch (e) {
+        callback(e)
+      }
     })
 
     return promise

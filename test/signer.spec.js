@@ -252,6 +252,19 @@ test('it correctly handle errors - async callback', async t => {
     ),
     { message: 'Cannot fetch secret.' }
   )
+
+  await t.rejects(
+    sign(
+      { a: 1 },
+      {
+        secret: async () => {
+          throw new TokenError('FAILED')
+        },
+        noTimestamp: true
+      }
+    ),
+    { message: 'FAILED' }
+  )
 })
 
 test('it correctly handle errors - callback', t => {
@@ -266,6 +279,25 @@ test('it correctly handle errors - callback', t => {
     (error, token) => {
       t.true(error instanceof TokenError)
       t.equal(error.message, 'Cannot fetch secret.')
+
+      t.end()
+    }
+  )
+})
+
+test('it correctly handle errors - evented callback', t => {
+  sign(
+    { a: 1 },
+    {
+      secret: (header, callback) => {
+        process.nextTick(() => callback(null, 'FAILED'))
+      },
+      noTimestamp: true,
+      algorithm: 'RS256'
+    },
+    (error, token) => {
+      t.true(error instanceof TokenError)
+      t.equal(error.message, 'Cannot create the signature.')
 
       t.end()
     }
