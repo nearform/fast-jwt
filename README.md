@@ -183,6 +183,92 @@ This is the lisf of currently supported algorithms:
 | `PS384` | RSASSA-PSS using SHA-384 hash algorithm                  |
 | `PS512` | RSASSA-PSS using SHA-512 hash algorithm                  |
 
+## Benchmarks
+
+### Signing
+
+```
+Executed: HS512 - sign - fast-jwt (sync) x 101,851 ops/sec ±1.77% (85 runs sampled)
+Executed: HS512 - sign - fast-jwt (async) x 90,458 ops/sec ±1.92% (73 runs sampled)
+Executed: HS512 - sign - jsonwebtoken (sync) x 91,368 ops/sec ±2.13% (85 runs sampled)
+Executed: HS512 - sign - jsonwebtoken (async) x 66,956 ops/sec ±6.20% (76 runs sampled)
+Fastest HS512 sign implementation is: fast-jwt (sync)
+
+Executed: ES512 - sign - fast-jwt (sync) x 11,740 ops/sec ±0.87% (86 runs sampled)
+Executed: ES512 - sign - fast-jwt (async) x 10,613 ops/sec ±1.11% (81 runs sampled)
+Executed: ES512 - sign - jsonwebtoken (sync) x 11,115 ops/sec ±0.92% (87 runs sampled)
+Executed: ES512 - sign - jsonwebtoken (async) x 9,905 ops/sec ±1.07% (82 runs sampled)
+Fastest ES512 sign implementation is: fast-jwt (sync)
+
+Executed: RS512 - sign - fast-jwt (sync) x 214 ops/sec ±0.95% (82 runs sampled)
+Executed: RS512 - sign - fast-jwt (async) x 197 ops/sec ±0.95% (82 runs sampled)
+Executed: RS512 - sign - jsonwebtoken (sync) x 204 ops/sec ±0.68% (81 runs sampled)
+Executed: RS512 - sign - jsonwebtoken (async) x 193 ops/sec ±1.18% (81 runs sampled)
+Fastest RS512 sign implementation is: fast-jwt (sync)
+
+Executed: PS512 - sign - fast-jwt (sync) x 213 ops/sec ±0.78% (82 runs sampled)
+Executed: PS512 - sign - fast-jwt (async) x 200 ops/sec ±1.00% (77 runs sampled)
+Executed: PS512 - sign - jsonwebtoken (sync) x 207 ops/sec ±1.27% (79 runs sampled)
+Executed: PS512 - sign - jsonwebtoken (async) x 183 ops/sec ±1.73% (76 runs sampled)
+Fastest PS512 sign implementation is: fast-jwt (sync)
+```
+
+### Decoding
+
+```
+Executed: HS512 - decode - fast-jwt x 284,617 ops/sec ±1.18% (89 runs sampled)
+Executed: HS512 - decode - fast-jwt - complete x 226,624 ops/sec ±0.59% (91 runs sampled)
+Executed: HS512 - decode - jsonwebtoken x 196,440 ops/sec ±0.74% (93 runs sampled)
+Executed: HS512 - decode - jsonwebtoken - complete x 192,882 ops/sec ±1.25% (87 runs sampled)
+Fastest HS512 decode implementation is: fast-jwt
+
+Executed: ES512 - decode - fast-jwt x 276,455 ops/sec ±0.99% (89 runs sampled)
+Executed: ES512 - decode - fast-jwt - complete x 226,998 ops/sec ±1.45% (87 runs sampled)
+Executed: ES512 - decode - jsonwebtoken x 175,990 ops/sec ±1.50% (87 runs sampled)
+Executed: ES512 - decode - jsonwebtoken - complete x 179,662 ops/sec ±1.20% (88 runs sampled)
+Fastest ES512 decode implementation is: fast-jwt
+
+Executed: RS512 - decode - fast-jwt x 252,576 ops/sec ±1.97% (83 runs sampled)
+Executed: RS512 - decode - fast-jwt - complete x 144,362 ops/sec ±1.00% (87 runs sampled)
+Executed: RS512 - decode - jsonwebtoken x 158,120 ops/sec ±1.41% (87 runs sampled)
+Executed: RS512 - decode - jsonwebtoken - complete x 170,522 ops/sec ±1.11% (89 runs sampled)
+Fastest RS512 decode implementation is: fast-jwt
+
+Executed: PS512 - decode - fast-jwt x 268,977 ops/sec ±1.34% (84 runs sampled)
+Executed: PS512 - decode - fast-jwt - complete x 156,379 ops/sec ±1.17% (87 runs sampled)
+Executed: PS512 - decode - jsonwebtoken x 169,545 ops/sec ±1.01% (88 runs sampled)
+Executed: PS512 - decode - jsonwebtoken - complete x 172,095 ops/sec ±1.23% (90 runs sampled)
+Fastest PS512 decode implementation is: fast-jwt
+```
+
+### Verifying
+
+```
+Executed: HS512 - verify - fast-jwt (sync) x 93,823 ops/sec ±0.61% (91 runs sampled)
+Executed: HS512 - verify - fast-jwt (async) x 76,477 ops/sec ±1.82% (81 runs sampled)
+Executed: HS512 - verify - jsonwebtoken (sync) x 65,303 ops/sec ±1.92% (87 runs sampled)
+Executed: HS512 - verify - jsonwebtoken (async) x 34,475 ops/sec ±5.26% (61 runs sampled)
+Fastest HS512 verify implementation is: fast-jwt (sync)
+
+Executed: ES512 - verify - fast-jwt (sync) x 7,701 ops/sec ±1.27% (89 runs sampled)
+Executed: ES512 - verify - fast-jwt (async) x 7,381 ops/sec ±0.92% (82 runs sampled)
+Executed: ES512 - verify - jsonwebtoken (sync) x 7,607 ops/sec ±0.71% (88 runs sampled)
+Executed: ES512 - verify - jsonwebtoken (async) x 7,071 ops/sec ±1.27% (79 runs sampled)
+Fastest ES512 verify implementation is: fast-jwt (sync)
+
+Executed: RS512 - verify - fast-jwt (sync) x 9,237 ops/sec ±0.65% (91 runs sampled)
+Executed: RS512 - verify - fast-jwt (async) x 8,596 ops/sec ±1.16% (82 runs sampled)
+Executed: RS512 - verify - jsonwebtoken (sync) x 8,870 ops/sec ±0.61% (90 runs sampled)
+Executed: RS512 - verify - jsonwebtoken (async) x 8,231 ops/sec ±0.86% (83 runs sampled)
+Fastest RS512 verify implementation is: fast-jwt (sync)
+
+Executed: PS512 - verify - fast-jwt (sync) x 8,405 ops/sec ±0.72% (90 runs sampled)
+Executed: PS512 - verify - fast-jwt (async) x 7,919 ops/sec ±0.81% (81 runs sampled)
+Executed: PS512 - verify - jsonwebtoken (sync) x 7,921 ops/sec ±1.30% (88 runs sampled)
+Executed: PS512 - verify - jsonwebtoken (async) x 7,456 ops/sec ±0.99% (81 runs sampled)
+Fastest PS512 verify implementation is: fast-jwt (sync)
+```
+
 ## Contributing
 
 See [CONTRIBUTING.md](./CONTRIBUTING.md)
