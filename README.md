@@ -13,12 +13,12 @@ Fast JSON Web Token implementation
 Just run:
 
 ```bash
-npm install fast-jwt --save
+npm install fast-jwt
 ```
 
 ## Usage
 
-### Signing
+### createSigner
 
 Create a signer function by calling `createSigner` and providing one or more of the following options:
 
@@ -70,7 +70,7 @@ async function test() {
 }
 ```
 
-### Decoding
+### createDecoder
 
 Create a decoder function by calling `createDecoder` and providing one or more of the following options:
 
@@ -105,7 +105,7 @@ const sections = decodeComplete(token)
 */
 ```
 
-### Verifying
+### createVerifier
 
 Create a verifier function by calling `createVerifier` and providing one or more of the following options:
 

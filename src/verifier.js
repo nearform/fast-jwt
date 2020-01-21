@@ -85,6 +85,7 @@ function verifyToken(
         )
       }
     } else {
+      // All these traversing are probably slow. These should probably be refactored.
       if (arrayValue) {
         if (!value.some(v => allowed.some(a => a.test(v)))) {
           throw new TokenError(TokenError.codes.invalidClaimValue, `None of ${claim} claim values is allowed.`)
