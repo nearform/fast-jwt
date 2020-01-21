@@ -1,7 +1,9 @@
+'use strict'
+
 const { readFileSync } = require('fs')
 const { resolve } = require('path')
 
-const { compareVerifying } = require('./utils')
+const { compareVerifying, saveLogs } = require('./utils')
 
 const hsToken =
   'eyJhbGciOiJIUzUxMiIsInR5cCI6IkpXVCJ9.eyJhIjoxLCJiIjoyLCJjIjozLCJpYXQiOjE1Nzk1MjEyMTJ9.mIcxteEVjbh2MnKQ3EQlojZojGSyA_guqRBYHQURcfnCSSBTT2OShF8lo9_ogjAv-5oECgmCur_cDWB7x3X53g'
@@ -22,6 +24,8 @@ async function runSuites() {
   await compareVerifying(esToken, 'ES512', readFileSync(resolve(__dirname, './keys/es-public.key')))
   await compareVerifying(rsToken, 'RS512', readFileSync(resolve(__dirname, './keys/rs-public.key')))
   await compareVerifying(psToken, 'PS512', readFileSync(resolve(__dirname, './keys/ps-public.key')))
+
+  await saveLogs('verify')
 }
 
 runSuites().catch(console.error)

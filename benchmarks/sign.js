@@ -1,7 +1,9 @@
+'use strict'
+
 const { readFileSync } = require('fs')
 const { resolve } = require('path')
 
-const { compareSigning } = require('./utils')
+const { compareSigning, saveLogs } = require('./utils')
 
 const esPrivateKey = readFileSync(resolve(__dirname, './keys/es-private.key'))
 const rsPrivateKey = readFileSync(resolve(__dirname, './keys/rs-private.key'))
@@ -15,6 +17,8 @@ async function runSuites() {
   await compareSigning({ a: 1, b: 2, c: 3 }, 'ES512', esPrivateKey, esPublicKey)
   await compareSigning({ a: 1, b: 2, c: 3 }, 'RS512', rsPrivateKey, rsPublicKey)
   await compareSigning({ a: 1, b: 2, c: 3 }, 'PS512', psPrivateKey, psPublicKey)
+
+  await saveLogs('sign')
 }
 
 runSuites().catch(console.error)

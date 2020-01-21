@@ -1,7 +1,9 @@
+'use strict'
+
 const { readFileSync } = require('fs')
 const { resolve } = require('path')
 
-const { compareSigning, compareVerifying } = require('./utils')
+const { compareSigning, compareVerifying, saveLogs } = require('./utils')
 
 const hsToken =
   'eyJhbGciOiJIUzUxMiIsInR5cCI6IkpXVCJ9.eyJhIjoxLCJiIjoyLCJjIjozLCJpYXQiOjE1Nzk1MjEyMTJ9.mIcxteEVjbh2MnKQ3EQlojZojGSyA_guqRBYHQURcfnCSSBTT2OShF8lo9_ogjAv-5oECgmCur_cDWB7x3X53g'
@@ -18,6 +20,8 @@ async function runSuites() {
   await compareVerifying(hsToken, 'HS256', hsSecret, hsSecret)
   await compareSigning({ a: 1, b: 2, c: 3 }, 'RS256', rsPrivateKey, rsPublicKey)
   await compareVerifying(rsToken, 'RS256', rsPublicKey)
+
+  await saveLogs('auth0')
 }
 
 runSuites().catch(console.error)

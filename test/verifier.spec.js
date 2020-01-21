@@ -118,9 +118,11 @@ test('it rejects invalid tokens', async t => {
   })
 
   await t.rejects(
-    verify('eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxfQ.57TF7smP9XDhIexBqPC-aaa', {
-      secret: async () => 'secret'
-    }),
+    async () => {
+      return verify('eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxfQ.57TF7smP9XDhIexBqPC-aaa', {
+        secret: async () => 'secret'
+      })
+    },
     { message: 'The token signature is invalid.' }
   )
 })
@@ -136,17 +138,6 @@ test('it requires a signature or a secret', async t => {
         secret: ''
       }),
     { message: 'The secret is missing.' }
-  )
-})
-
-test('it correctly handle errors - sync callback', async t => {
-  await t.rejects(
-    verify('eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxfQ.57TF7smP9XDhIexBqPC-F1toZReYZLWb_YRU5tv0sxM', {
-      secret: () => {
-        throw new Error('FAILED')
-      }
-    }),
-    { message: 'Cannot fetch secret.' }
   )
 })
 
@@ -179,7 +170,7 @@ test('it correctly handle errors - callback', t => {
 })
 
 test('it handles decoding errors', async t => {
-  await t.rejects(verify('TOKEN', { algorithms: ['RS256'], secret: () => 'secret' }), {
+  await t.rejects(async () => verify('TOKEN', { algorithms: ['RS256'], secret: () => 'secret' }), {
     message: 'The token is malformed.'
   })
 })

@@ -82,6 +82,15 @@ test('it respect the payload iat, if one is set', t => {
   t.end()
 })
 
+test('it uses the clockTimestamp option, if one is set', t => {
+  t.equal(
+    sign({ a: 1 }, { clockTimestamp: 123000 }),
+    'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxLCJpYXQiOjEyM30.J-5nCdVMKQ0yqIIkKTPBuQf46vPXcbwdLpAcYBZ9EqU'
+  )
+
+  t.end()
+})
+
 test('it adds a exp claim, overriding the payload one, only if the payload is a object', t => {
   t.equal(
     sign({ a: 1, iat: 100 }, { expiresIn: 1000 }),
@@ -230,21 +239,6 @@ test('it mutates the payload if asked to', t => {
   t.end()
 })
 
-test('it correctly handle errors - sync callback', async t => {
-  await t.rejects(
-    sign(
-      { a: 1 },
-      {
-        secret: () => {
-          throw new Error('FAILED')
-        },
-        noTimestamp: true
-      }
-    ),
-    { message: 'Cannot fetch secret.' }
-  )
-})
-
 test('it correctly handle errors - async callback', async t => {
   await t.rejects(
     sign(
@@ -298,7 +292,7 @@ test('payload validation', t => {
     message: 'The payload must be a object, a string or a buffer.'
   })
 
-  t.rejects(() => createSigner({ secret: () => 'secret' })(123), {
+  t.rejects(async () => createSigner({ secret: () => 'secret' })(123), {
     message: 'The payload must be a object, a string or a buffer.'
   })
 
@@ -329,6 +323,18 @@ test('options validation - secret', t => {
 test('options validation - encoding', t => {
   t.throws(() => createSigner({ secret: 'secret', encoding: 123 }), {
     message: 'The encoding option must be a string.'
+  })
+
+  t.end()
+})
+
+test('options validation - clockTimestamp', t => {
+  t.throws(() => createSigner({ secret: 'secret', clockTimestamp: '123' }), {
+    message: 'The clockTimestamp option must be a positive number.'
+  })
+
+  t.throws(() => createSigner({ secret: 'secret', clockTimestamp: -1 }), {
+    message: 'The clockTimestamp option must be a positive number.'
   })
 
   t.end()

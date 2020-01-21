@@ -2,6 +2,7 @@ package-lock.json
 yarn.lock
 
 .nyc_output
+benchmarks/logs
 coverage/
 node_modules/
 tmp/

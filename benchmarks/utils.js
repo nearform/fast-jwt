@@ -1,7 +1,36 @@
+'use strict'
+
 const Benchmark = require('benchmark')
+const { mkdir, writeFile } = require('fs').promises
+const { resolve } = require('path')
 const { sign: jsonwebtokenSign, verify: jsonwebtokenVerify } = require('jsonwebtoken')
 
 const { createSigner, createVerifier } = require('../src')
+
+const output = []
+
+async function saveLogs(type) {
+  const now = new Date()
+    .toISOString()
+    .replace(/[-:]/g, '')
+    .replace('T', '-')
+    .slice(0, 15)
+
+  const directory = resolve(__dirname, 'logs')
+
+  try {
+    await mkdir(directory)
+  } catch (e) {
+    // No-op
+  }
+
+  await writeFile(resolve(directory, `${type}-${now}.log`), output.join('\n'), 'utf-8')
+}
+
+function log(message) {
+  console.log(message)
+  output.push(message)
+}
 
 async function compareSigning(payload, algorithm, privateKey, publicKey) {
   const fastjwtSign = createSigner({ algorithm, secret: privateKey })
@@ -12,14 +41,14 @@ async function compareSigning(payload, algorithm, privateKey, publicKey) {
     const fastjwtGenerated = fastjwtSign(payload)
     const jsonwebtokenGenerated = jsonwebtokenSign(payload, privateKey, { algorithm })
 
-    console.log('-------')
-    console.log(`Generated ${algorithm} tokens (equal=${jsonwebtokenGenerated === fastjwtGenerated}):`)
-    console.log(`       fastjwt: ${fastjwtGenerated}`)
-    console.log(`  jsonwebtoken: ${jsonwebtokenGenerated}`)
-    console.log('Generated tokens verification:')
-    console.log(`       fastjwt: ${JSON.stringify(fastjwtVerify(fastjwtGenerated))}`)
-    console.log(`  jsonwebtoken: ${JSON.stringify(jsonwebtokenVerify(jsonwebtokenGenerated, publicKey))}`)
-    console.log('-------')
+    log('-------')
+    log(`Generated ${algorithm} tokens (equal=${jsonwebtokenGenerated === fastjwtGenerated}):`)
+    log(`       fastjwt: ${fastjwtGenerated}`)
+    log(`  jsonwebtoken: ${jsonwebtokenGenerated}`)
+    log('Generated tokens verification:')
+    log(`       fastjwt: ${JSON.stringify(fastjwtVerify(fastjwtGenerated))}`)
+    log(`  jsonwebtoken: ${JSON.stringify(jsonwebtokenVerify(jsonwebtokenGenerated, publicKey))}`)
+    log('-------')
   }
 
   let promiseResolve, promiseReject
@@ -63,13 +92,13 @@ async function compareSigning(payload, algorithm, privateKey, publicKey) {
       }
     })
     .on('cycle', function(event) {
-      console.log(`Executed: ${event.target}`)
+      log(`Executed: ${event.target}`)
     })
     .on('complete', async function() {
       const fastest = this.filter('fastest')
         .map(i => i.name.split(' - ').pop())
         .join(' OR ')
-      console.log(`Fastest ${algorithm} sign implementation is: ${fastest}\n`)
+      log(`Fastest ${algorithm} sign implementation is: ${fastest}\n`)
       promiseResolve()
     })
     .on('error', promiseReject)
@@ -83,11 +112,11 @@ function compareVerifying(token, algorithm, publicKey) {
   const fastjwtVerifyAsync = createVerifier({ secret: async () => publicKey })
 
   if ((process.env.NODE_DEBUG || '').includes('fast-jwt')) {
-    console.log('-------')
-    console.log(`Decoded ${algorithm} tokens:`)
-    console.log(`  jsonwebtoken: ${JSON.stringify(jsonwebtokenVerify(token, publicKey))}`)
-    console.log(`       fastjwt: ${JSON.stringify(fastjwtVerify(token))}`)
-    console.log('-------')
+    log('-------')
+    log(`Decoded ${algorithm} tokens:`)
+    log(`  jsonwebtoken: ${JSON.stringify(jsonwebtokenVerify(token, publicKey))}`)
+    log(`       fastjwt: ${JSON.stringify(fastjwtVerify(token))}`)
+    log('-------')
   }
 
   let promiseResolve, promiseReject
@@ -131,13 +160,13 @@ function compareVerifying(token, algorithm, publicKey) {
       }
     })
     .on('cycle', function(event) {
-      console.log(`Executed: ${event.target}`)
+      log(`Executed: ${event.target}`)
     })
     .on('complete', async function() {
       const fastest = this.filter('fastest')
         .map(i => i.name.split(' - ').pop())
         .join(' OR ')
-      console.log(`Fastest ${algorithm} verify implementation is: ${fastest}\n`)
+      log(`Fastest ${algorithm} verify implementation is: ${fastest}\n`)
       promiseResolve()
     })
     .on('error', promiseReject)
@@ -146,4 +175,4 @@ function compareVerifying(token, algorithm, publicKey) {
   return promise
 }
 
-module.exports = { compareSigning, compareVerifying }
+module.exports = { compareSigning, compareVerifying, saveLogs }

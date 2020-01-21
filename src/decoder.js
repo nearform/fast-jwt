@@ -5,18 +5,13 @@ const TokenError = require('./error')
 
 const jwtMatcher = /^([a-zA-Z0-9\-_]+)\.([a-zA-Z0-9\-_]+)\.([a-zA-Z0-9\-_]*)$/
 
-/*
-complete: Return an object with the decoded payload, header, signature and input (the token part before the signature), instead of only the content of the payload.
-json: Always parse the payload as JSON even if the typ claim of the header is not "JWT".
-encoding: The token encoding.
-*/
 module.exports = function createDecoder(options) {
   const { json, complete, encoding } = { encoding: 'utf-8', ...options }
 
   return function decodeJwt(token) {
     // Make sure the token is a string or a Buffer - Other cases make no sense to even try to validate
     if (typeof token !== 'string') {
-      if (!Buffer.isBuffer(token)) {
+      if (!(token instanceof Buffer)) {
         throw new TokenError(TokenError.codes.invalidType, 'The token must be a string or a buffer.')
       }
 

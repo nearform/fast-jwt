@@ -25,7 +25,7 @@ function verifyToken(
   clockTolerance
 ) {
   // Verify the secret
-  const hasSecret = Buffer.isBuffer(secret) ? secret.length : !!secret
+  const hasSecret = secret instanceof Buffer ? secret.length : !!secret
 
   if (hasSecret && !signature) {
     throw new TokenError(TokenError.codes.missingSignature, 'The token signature is missing.')
@@ -96,22 +96,6 @@ function verifyToken(
   }
 }
 
-/*
-  secret: It is a string or a buffer containing the secret for HMAC algorithms or the PEM encoded public key for RSA and ECDSA algorithms.
-  algorithms: List of strings with the names of the allowed algorithms.
-  complete: return an object with the decoded payload, header and signature instead of only the content of the payload.
-  encoding: The token encoding.
-  clockTimestamp: Epoch time in millseconds (like the output of Date.now()) that should be used as the current time for all necessary comparisons.
-  clockTolerance: Number of milliseconds to tolerate when checking the iat, nbf and exp claims, to deal time synchronization.
-  ignoreExpiration: Do not validate the expiration of the token.
-  ignoreNotBefore: Do not validate the activation of the token.
-  maxAge: The maximum allowed age (in milliseconds) for tokens to still be valid.
-  allowedJti: string or array of strings or regexp of allowed values for the id (jti) claim.
-  allowedAud: string or array of strings or regexp of allowed values for the audience (aud) claim.
-  allowedIss: string or array of strings or regexp of allowed values for the issuer (iss) claim.
-  allowedSub: string or array of strings or regexp of allowed values for the subject (sub) claim.
-  allowedNonce: string or array of strings or regexp of allowed values for the nonce claim.
-*/
 module.exports = function createVerifier(options) {
   let {
     secret,
@@ -131,7 +115,7 @@ module.exports = function createVerifier(options) {
   } = { clockTimestamp: 0, ...options }
 
   // Validate options
-  if (typeof secret !== 'string' && !Buffer.isBuffer(secret) && typeof secret !== 'function') {
+  if (typeof secret !== 'string' && !(secret instanceof Buffer) && typeof secret !== 'function') {
     throw new TokenError(
       TokenError.codes.INVALID_OPTION,
       'The secret option must be a string, a buffer or a function returning the algorithm secret or public key.'
@@ -195,59 +179,49 @@ module.exports = function createVerifier(options) {
   return function verifyJwt(token, cb) {
     const [callback, promise] = typeof secret === 'function' ? ensurePromiseCallback(cb) : []
 
-    try {
-      // As very first thing, decode the token - If invalid, everything else is useless
-      const { header, payload, signature, input } = decodeJwt(token)
+    // As very first thing, decode the token - If invalid, everything else is useless
+    const { header, payload, signature, input } = decodeJwt(token)
 
-      // We're get the secret synchronously
-      if (!callback) {
-        verifyToken(
-          secret,
-          input,
-          header,
-          payload,
-          signature,
-          validators,
-          allowedAlgorithms,
-          clockTimestamp,
-          clockTolerance
-        )
+    // We're get the secret synchronously
+    if (!callback) {
+      verifyToken(
+        secret,
+        input,
+        header,
+        payload,
+        signature,
+        validators,
+        allowedAlgorithms,
+        clockTimestamp,
+        clockTolerance
+      )
 
-        return complete ? { header, payload, signature } : payload
-      }
-
-      getAsyncSecret(secret, header, (err, currentSecret) => {
-        try {
-          if (err) {
-            return callback(
-              new TokenError(TokenError.codes.secretFetchingError, 'Cannot fetch secret.', { originalError: err })
-            )
-          }
-
-          verifyToken(
-            currentSecret,
-            input,
-            header,
-            payload,
-            signature,
-            validators,
-            allowedAlgorithms,
-            clockTimestamp,
-            clockTolerance
-          )
-
-          callback(null, complete ? { header, payload, signature } : payload)
-        } catch (e) {
-          callback(e)
-        }
-      })
-    } catch (e) {
-      if (!callback) {
-        throw e
-      }
-
-      callback(e)
+      return complete ? { header, payload, signature } : payload
     }
+
+    getAsyncSecret(secret, header, (err, currentSecret) => {
+      if (err) {
+        return callback(
+          err instanceof TokenError
+            ? err
+            : new TokenError(TokenError.codes.secretFetchingError, 'Cannot fetch secret.', { originalError: err })
+        )
+      }
+
+      verifyToken(
+        currentSecret,
+        input,
+        header,
+        payload,
+        signature,
+        validators,
+        allowedAlgorithms,
+        clockTimestamp,
+        clockTolerance
+      )
+
+      callback(null, complete ? { header, payload, signature } : payload)
+    })
 
     return promise
   }

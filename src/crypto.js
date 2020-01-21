@@ -16,7 +16,7 @@ const hashAlgorithms = ['HS256', 'HS384', 'HS512']
 const publicKeyMatcher = /BEGIN (?:PUBLIC KEY|CERTIFICATE)/
 
 function validateSecretKey(algorithm, key) {
-  if (!Buffer.isBuffer(key) && typeof key !== 'string') {
+  if (!(key instanceof Buffer) && typeof key !== 'string') {
     throw new TokenError(
       TokenError.codes.invalidSecret,
       `The secret for algorithm ${algorithm} must be a string or a buffer.`
@@ -26,7 +26,7 @@ function validateSecretKey(algorithm, key) {
 
 function validatePrivateKey(algorithm, key) {
   if (typeof key === 'object') {
-    if (typeof key.key !== 'string' && !Buffer.isBuffer(key)) {
+    if (typeof key.key !== 'string' && !(key instanceof Buffer)) {
       throw new TokenError(
         TokenError.codes.invalidSecret,
         `The secret object for algorithm ${algorithm} must have the key property as string or buffer containing the private key.`
@@ -41,7 +41,7 @@ function validatePrivateKey(algorithm, key) {
     }
   }
 
-  if (typeof key !== 'string' && typeof key !== 'object' && !Buffer.isBuffer(key)) {
+  if (typeof key !== 'string' && typeof key !== 'object' && !(key instanceof Buffer)) {
     throw new TokenError(
       TokenError.codes.invalidSecret,
       `The secret for algorithm ${algorithm} must be a string, a object or a buffer.`
@@ -50,7 +50,7 @@ function validatePrivateKey(algorithm, key) {
 }
 
 function validatePublicKey(algorithm, key) {
-  if (!Buffer.isBuffer(key) && typeof key !== 'string') {
+  if (!(key instanceof Buffer) && typeof key !== 'string') {
     throw new TokenError(
       TokenError.codes.invalidSecret,
       `The secret for algorithm ${algorithm} must be a string or a buffer containing the public key.`
@@ -59,7 +59,7 @@ function validatePublicKey(algorithm, key) {
 }
 
 function getSupportedAlgorithms(secret) {
-  const secretString = Buffer.isBuffer(secret) ? secret.toString('utf8') : secret
+  const secretString = secret instanceof Buffer ? secret.toString('utf8') : secret
 
   if (!secretString) {
     return ['none']
