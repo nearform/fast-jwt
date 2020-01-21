@@ -37,6 +37,7 @@
     "test:generate-keys": "cd benchmarks/keys && sh generate-keys.sh",
     "postpublish": "git push origin && git push origin -f --tags",
     "benchmark:sign": "cd benchmarks && node sign.js",
+    "benchmark:decode": "cd benchmarks && node decode.js",
     "benchmark:verify": "cd benchmarks && node verify.js",
     "benchmark:auth0": "cd benchmarks && node auth0.js"
   },

@@ -176,7 +176,7 @@ module.exports = function createVerifier(options) {
   const decodeJwt = createDecoder({ complete: true, encoding })
 
   // Return the verifier
-  return function verifyJwt(token, cb) {
+  return function verify(token, cb) {
     const [callback, promise] = typeof secret === 'function' ? ensurePromiseCallback(cb) : []
 
     // As very first thing, decode the token - If invalid, everything else is useless

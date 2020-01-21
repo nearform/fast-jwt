@@ -24,11 +24,9 @@ TokenError.codes = {
   invalidSecret: 'FAST_JWT_INVALID_SECRET',
   invalidSignature: 'FAST_JWT_INVALID_SIGNATURE',
   malformed: 'FAST_JWT_MALFORMED',
-  malformedHeader: 'FAST_JWT_MALFORMED_HEADER',
-  missingSignature: 'FAST_JWT_MISSING_SIGNATURE',
-  missingSecret: 'FAST_JWT_MISSING_SECRET',
   inactive: 'FAST_JWT_INACTIVE',
   expired: 'FAST_JWT_EXPIRED',
+  missingSecret: 'FAST_JWT_MISSING_SECRET',
   secretFetchingError: 'FAST_JWT_SECRET_FETCHING_ERROR',
   signError: 'FAST_JWT_SECRET_SIGN_ERROR',
   verifyError: 'FAST_JWT_SECRET_VERIFY_ERROR'

@@ -45,7 +45,7 @@ test('token must be a string', t => {
 })
 
 test('token must be well formed', t => {
-  for (const token of ['foo', 'foo.bar', 'foo.bar.{{']) {
+  for (const token of ['foo', 'foo.bar']) {
     t.throws(() => defaultDecoder(token), { message: 'The token is malformed.' })
   }
 

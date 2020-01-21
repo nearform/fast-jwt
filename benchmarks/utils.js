@@ -3,9 +3,9 @@
 const Benchmark = require('benchmark')
 const { mkdir, writeFile } = require('fs').promises
 const { resolve } = require('path')
-const { sign: jsonwebtokenSign, verify: jsonwebtokenVerify } = require('jsonwebtoken')
+const { sign: jsonwebtokenSign, decode: jsonwebtokenDecode, verify: jsonwebtokenVerify } = require('jsonwebtoken')
 
-const { createSigner, createVerifier } = require('../src')
+const { createSigner, createDecoder, createVerifier } = require('../src')
 
 const output = []
 
@@ -107,6 +107,56 @@ async function compareSigning(payload, algorithm, privateKey, publicKey) {
   return promise
 }
 
+function compareDecoding(token, algorithm) {
+  const fastjwtDecoder = createDecoder()
+  const fastjwtCompleteDecoder = createDecoder({ complete: true })
+
+  if ((process.env.NODE_DEBUG || '').includes('fast-jwt')) {
+    log('-------')
+    log(`Decoded ${algorithm} tokens:`)
+    log(`  jsonwebtoken: ${JSON.stringify(jsonwebtokenDecode(token, { complete: true }))}`)
+    log(`       fastjwt: ${JSON.stringify(fastjwtCompleteDecoder(token, { complete: true }))}`)
+    log('-------')
+  }
+
+  let promiseResolve, promiseReject
+
+  const promise = new Promise((resolve, reject) => {
+    promiseResolve = resolve
+    promiseReject = reject
+  })
+
+  const suite = new Benchmark.Suite()
+
+  suite
+    .add(`${algorithm} - decode - fast-jwt`, function() {
+      fastjwtDecoder(token)
+    })
+    .add(`${algorithm} - decode - fast-jwt - complete`, function() {
+      fastjwtCompleteDecoder(token)
+    })
+    .add(`${algorithm} - decode - jsonwebtoken`, function() {
+      jsonwebtokenDecode(token)
+    })
+    .add(`${algorithm} - decode - jsonwebtoken - complete`, function() {
+      jsonwebtokenDecode(token, { complete: true })
+    })
+    .on('cycle', function(event) {
+      log(`Executed: ${event.target}`)
+    })
+    .on('complete', async function() {
+      const fastest = this.filter('fastest')
+        .map(i => i.name.split(' - ').pop())
+        .join(' OR ')
+      log(`Fastest ${algorithm} decode implementation is: ${fastest}\n`)
+      promiseResolve()
+    })
+    .on('error', promiseReject)
+    .run({ async: true })
+
+  return promise
+}
+
 function compareVerifying(token, algorithm, publicKey) {
   const fastjwtVerify = createVerifier({ secret: publicKey })
   const fastjwtVerifyAsync = createVerifier({ secret: async () => publicKey })
@@ -175,4 +225,4 @@ function compareVerifying(token, algorithm, publicKey) {
   return promise
 }
 
-module.exports = { compareSigning, compareVerifying, saveLogs }
+module.exports = { compareSigning, compareDecoding, compareVerifying, saveLogs }

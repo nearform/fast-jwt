@@ -108,7 +108,7 @@ module.exports = function createSigner(options) {
   }
 
   // Return the signer
-  return function signJwt(payload, cb) {
+  return function build(payload, cb) {
     const [callback, promise] = typeof secret === 'function' ? ensurePromiseCallback(cb) : []
 
     // Prepare header and payload
