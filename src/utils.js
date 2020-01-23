@@ -4,6 +4,7 @@ const decoderReplacer = /[-_]/g
 const encoderReplacer = /[=+/]/g
 const decoderMap = { '-': '+', _: '/' }
 const encoderMap = { '=': '', '+': '-', '/': '_' }
+const defaultCacheSize = 1000
 
 function base64UrlEncode(base64) {
   return base64.replace(encoderReplacer, c => encoderMap[c])
@@ -50,6 +51,7 @@ function ensurePromiseCallback(callback) {
 }
 
 module.exports = {
+  defaultCacheSize,
   base64UrlDecode,
   base64UrlEncode,
   getAsyncSecret,

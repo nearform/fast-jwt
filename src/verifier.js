@@ -1,9 +1,11 @@
 'use strict'
 
+const Cache = require('mnemonist/lru-cache')
+
 const { getSupportedAlgorithms, verifySignature } = require('./crypto')
 const createDecoder = require('./decoder')
 const TokenError = require('./error')
-const { getAsyncSecret, ensurePromiseCallback } = require('./utils')
+const { getAsyncSecret, ensurePromiseCallback, defaultCacheSize } = require('./utils')
 
 function ensureStringClaimMatcher(raw) {
   if (!Array.isArray(raw)) {
@@ -103,6 +105,7 @@ module.exports = function createVerifier(options) {
     algorithms: allowedAlgorithms,
     complete,
     encoding,
+    cache,
     clockTimestamp,
     clockTolerance,
     ignoreExpiration,
@@ -174,8 +177,21 @@ module.exports = function createVerifier(options) {
     validators.push({ type: 'string', claim: 'nonce', allowed: ensureStringClaimMatcher(allowedNonce) })
   }
 
-  const decodeJwt = createDecoder({ complete: true, encoding })
+  const decodeJwt = createDecoder({ complete: true, encoding, cache })
 
+  // Prepare the caching layer
+  let cacheGet = () => false
+  let cacheSet = () => false
+
+  if (cache) {
+    const size = parseInt(cache, 10)
+    const cacheInstance = new Cache(size >= 1 ? size : defaultCacheSize)
+
+    cacheGet = cacheInstance.get.bind(cacheInstance)
+    cacheSet = cacheInstance.set.bind(cacheInstance)
+  }
+
+  // TODO@PI: What happens when using callback if decoding fails?
   // Return the verifier
   return function verify(token, cb) {
     const [callback, promise] = typeof secret === 'function' ? ensurePromiseCallback(cb) : []
@@ -183,6 +199,21 @@ module.exports = function createVerifier(options) {
     // As very first thing, decode the token - If invalid, everything else is useless
     const { header, payload, signature, input } = decodeJwt(token)
 
+    const cached = cacheGet(input)
+
+    // TODO@PI - Verify token validity when returning or pre-store a expiry time in the cache
+    if (cached) {
+      if (!callback) {
+        // TODO@PI - Handle caching of failures
+        return cached
+      } else {
+        // TODO@PI - Handle caching of failures
+        callback(null, cached)
+        return promise
+      }
+    }
+
+    // TODO@PI - Handle caching of failures
     // We're get the secret synchronously
     if (!callback) {
       verifyToken(
@@ -197,19 +228,18 @@ module.exports = function createVerifier(options) {
         clockTolerance
       )
 
-      return complete ? { header, payload, signature } : payload
+      const rv = complete ? { header, payload, signature } : payload
+
+      cacheSet(input, rv)
+      return rv
     }
 
     getAsyncSecret(secret, header, (err, currentSecret) => {
       if (err) {
-        return callback(
-          err instanceof TokenError
-            ? err
-            : new TokenError(TokenError.codes.secretFetchingError, 'Cannot fetch secret.', { originalError: err })
-        )
+        return callback(TokenError.wrap(err, TokenError.codes.secretFetchingError, 'Cannot fetch secret.'))
       }
 
-      let verified
+      let rv
       try {
         verifyToken(
           currentSecret,
@@ -223,12 +253,14 @@ module.exports = function createVerifier(options) {
           clockTolerance
         )
 
-        verified = complete ? { header, payload, signature } : payload
+        rv = complete ? { header, payload, signature } : payload
       } catch (e) {
+        // TODO@PI - Cache in case of failures
         return callback(e)
       }
 
-      callback(null, verified)
+      cacheSet(input, rv)
+      callback(null, rv)
     })
 
     return promise

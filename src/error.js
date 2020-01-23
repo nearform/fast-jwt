@@ -32,4 +32,12 @@ TokenError.codes = {
   verifyError: 'FAST_JWT_SECRET_VERIFY_ERROR'
 }
 
+TokenError.wrap = function(originalError, code, message) {
+  if (originalError instanceof TokenError) {
+    return originalError
+  }
+
+  return new TokenError(code, message, { originalError })
+}
+
 module.exports = TokenError

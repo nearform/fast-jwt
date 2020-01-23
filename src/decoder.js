@@ -1,17 +1,36 @@
 'use strict'
 
-const { base64UrlDecode } = require('./utils')
+const Cache = require('mnemonist/lru-cache')
+
+const { base64UrlDecode, defaultCacheSize } = require('./utils')
 const TokenError = require('./error')
 
 module.exports = function createDecoder(options) {
-  const { json, complete, encoding } = { encoding: 'utf-8', ...options }
+  const { json, complete, encoding, cache } = { encoding: 'utf-8', ...options }
+  let cacheGet = () => false
+  let cacheSet = () => false
 
+  if (cache) {
+    const size = parseInt(cache, 10)
+    const cacheInstance = new Cache(size >= 1 ? size : defaultCacheSize)
+
+    cacheGet = cacheInstance.get.bind(cacheInstance)
+    cacheSet = cacheInstance.set.bind(cacheInstance)
+  }
+
+  // TODO@PI: Cache and handle failures
   return function decode(token) {
     // Make sure the token is a string or a Buffer - Other cases make no sense to even try to validate
     if (token instanceof Buffer) {
       token = token.toString(encoding)
     } else if (typeof token !== 'string') {
       throw new TokenError(TokenError.codes.invalidType, 'The token must be a string or a buffer.')
+    }
+
+    const cached = cacheGet(token)
+
+    if (cached) {
+      return cached
     }
 
     // Split the string
@@ -33,9 +52,12 @@ module.exports = function createDecoder(options) {
         payload = JSON.parse(payload)
       }
 
-      return complete
+      const rv = complete
         ? { header, payload, signature: base64UrlDecode(rawSignature), input: `${rawHeader}.${rawPayload}` }
         : payload
+
+      cacheSet(token, rv)
+      return rv
     } catch (e) {
       throw new TokenError(
         TokenError.codes.malformed,
