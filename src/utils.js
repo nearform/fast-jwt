@@ -53,15 +53,19 @@ function ensurePromiseCallback(callback) {
   ]
 }
 
-function createCache(option) {
+function getCacheSize(rawSize) {
+  const size = parseInt(rawSize === true ? defaultCacheSize : rawSize, 10)
+  return size > 0 ? size : null
+}
+
+function createCache(size) {
   let get = () => false
   let set = () => false
 
   let cache
-  if (option) {
-    const size = parseInt(option, 10)
 
-    cache = new Cache(size >= 1 ? size : defaultCacheSize)
+  if (size) {
+    cache = new Cache(size)
     get = cache.get.bind(cache)
     set = cache.set.bind(cache)
   }
@@ -88,10 +92,12 @@ function handleCachedResult(cached, callback, promise) {
 }
 
 module.exports = {
+  defaultCacheSize,
   base64UrlDecode,
   base64UrlEncode,
   getAsyncSecret,
   ensurePromiseCallback,
+  getCacheSize,
   createCache,
   handleCachedResult
 }

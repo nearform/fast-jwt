@@ -25,7 +25,7 @@ Create a signer function by calling `createSigner` and providing one or more of 
 - `secret`: A string, buffer or object containing the secret for `HS*` algorithms or the PEM encoded public key for `RS*`, `PS*` and `ES*` algorithms (whose format is defined by the Node's crypto module documentation). The secret can also be a function accepting a Node style callback or a function returning a promise. This is the only mandatory option.
 - `algorithm`: The algorithm to use to sign the token, default is `HS256`.
 - `encoding`: The token encoding, default is `utf-8`.
-- `cache`: Enable caching of signed tokens, which will dramatically improve performances (see benchmarks section below). This is only available if `noTimestamp` option is `true` and `mutatePayload`, `expiresIn` and `notBefore` options are either unset or `false`. Default is `false`.
+- `cache`: A positive number specifying the size of the signed tokens cache (using LRU strategy). Setting to `true` is equivalent to provide the size `1000`. When enabled, as you can see in the benchmarks section below, performances dramatically improve. A error will be thrown if this option is provided and the `noTimestamp` option is not `true` or any of the `mutatePayload`, `expiresIn` or `notBefore` are set.
 - `mutatePayload`: If the original payload must be modified in place (via `Object.assign`) and thus will result changed to the caller funciton.
 - `expiresIn`: Time span (in milliseconds) after which the token expires, added as the `exp` claim in the payload. This will override any existing value in the claim.
 - `notBefore`: Time span (in milliseconds) before the token is active, added as the `nbf` claim in the payload. This will override any existing value in the claim.
@@ -78,7 +78,7 @@ Create a decoder function by calling `createDecoder` and providing one or more o
 - `complete`: Return an object with the decoded header, payload, signature and input (the token part before the signature), instead of just the content of the payload. Default is `false`.
 - `json`: Always parse the payload as JSON even if the `typ` claim of the header is not `JWT`. Default is `false`.
 - `encoding`: The token encoding, default is `utf-8`.
-- `cache`: Enable caching of decoded tokens, which will dramatically improve performances (see benchmarks section below). Default is `false`.
+- `cache`: A positive number specifying the size of the decoded tokens cache (using LRU strategy). Setting to `true` is equivalent to provide the size `1000`. When enabled, as you can see in the benchmarks section below, performances dramatically improve. By default the cache is disabled.
 
 The decoder is a function which accepts a token (as Buffer or string) and returns the payload or the sections of the token.
 
@@ -115,7 +115,7 @@ Create a verifier function by calling `createVerifier` and providing one or more
 - `algorithms`: List of strings with the names of the allowed algorithms. By default, all algorithms are accepted.
 - `complete`: Return an object with the decoded header, payload, signature and input (the token part before the signature), instead of just the content of the payload. Default is `false`.
 - `encoding`: The token encoding. Default is `utf-8`.
-- `cache`: Enable caching of verified tokens, which will dramatically improve performances (see benchmarks section below). This will consider token time claims about expiration and validity. If the verifier is set to use asynchronous secret fetching and the response are time sensitive, this should probably be left disabled. Default is `false`.
+- `cache`: A positive number specifying the size of the verified tokens cache (using LRU strategy). Setting to `true` is equivalent to provide the size `1000`. When enabled, as you can see in the benchmarks section below, performances dramatically improve. By default the cache is disabled.
 - `allowedJti`: A string, a regular expression, an array of strings or an array of regular expressions containing allowed values for the id claim (`jti`). By default, all values are accepted.
 - `allowedAud`: A string, a regular expression, an array of strings or an array of regular expressions containing allowed values for the audience claim (`aud`). By default, all values are accepted.
 - `allowedIss`: A string, a regular expression, an array of strings or an array of regular expressions containing allowed values for the issuer claim (`iss`). By default, all values are accepted.

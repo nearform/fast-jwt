@@ -2,7 +2,14 @@
 
 const { publicKeyAlgorithms, rsaKeyAlgorithms, hashAlgorithms, createSignature } = require('./crypto')
 const TokenError = require('./error')
-const { base64UrlEncode, getAsyncSecret, ensurePromiseCallback, createCache, handleCachedResult } = require('./utils')
+const {
+  base64UrlEncode,
+  getAsyncSecret,
+  ensurePromiseCallback,
+  getCacheSize,
+  createCache,
+  handleCachedResult
+} = require('./utils')
 
 const supportedAlgorithms = Array.from(
   new Set([...publicKeyAlgorithms, ...rsaKeyAlgorithms, ...hashAlgorithms, 'none'])
@@ -109,9 +116,39 @@ module.exports = function createSigner(options) {
   }
 
   // Prepare the caching layer
-  const [cacheInstance, cacheGet, cacheSet] = createCache(
-    cache && noTimestamp && !expiresIn && !notBefore && !mutatePayload
-  )
+  const cacheSize = getCacheSize(cache)
+
+  if (cacheSize) {
+    if (!noTimestamp) {
+      throw new TokenError(
+        TokenError.codes.invalidOption,
+        'The cache option cannot be set without providing the noTimestamp option.'
+      )
+    }
+
+    if (expiresIn) {
+      throw new TokenError(
+        TokenError.codes.invalidOption,
+        'The cache option cannot be set when providing the expiresIn option.'
+      )
+    }
+
+    if (notBefore) {
+      throw new TokenError(
+        TokenError.codes.invalidOption,
+        'The cache option cannot be set when providing the notBefore option.'
+      )
+    }
+
+    if (mutatePayload) {
+      throw new TokenError(
+        TokenError.codes.invalidOption,
+        'The cache option cannot be set when providing the mutatePayload option.'
+      )
+    }
+  }
+
+  const [cacheInstance, cacheGet, cacheSet] = createCache(cacheSize)
 
   // Return the signer
   const signer = function sign(payload, cb) {

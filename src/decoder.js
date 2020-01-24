@@ -1,13 +1,13 @@
 'use strict'
 
-const { base64UrlDecode, createCache } = require('./utils')
+const { base64UrlDecode, getCacheSize, createCache } = require('./utils')
 const TokenError = require('./error')
 
 module.exports = function createDecoder(options) {
   const { json, complete, encoding, cache } = { encoding: 'utf-8', ...options }
 
   // Prepare the caching layer
-  const [cacheInstance, cacheGet, cacheSet] = createCache(cache)
+  const [cacheInstance, cacheGet, cacheSet] = createCache(getCacheSize(cache))
 
   const decoder = function decode(token) {
     // Make sure the token is a string or a Buffer - Other cases make no sense to even try to validate

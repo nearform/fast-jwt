@@ -3,7 +3,7 @@
 const { getSupportedAlgorithms, verifySignature } = require('./crypto')
 const createDecoder = require('./decoder')
 const TokenError = require('./error')
-const { getAsyncSecret, ensurePromiseCallback, createCache, handleCachedResult } = require('./utils')
+const { getAsyncSecret, ensurePromiseCallback, createCache, getCacheSize, handleCachedResult } = require('./utils')
 
 function ensureStringClaimMatcher(raw) {
   if (!Array.isArray(raw)) {
@@ -180,7 +180,7 @@ module.exports = function createVerifier(options) {
   const decodeJwt = createDecoder({ complete: true, encoding, cache })
 
   // Prepare the caching layer
-  let [cacheInstance, cacheGet, cacheSet] = createCache(cache)
+  let [cacheInstance, cacheGet, cacheSet] = createCache(getCacheSize(cache))
 
   if (cacheInstance) {
     const [cacheGetInner, cacheSetInner] = [cacheGet, cacheSet]
