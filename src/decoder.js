@@ -1,12 +1,15 @@
 'use strict'
 
-const { base64UrlDecode } = require('./utils')
+const { base64UrlDecode, getCacheSize, createCache } = require('./utils')
 const TokenError = require('./error')
 
 module.exports = function createDecoder(options) {
-  const { json, complete, encoding } = { encoding: 'utf-8', ...options }
+  const { json, complete, encoding, cache } = { encoding: 'utf-8', ...options }
 
-  return function decode(token) {
+  // Prepare the caching layer
+  const [cacheInstance, cacheGet, cacheSet] = createCache(getCacheSize(cache))
+
+  const decoder = function decode(token) {
     // Make sure the token is a string or a Buffer - Other cases make no sense to even try to validate
     if (token instanceof Buffer) {
       token = token.toString(encoding)
@@ -14,17 +17,29 @@ module.exports = function createDecoder(options) {
       throw new TokenError(TokenError.codes.invalidType, 'The token must be a string or a buffer.')
     }
 
-    // Split the string
-    const [rawHeader, rawPayload, rawSignature] = token.split('.', 3)
+    // Check the cache
+    const cached = cacheGet(token)
 
-    if (typeof rawPayload !== 'string' || typeof rawSignature !== 'string') {
-      throw new TokenError(TokenError.codes.malformed, 'The token is malformed.')
+    if (cached) {
+      if (cached instanceof TokenError) {
+        throw cached
+      }
+
+      return cached
     }
 
-    // Decode header and payload
     let header
 
     try {
+      // Split the string
+      const [rawHeader, rawPayload, rawSignature] = token.split('.', 3)
+
+      if (typeof rawPayload !== 'string' || typeof rawSignature !== 'string') {
+        throw new TokenError(TokenError.codes.malformed, 'The token is malformed.')
+      }
+
+      // Decode header and payload
+
       header = JSON.parse(Buffer.from(base64UrlDecode(rawHeader), 'base64').toString(encoding))
 
       let payload = Buffer.from(base64UrlDecode(rawPayload), 'base64').toString(encoding)
@@ -33,15 +48,24 @@ module.exports = function createDecoder(options) {
         payload = JSON.parse(payload)
       }
 
-      return complete
+      const result = complete
         ? { header, payload, signature: base64UrlDecode(rawSignature), input: `${rawHeader}.${rawPayload}` }
         : payload
+
+      cacheSet(token, result)
+      return result
     } catch (e) {
-      throw new TokenError(
+      const error = TokenError.wrap(
+        e,
         TokenError.codes.malformed,
-        `The token ${header ? 'payload' : 'header'} is not a valid base64url serialized JSON.`,
-        { originalError: e }
+        `The token ${header ? 'payload' : 'header'} is not a valid base64url serialized JSON.`
       )
+
+      cacheSet(token, error)
+      throw error
     }
   }
+
+  decoder.cache = cacheInstance
+  return decoder
 }

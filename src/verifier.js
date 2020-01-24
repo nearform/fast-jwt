@@ -3,7 +3,7 @@
 const { getSupportedAlgorithms, verifySignature } = require('./crypto')
 const createDecoder = require('./decoder')
 const TokenError = require('./error')
-const { getAsyncSecret, ensurePromiseCallback } = require('./utils')
+const { getAsyncSecret, ensurePromiseCallback, createCache, getCacheSize, handleCachedResult } = require('./utils')
 
 function ensureStringClaimMatcher(raw) {
   if (!Array.isArray(raw)) {
@@ -47,7 +47,7 @@ function verifyToken(
   }
 
   // Verify the payload
-  const now = clockTimestamp || Date.now() + (clockTolerance || 0)
+  const now = (clockTimestamp || Date.now()) + clockTolerance
 
   for (const validator of validators) {
     const { type, claim, allowed, array, modifier, greater, errorCode, errorVerb } = validator
@@ -103,6 +103,7 @@ module.exports = function createVerifier(options) {
     algorithms: allowedAlgorithms,
     complete,
     encoding,
+    cache,
     clockTimestamp,
     clockTolerance,
     ignoreExpiration,
@@ -113,7 +114,7 @@ module.exports = function createVerifier(options) {
     allowedIss,
     allowedSub,
     allowedNonce
-  } = { clockTimestamp: 0, ...options }
+  } = { ...options }
 
   // Validate options
   if (typeof secret !== 'string' && !(secret instanceof Buffer) && typeof secret !== 'function') {
@@ -129,6 +130,8 @@ module.exports = function createVerifier(options) {
 
   if (clockTolerance && (typeof clockTolerance !== 'number' || clockTolerance < 0)) {
     throw new TokenError(TokenError.codes.invalidOption, 'The clockTolerance option must be a positive number.')
+  } else {
+    clockTolerance = 0
   }
 
   if (encoding && typeof encoding !== 'string') {
@@ -174,42 +177,105 @@ module.exports = function createVerifier(options) {
     validators.push({ type: 'string', claim: 'nonce', allowed: ensureStringClaimMatcher(allowedNonce) })
   }
 
-  const decodeJwt = createDecoder({ complete: true, encoding })
+  const decodeJwt = createDecoder({ complete: true, encoding, cache })
+
+  // Prepare the caching layer
+  let [cacheInstance, cacheGet, cacheSet] = createCache(getCacheSize(cache))
+
+  if (cacheInstance) {
+    const [cacheGetInner, cacheSetInner] = [cacheGet, cacheSet]
+
+    cacheGet = function(key) {
+      const [value, min, max] = cacheGetInner(key) || [null, 0, 0]
+      const now = (clockTimestamp || Date.now()) + clockTolerance
+
+      // Validate time range
+      if ((min > 0 && now <= min) || (max > 0 && now >= max)) {
+        return null
+      }
+
+      return value
+    }
+
+    cacheSet = function(token, payload, result) {
+      const value = [result, 0, 0]
+
+      // Add time range of the key
+      if (typeof payload.iat === 'number') {
+        value[1] = !ignoreNotBefore && typeof payload.nbf === 'number' ? payload.nbf * 1000 : 0
+
+        if (!ignoreExpiration) {
+          if (typeof payload.exp === 'number') {
+            value[2] = payload.exp * 1000
+          } else if (maxAge) {
+            value[2] = payload.iat * 1000 + maxAge
+          }
+        }
+      }
+
+      cacheSetInner(token, value)
+    }
+  }
 
   // Return the verifier
-  return function verify(token, cb) {
+  const verifier = function verify(token, cb) {
     const [callback, promise] = typeof secret === 'function' ? ensurePromiseCallback(cb) : []
 
+    // Check the cache
+    const cached = cacheGet(token)
+
+    if (cached) {
+      return handleCachedResult(cached, callback, promise)
+    }
+
     // As very first thing, decode the token - If invalid, everything else is useless
-    const { header, payload, signature, input } = decodeJwt(token)
+    let decoded
+    try {
+      decoded = decodeJwt(token)
+    } catch (e) {
+      if (callback) {
+        callback(e)
+        return promise
+      }
+
+      throw e
+    }
+
+    const { header, payload, signature, input } = decoded
 
     // We're get the secret synchronously
     if (!callback) {
-      verifyToken(
-        secret,
-        input,
-        header,
-        payload,
-        signature,
-        validators,
-        allowedAlgorithms,
-        clockTimestamp,
-        clockTolerance
-      )
+      try {
+        verifyToken(
+          secret,
+          input,
+          header,
+          payload,
+          signature,
+          validators,
+          allowedAlgorithms,
+          clockTimestamp,
+          clockTolerance
+        )
 
-      return complete ? { header, payload, signature } : payload
+        const result = complete ? { header, payload, signature } : payload
+
+        cacheSet(token, payload, result)
+        return result
+      } catch (e) {
+        cacheSet(token, payload, e)
+        throw e
+      }
     }
 
     getAsyncSecret(secret, header, (err, currentSecret) => {
       if (err) {
-        return callback(
-          err instanceof TokenError
-            ? err
-            : new TokenError(TokenError.codes.secretFetchingError, 'Cannot fetch secret.', { originalError: err })
-        )
+        const error = TokenError.wrap(err, TokenError.codes.secretFetchingError, 'Cannot fetch secret.')
+        cacheSet(token, payload, error)
+        return callback(error)
       }
 
-      let verified
+      let result
       try {
         verifyToken(
           currentSecret,
@@ -223,14 +289,19 @@ module.exports = function createVerifier(options) {
           clockTolerance
         )
 
-        verified = complete ? { header, payload, signature } : payload
+        result = complete ? { header, payload, signature } : payload
       } catch (e) {
+        cacheSet(token, payload, e)
         return callback(e)
       }
 
-      callback(null, verified)
+      cacheSet(token, payload, result)
+      callback(null, result)
     })
 
     return promise
   }
+
+  verifier.cache = cacheInstance
+  return verifier
 }

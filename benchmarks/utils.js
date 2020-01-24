@@ -33,18 +33,27 @@ function log(message) {
 }
 
 async function compareSigning(payload, algorithm, privateKey, publicKey) {
-  const fastjwtSign = createSigner({ algorithm, secret: privateKey })
+  const fastjwtSign = createSigner({ algorithm, secret: privateKey, noTimestamp: true })
+  const fastjwtSignAsync = createSigner({ algorithm, secret: async () => privateKey, noTimestamp: true })
+  const fastjwtCachedSign = createSigner({ algorithm, secret: privateKey, noTimestamp: true, cache: true })
+  const fastjwtCachedSignAsync = createSigner({
+    algorithm,
+    secret: async () => privateKey,
+    noTimestamp: true,
+    cache: true
+  })
   const fastjwtVerify = createVerifier({ secret: publicKey })
-  const fastjwtSignAsync = createSigner({ algorithm, secret: async () => privateKey })
 
   if ((process.env.NODE_DEBUG || '').includes('fast-jwt')) {
     const fastjwtGenerated = fastjwtSign(payload)
-    const jsonwebtokenGenerated = jsonwebtokenSign(payload, privateKey, { algorithm })
+    const jsonwebtokenGenerated = jsonwebtokenSign(payload, privateKey, { algorithm, noTimestamp: true })
 
     log('-------')
     log(`Generated ${algorithm} tokens (equal=${jsonwebtokenGenerated === fastjwtGenerated}):`)
-    log(`       fastjwt: ${fastjwtGenerated}`)
-    log(`  jsonwebtoken: ${jsonwebtokenGenerated}`)
+    log(`       jsonwebtoken: ${JSON.stringify(jsonwebtokenSign(payload, privateKey))}`)
+    log(`            fastjwt: ${JSON.stringify(fastjwtSign(payload))}`)
+    log(` fastjwt+cache-miss: ${JSON.stringify(fastjwtCachedSign(payload))}`)
+    log(`  fastjwt+cache-hit: ${JSON.stringify(fastjwtCachedSign(payload))}`)
     log('Generated tokens verification:')
     log(`       fastjwt: ${JSON.stringify(fastjwtVerify(fastjwtGenerated))}`)
     log(`  jsonwebtoken: ${JSON.stringify(jsonwebtokenVerify(jsonwebtokenGenerated, publicKey))}`)
@@ -70,6 +79,23 @@ async function compareSigning(payload, algorithm, privateKey, publicKey) {
         fastjwtSignAsync(payload, err => {
           if (err) {
             deferred.reject()
+            return
+          }
+
+          deferred.resolve()
+        })
+      }
+    })
+    .add(`${algorithm} - sign - fast-jwt (sync with cache)`, function() {
+      fastjwtCachedSign(payload)
+    })
+    .add(`${algorithm} - sign - fast-jwt (async with cache)`, {
+      defer: true,
+      fn(deferred) {
+        fastjwtCachedSignAsync(payload, err => {
+          if (err) {
+            deferred.reject()
+            return
           }
 
           deferred.resolve()
@@ -77,14 +103,15 @@ async function compareSigning(payload, algorithm, privateKey, publicKey) {
       }
     })
     .add(`${algorithm} - sign - jsonwebtoken (sync)`, function() {
-      jsonwebtokenSign(payload, privateKey, { algorithm })
+      jsonwebtokenSign(payload, privateKey, { algorithm, noTimestamp: true })
     })
     .add(`${algorithm} - sign - jsonwebtoken (async)`, {
       defer: true,
       fn(deferred) {
-        jsonwebtokenSign(payload, privateKey, { algorithm }, err => {
+        jsonwebtokenSign(payload, privateKey, { algorithm, noTimestamp: true }, err => {
           if (err) {
             deferred.reject()
+            return
           }
 
           deferred.resolve()
@@ -110,12 +137,16 @@ async function compareSigning(payload, algorithm, privateKey, publicKey) {
 function compareDecoding(token, algorithm) {
   const fastjwtDecoder = createDecoder()
   const fastjwtCompleteDecoder = createDecoder({ complete: true })
+  const fastjwtCachedDecoder = createDecoder({ cache: true })
+  const fastjwtCachedCompleteDecoder = createDecoder({ cache: true, complete: true })
 
   if ((process.env.NODE_DEBUG || '').includes('fast-jwt')) {
     log('-------')
     log(`Decoded ${algorithm} tokens:`)
-    log(`  jsonwebtoken: ${JSON.stringify(jsonwebtokenDecode(token, { complete: true }))}`)
-    log(`       fastjwt: ${JSON.stringify(fastjwtCompleteDecoder(token, { complete: true }))}`)
+    log(`       jsonwebtoken: ${JSON.stringify(jsonwebtokenDecode(token, { complete: true }))}`)
+    log(`            fastjwt: ${JSON.stringify(fastjwtCompleteDecoder(token, { complete: true }))}`)
+    log(` fastjwt+cache-miss: ${JSON.stringify(fastjwtCachedCompleteDecoder(token, { complete: true }))}`)
+    log(`  fastjwt+cache-hit: ${JSON.stringify(fastjwtCachedCompleteDecoder(token, { complete: true }))}`)
     log('-------')
   }
 
@@ -132,8 +163,14 @@ function compareDecoding(token, algorithm) {
     .add(`${algorithm} - decode - fast-jwt`, function() {
       fastjwtDecoder(token)
     })
-    .add(`${algorithm} - decode - fast-jwt - complete`, function() {
+    .add(`${algorithm} - decode - fast-jwt (complete)`, function() {
       fastjwtCompleteDecoder(token)
+    })
+    .add(`${algorithm} - decode - fast-jwt (with cache)`, function() {
+      fastjwtCachedDecoder(token)
+    })
+    .add(`${algorithm} - decode - fast-jwt (complete with cache)`, function() {
+      fastjwtCachedCompleteDecoder(token)
     })
     .add(`${algorithm} - decode - jsonwebtoken`, function() {
       jsonwebtokenDecode(token)
@@ -160,12 +197,16 @@ function compareDecoding(token, algorithm) {
 function compareVerifying(token, algorithm, publicKey) {
   const fastjwtVerify = createVerifier({ secret: publicKey })
   const fastjwtVerifyAsync = createVerifier({ secret: async () => publicKey })
+  const fastjwtCachedVerify = createVerifier({ secret: publicKey, cache: true })
+  const fastjwtCachedVerifyAsync = createVerifier({ secret: async () => publicKey, cache: true })
 
   if ((process.env.NODE_DEBUG || '').includes('fast-jwt')) {
     log('-------')
     log(`Decoded ${algorithm} tokens:`)
-    log(`  jsonwebtoken: ${JSON.stringify(jsonwebtokenVerify(token, publicKey))}`)
-    log(`       fastjwt: ${JSON.stringify(fastjwtVerify(token))}`)
+    log(`      jsonwebtoken: ${JSON.stringify(jsonwebtokenVerify(token, publicKey))}`)
+    log(`           fastjwt: ${JSON.stringify(fastjwtVerify(token))}`)
+    log(`fastjwt+cache-miss: ${JSON.stringify(fastjwtCachedVerify(token))}`)
+    log(` fastjwt+cache-hit: ${JSON.stringify(fastjwtCachedVerify(token))}`)
     log('-------')
   }
 
@@ -188,6 +229,23 @@ function compareVerifying(token, algorithm, publicKey) {
         fastjwtVerifyAsync(token, err => {
           if (err) {
             deferred.reject()
+            return
+          }
+
+          deferred.resolve()
+        })
+      }
+    })
+    .add(`${algorithm} - verify - fast-jwt (sync with cache)`, function() {
+      fastjwtCachedVerify(token)
+    })
+    .add(`${algorithm} - verify - fast-jwt (async with cache)`, {
+      defer: true,
+      fn(deferred) {
+        fastjwtCachedVerifyAsync(token, err => {
+          if (err) {
+            deferred.reject()
+            return
           }
 
           deferred.resolve()
@@ -203,6 +261,7 @@ function compareVerifying(token, algorithm, publicKey) {
         jsonwebtokenVerify(token, publicKey, err => {
           if (err) {
             deferred.reject()
+            return
           }
 
           deferred.resolve()

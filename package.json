@@ -42,7 +42,8 @@
     "benchmark:auth0": "cd benchmarks && node auth0.js"
   },
   "dependencies": {
-    "ecdsa-sig-formatter": "^1.0.11"
+    "ecdsa-sig-formatter": "^1.0.11",
+    "mnemonist": "^0.32.0"
   },
   "devDependencies": {
     "benchmark": "^2.1.4",
@@ -54,6 +55,7 @@
     "eslint-plugin-standard": "^4.0.1",
     "fastify": "^2.11.0",
     "jsonwebtoken": "^8.5.1",
+    "lolex": "^5.1.2",
     "prettier": "^1.19.1",
     "tap": "^14.10.6"
   },
