@@ -69,7 +69,7 @@ test('invalid payload', t => {
   t.end()
 })
 
-test('cache support', t => {
+test('caching', t => {
   t.equal(cachedDecoder.cache.size, 0)
   t.strictDeepEqual(cachedDecoder(token), { sub: '1234567890', name: 'OK', iat: 9876543210 })
   t.equal(cachedDecoder.cache.size, 1)

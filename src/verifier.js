@@ -3,7 +3,7 @@
 const { getSupportedAlgorithms, verifySignature } = require('./crypto')
 const createDecoder = require('./decoder')
 const TokenError = require('./error')
-const { getAsyncSecret, ensurePromiseCallback, createCache } = require('./utils')
+const { getAsyncSecret, ensurePromiseCallback, createCache, handleCachedResult } = require('./utils')
 
 function ensureStringClaimMatcher(raw) {
   if (!Array.isArray(raw)) {
@@ -225,21 +225,7 @@ module.exports = function createVerifier(options) {
     const cached = cacheGet(token)
 
     if (cached) {
-      if (!callback) {
-        if (cached instanceof TokenError) {
-          throw cached
-        }
-
-        return cached
-      } else {
-        if (cached instanceof TokenError) {
-          callback(cached)
-        } else {
-          callback(null, cached)
-        }
-
-        return promise
-      }
+      return handleCachedResult(cached, callback, promise)
     }
 
     // As very first thing, decode the token - If invalid, everything else is useless
@@ -284,8 +270,9 @@ module.exports = function createVerifier(options) {
 
     getAsyncSecret(secret, header, (err, currentSecret) => {
       if (err) {
-        cacheSet(token, payload, err)
-        return callback(TokenError.wrap(err, TokenError.codes.secretFetchingError, 'Cannot fetch secret.'))
+        const error = TokenError.wrap(err, TokenError.codes.secretFetchingError, 'Cannot fetch secret.')
+        cacheSet(token, payload, error)
+        return callback(error)
       }
 
       let result

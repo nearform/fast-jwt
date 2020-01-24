@@ -421,3 +421,68 @@ test('options validation - header', t => {
 
   t.end()
 })
+
+test('caching - sync', t => {
+  const payload = { a: 1 }
+  const token = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxfQ.57TF7smP9XDhIexBqPC-F1toZReYZLWb_YRU5tv0sxM'
+
+  const signer = createSigner({ secret: 'secret', noTimestamp: true, cache: true })
+  const invalidSigner = createSigner({ algorithm: 'RS256', secret: 'secret', noTimestamp: true, cache: true })
+
+  t.equal(signer.cache.size, 0)
+  t.strictDeepEqual(signer(payload), token)
+  t.equal(signer.cache.size, 1)
+  t.strictDeepEqual(signer(payload), token)
+  t.equal(signer.cache.size, 1)
+
+  t.throws(() => invalidSigner(payload), { message: 'Cannot create the signature.' })
+  t.equal(invalidSigner.cache.size, 1)
+  t.throws(() => invalidSigner(payload), { message: 'Cannot create the signature.' })
+  t.equal(invalidSigner.cache.size, 1)
+
+  t.strictDeepEqual(signer.cache.get(payload), token)
+  t.true(invalidSigner.cache.get(payload) instanceof TokenError)
+
+  t.end()
+})
+
+test('caching - async', async t => {
+  const payload = { a: 1 }
+  const token = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxfQ.57TF7smP9XDhIexBqPC-F1toZReYZLWb_YRU5tv0sxM'
+
+  const signer = createSigner({ secret: async () => 'secret', noTimestamp: true, cache: true })
+  const invalidSigner = createSigner({
+    algorithm: 'RS256',
+    secret: async () => 'secret',
+    noTimestamp: true,
+    cache: true
+  })
+
+  t.equal(signer.cache.size, 0)
+  t.strictDeepEqual(await signer(payload), token)
+  t.equal(signer.cache.size, 1)
+  t.strictDeepEqual(await signer(payload), token)
+  t.equal(signer.cache.size, 1)
+
+  await t.rejects(() => invalidSigner(payload), { message: 'Cannot create the signature.' })
+  t.equal(invalidSigner.cache.size, 1)
+  await t.rejects(() => invalidSigner(payload), { message: 'Cannot create the signature.' })
+  t.equal(invalidSigner.cache.size, 1)
+
+  t.strictDeepEqual(signer.cache.get(payload), token)
+  t.true(invalidSigner.cache.get(payload) instanceof TokenError)
+})
+
+test('caching - option validation', t => {
+  t.equal(typeof createSigner({ secret: 'secret' }).cache, 'undefined')
+  t.equal(typeof createSigner({ secret: 'secret', cache: true }).cache, 'undefined')
+  t.equal(typeof createSigner({ secret: 'secret', cache: true, noTimestamp: true }).cache, 'object')
+  t.equal(
+    typeof createSigner({ secret: 'secret', cache: true, noTimestamp: true, mutatePayload: true }).cache,
+    'undefined'
+  )
+  t.equal(typeof createSigner({ secret: 'secret', cache: true, noTimestamp: true, expiresIn: 100 }).cache, 'undefined')
+  t.equal(typeof createSigner({ secret: 'secret', cache: true, noTimestamp: true, notBefore: 100 }).cache, 'undefined')
+
+  t.end()
+})

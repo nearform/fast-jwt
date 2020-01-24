@@ -1,6 +1,7 @@
 'use strict'
 
 const Cache = require('mnemonist/lru-cache')
+const TokenError = require('./error')
 
 const decoderReplacer = /[-_]/g
 const encoderReplacer = /[=+/]/g
@@ -68,10 +69,29 @@ function createCache(option) {
   return [cache, get, set]
 }
 
+function handleCachedResult(cached, callback, promise) {
+  if (!callback) {
+    if (cached instanceof TokenError) {
+      throw cached
+    }
+
+    return cached
+  }
+
+  if (cached instanceof TokenError) {
+    callback(cached)
+  } else {
+    callback(null, cached)
+  }
+
+  return promise
+}
+
 module.exports = {
   base64UrlDecode,
   base64UrlEncode,
   getAsyncSecret,
   ensurePromiseCallback,
-  createCache
+  createCache,
+  handleCachedResult
 }

@@ -738,7 +738,7 @@ test('options validation - encoding', t => {
   t.end()
 })
 
-test('cache support - sync', t => {
+test('caching - sync', t => {
   const token = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxfQ.57TF7smP9XDhIexBqPC-F1toZReYZLWb_YRU5tv0sxM'
   const invalidToken = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxfQ.aaa'
 
@@ -761,7 +761,7 @@ test('cache support - sync', t => {
   t.end()
 })
 
-test('cache support - async', async t => {
+test('caching - async', async t => {
   const token = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxfQ.57TF7smP9XDhIexBqPC-F1toZReYZLWb_YRU5tv0sxM'
   const invalidToken = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxfQ.aaa'
 
@@ -782,7 +782,7 @@ test('cache support - async', async t => {
   t.true(verifier.cache.get(invalidToken)[0] instanceof TokenError)
 })
 
-test('cache support - should correctly expire cached token using the exp claim', t => {
+test('caching - should correctly expire cached token using the exp claim', t => {
   const clock = fakeTime({ now: 100000 })
 
   const signer = createSigner({ secret: 'secret', expiresIn: 100000 })
@@ -824,7 +824,7 @@ test('cache support - should correctly expire cached token using the exp claim',
   t.end()
 })
 
-test('cache support - should correctly expire cached token using the maxAge claim', t => {
+test('caching - should correctly expire cached token using the maxAge claim', t => {
   const clock = fakeTime({ now: 100000 })
 
   const signer = createSigner({ secret: 'secret' })
@@ -853,7 +853,7 @@ test('cache support - should correctly expire cached token using the maxAge clai
   t.end()
 })
 
-test('cache support - should correctly expire not yet cached token using the nbf claim', t => {
+test('caching - should correctly expire not yet cached token using the nbf claim', t => {
   const clock = fakeTime({ now: 100000 })
 
   const signer = createSigner({ secret: 'secret', notBefore: 200000 })
@@ -881,7 +881,7 @@ test('cache support - should correctly expire not yet cached token using the nbf
   t.end()
 })
 
-test('cache support - should be able to consider both nbf and exp field at the same time', t => {
+test('caching - should be able to consider both nbf and exp field at the same time', t => {
   const clock = fakeTime({ now: 100000 })
 
   const signer = createSigner({ secret: 'secret', expiresIn: 400000, notBefore: 200000 })
@@ -919,7 +919,7 @@ test('cache support - should be able to consider both nbf and exp field at the s
   t.end()
 })
 
-test('cache support - should ignore the nbf and exp when asked to', t => {
+test('caching - should ignore the nbf and exp when asked to', t => {
   const clock = fakeTime({ now: 100000 })
 
   const signer = createSigner({ secret: 'secret', expiresIn: 400000, notBefore: 200000 })
