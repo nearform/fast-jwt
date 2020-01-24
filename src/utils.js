@@ -19,10 +19,10 @@ function base64UrlDecode(base64url) {
 }
 
 function getAsyncSecret(handler, header, callback) {
-  const rv = handler(header, callback)
+  const result = handler(header, callback)
 
-  if (rv && typeof rv.then === 'function') {
-    rv.then(secret => callback(null, secret)).catch(callback)
+  if (result && typeof result.then === 'function') {
+    result.then(secret => callback(null, secret)).catch(callback)
   }
 }
 

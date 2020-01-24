@@ -1,12 +1,16 @@
+'use strict'
+
 const fastify = require('fastify')()
 const { readFileSync } = require('fs')
 const { resolve } = require('path')
 
-const { createSigner, startWorkers } = require('../src')
+const { createSigner, createVerifier } = require('../src')
 const privateKey = readFileSync(resolve(__dirname, './keys/rs-private.key'))
+const publicKey = readFileSync(resolve(__dirname, './keys/rs-public.key'))
 
-const { sign: signerJwt } = require('jsonwebtoken')
-const signerFast = createSigner({ algorithm: 'RS256', secret: privateKey })
+const { sign: signerJwt, verify: verifierJwt } = require('jsonwebtoken')
+const signerFast = createSigner({ algorithm: 'RS256', secret: async () => privateKey, cache: true })
+const verifierFast = createVerifier({ secret: async () => publicKey, cache: true })
 
 fastify.post('/sign-jwt', {
   schema: {
@@ -40,16 +44,6 @@ fastify.post('/sign-jwt', {
 
 fastify.post('/sign-fast', {
   schema: {
-    querystring: {
-      type: 'object',
-      properties: {
-        payload: {
-          type: 'string'
-        }
-      },
-      required: ['payload'],
-      additionalProperties: false
-    },
     response: {
       200: {
         type: 'object',
@@ -68,10 +62,53 @@ fastify.post('/sign-fast', {
   }
 })
 
+fastify.get('/auth-jwt', {
+  schema: {
+    response: {
+      200: {
+        type: 'object',
+        properties: {
+          payload: {
+            type: 'object',
+            additionalProperties: true
+          }
+        },
+        required: ['payload'],
+        additionalProperties: false
+      }
+    }
+  },
+  async handler(request, reply) {
+    return {
+      payload: verifierJwt(request.headers.authorization.replace(/^Bearer\s/, ''), publicKey, { algorithm: 'RS256' })
+    }
+  }
+})
+
+fastify.get('/auth-fast', {
+  schema: {
+    response: {
+      200: {
+        type: 'object',
+        properties: {
+          payload: {
+            type: 'object',
+            additionalProperties: true
+          }
+        },
+        required: ['payload'],
+        additionalProperties: false
+      }
+    }
+  },
+  async handler(request, reply) {
+    return { payload: await verifierFast(request.headers.authorization.replace(/^Bearer\s/, '')) }
+  }
+})
+
 // Run the server
 async function start() {
   try {
-    await startWorkers()
     await fastify.listen(3000)
     fastify.log.info(`Server listening on ${fastify.server.address().port}`)
   } catch (err) {

@@ -52,12 +52,12 @@ module.exports = function createDecoder(options) {
         payload = JSON.parse(payload)
       }
 
-      const rv = complete
+      const result = complete
         ? { header, payload, signature: base64UrlDecode(rawSignature), input: `${rawHeader}.${rawPayload}` }
         : payload
 
-      cacheSet(token, rv)
-      return rv
+      cacheSet(token, result)
+      return result
     } catch (e) {
       throw new TokenError(
         TokenError.codes.malformed,

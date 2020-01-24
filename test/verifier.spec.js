@@ -93,8 +93,7 @@ test('it correctly verifies a token - async - secret as promise', async t => {
 test('it correctly verifies a token - async - static secret', async t => {
   t.strictDeepEqual(
     await verify('eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxfQ.57TF7smP9XDhIexBqPC-F1toZReYZLWb_YRU5tv0sxM', {
-      noTimestamp: true,
-      useWorkers: true
+      noTimestamp: true
     }),
     { a: 1 }
   )

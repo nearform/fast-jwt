@@ -228,10 +228,10 @@ module.exports = function createVerifier(options) {
         clockTolerance
       )
 
-      const rv = complete ? { header, payload, signature } : payload
+      const result = complete ? { header, payload, signature } : payload
 
-      cacheSet(input, rv)
-      return rv
+      cacheSet(input, result)
+      return result
     }
 
     getAsyncSecret(secret, header, (err, currentSecret) => {

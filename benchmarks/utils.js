@@ -70,6 +70,7 @@ async function compareSigning(payload, algorithm, privateKey, publicKey) {
         fastjwtSignAsync(payload, err => {
           if (err) {
             deferred.reject()
+            return
           }
 
           deferred.resolve()
@@ -85,6 +86,7 @@ async function compareSigning(payload, algorithm, privateKey, publicKey) {
         jsonwebtokenSign(payload, privateKey, { algorithm }, err => {
           if (err) {
             deferred.reject()
+            return
           }
 
           deferred.resolve()
@@ -202,6 +204,7 @@ function compareVerifying(token, algorithm, publicKey) {
         fastjwtVerifyAsync(token, err => {
           if (err) {
             deferred.reject()
+            return
           }
 
           deferred.resolve()
@@ -217,6 +220,7 @@ function compareVerifying(token, algorithm, publicKey) {
         fastjwtCachedVerifyAsync(token, err => {
           if (err) {
             deferred.reject()
+            return
           }
 
           deferred.resolve()
@@ -232,6 +236,7 @@ function compareVerifying(token, algorithm, publicKey) {
         jsonwebtokenVerify(token, publicKey, err => {
           if (err) {
             deferred.reject()
+            return
           }
 
           deferred.resolve()
