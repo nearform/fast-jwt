@@ -1,11 +1,9 @@
 'use strict'
 
-const Cache = require('mnemonist/lru-cache')
-
 const { getSupportedAlgorithms, verifySignature } = require('./crypto')
 const createDecoder = require('./decoder')
 const TokenError = require('./error')
-const { getAsyncSecret, ensurePromiseCallback, defaultCacheSize } = require('./utils')
+const { getAsyncSecret, ensurePromiseCallback, createCache } = require('./utils')
 
 function ensureStringClaimMatcher(raw) {
   if (!Array.isArray(raw)) {
@@ -49,7 +47,7 @@ function verifyToken(
   }
 
   // Verify the payload
-  const now = clockTimestamp || Date.now() + (clockTolerance || 0)
+  const now = (clockTimestamp || Date.now()) + clockTolerance
 
   for (const validator of validators) {
     const { type, claim, allowed, array, modifier, greater, errorCode, errorVerb } = validator
@@ -116,7 +114,7 @@ module.exports = function createVerifier(options) {
     allowedIss,
     allowedSub,
     allowedNonce
-  } = { clockTimestamp: 0, ...options }
+  } = { ...options }
 
   // Validate options
   if (typeof secret !== 'string' && !(secret instanceof Buffer) && typeof secret !== 'function') {
@@ -132,6 +130,8 @@ module.exports = function createVerifier(options) {
 
   if (clockTolerance && (typeof clockTolerance !== 'number' || clockTolerance < 0)) {
     throw new TokenError(TokenError.codes.invalidOption, 'The clockTolerance option must be a positive number.')
+  } else {
+    clockTolerance = 0
   }
 
   if (encoding && typeof encoding !== 'string') {
@@ -180,66 +180,115 @@ module.exports = function createVerifier(options) {
   const decodeJwt = createDecoder({ complete: true, encoding, cache })
 
   // Prepare the caching layer
-  let cacheGet = () => false
-  let cacheSet = () => false
+  let [cacheInstance, cacheGet, cacheSet] = createCache(cache)
 
-  if (cache) {
-    const size = parseInt(cache, 10)
-    const cacheInstance = new Cache(size >= 1 ? size : defaultCacheSize)
+  if (cacheInstance) {
+    const [cacheGetInner, cacheSetInner] = [cacheGet, cacheSet]
 
-    cacheGet = cacheInstance.get.bind(cacheInstance)
-    cacheSet = cacheInstance.set.bind(cacheInstance)
+    cacheGet = function(key) {
+      const [value, min, max] = cacheGetInner(key) || [null, 0, 0]
+      const now = (clockTimestamp || Date.now()) + clockTolerance
+
+      // Validate time range
+      if ((min > 0 && now <= min) || (max > 0 && now >= max)) {
+        return null
+      }
+
+      return value
+    }
+
+    cacheSet = function(token, payload, result) {
+      const value = [result, 0, 0]
+
+      // Add time range of the key
+      if (typeof payload.iat === 'number') {
+        value[1] = !ignoreNotBefore && typeof payload.nbf === 'number' ? payload.nbf * 1000 : 0
+
+        if (!ignoreExpiration) {
+          if (typeof payload.exp === 'number') {
+            value[2] = payload.exp * 1000
+          } else if (maxAge) {
+            value[2] = payload.iat * 1000 + maxAge
+          }
+        }
+      }
+
+      cacheSetInner(token, value)
+    }
   }
 
-  // TODO@PI: What happens when using callback if decoding fails?
   // Return the verifier
-  return function verify(token, cb) {
+  const verifier = function verify(token, cb) {
     const [callback, promise] = typeof secret === 'function' ? ensurePromiseCallback(cb) : []
 
-    // As very first thing, decode the token - If invalid, everything else is useless
-    const { header, payload, signature, input } = decodeJwt(token)
+    // Check the cache
+    const cached = cacheGet(token)
 
-    const cached = cacheGet(input)
-
-    // TODO@PI - Verify token validity when returning or pre-store a expiry time in the cache
     if (cached) {
       if (!callback) {
-        // TODO@PI - Handle caching of failures
+        if (cached instanceof TokenError) {
+          throw cached
+        }
+
         return cached
       } else {
-        // TODO@PI - Handle caching of failures
-        callback(null, cached)
+        if (cached instanceof TokenError) {
+          callback(cached)
+        } else {
+          callback(null, cached)
+        }
+
         return promise
       }
     }
 
-    // TODO@PI - Handle caching of failures
+    // As very first thing, decode the token - If invalid, everything else is useless
+    let decoded
+    try {
+      decoded = decodeJwt(token)
+    } catch (e) {
+      if (callback) {
+        callback(e)
+        return promise
+      }
+
+      throw e
+    }
+
+    const { header, payload, signature, input } = decoded
+
     // We're get the secret synchronously
     if (!callback) {
-      verifyToken(
-        secret,
-        input,
-        header,
-        payload,
-        signature,
-        validators,
-        allowedAlgorithms,
-        clockTimestamp,
-        clockTolerance
-      )
+      try {
+        verifyToken(
+          secret,
+          input,
+          header,
+          payload,
+          signature,
+          validators,
+          allowedAlgorithms,
+          clockTimestamp,
+          clockTolerance
+        )
 
-      const result = complete ? { header, payload, signature } : payload
+        const result = complete ? { header, payload, signature } : payload
 
-      cacheSet(input, result)
-      return result
+        cacheSet(token, payload, result)
+        return result
+      } catch (e) {
+        cacheSet(token, payload, e)
+        throw e
+      }
     }
 
     getAsyncSecret(secret, header, (err, currentSecret) => {
       if (err) {
+        cacheSet(token, payload, err)
         return callback(TokenError.wrap(err, TokenError.codes.secretFetchingError, 'Cannot fetch secret.'))
       }
 
-      let rv
+      let result
       try {
         verifyToken(
           currentSecret,
@@ -253,16 +302,19 @@ module.exports = function createVerifier(options) {
           clockTolerance
         )
 
-        rv = complete ? { header, payload, signature } : payload
+        result = complete ? { header, payload, signature } : payload
       } catch (e) {
-        // TODO@PI - Cache in case of failures
+        cacheSet(token, payload, e)
         return callback(e)
       }
 
-      cacheSet(input, rv)
-      callback(null, rv)
+      cacheSet(token, payload, result)
+      callback(null, result)
     })
 
     return promise
   }
+
+  verifier.cache = cacheInstance
+  return verifier
 }

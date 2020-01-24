@@ -1,5 +1,7 @@
 'use strict'
 
+const Cache = require('mnemonist/lru-cache')
+
 const decoderReplacer = /[-_]/g
 const encoderReplacer = /[=+/]/g
 const decoderMap = { '-': '+', _: '/' }
@@ -50,10 +52,26 @@ function ensurePromiseCallback(callback) {
   ]
 }
 
+function createCache(option) {
+  let get = () => false
+  let set = () => false
+
+  let cache
+  if (option) {
+    const size = parseInt(option, 10)
+
+    cache = new Cache(size >= 1 ? size : defaultCacheSize)
+    get = cache.get.bind(cache)
+    set = cache.set.bind(cache)
+  }
+
+  return [cache, get, set]
+}
+
 module.exports = {
-  defaultCacheSize,
   base64UrlDecode,
   base64UrlEncode,
   getAsyncSecret,
-  ensurePromiseCallback
+  ensurePromiseCallback,
+  createCache
 }

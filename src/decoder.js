@@ -1,25 +1,15 @@
 'use strict'
 
-const Cache = require('mnemonist/lru-cache')
-
-const { base64UrlDecode, defaultCacheSize } = require('./utils')
+const { base64UrlDecode, createCache } = require('./utils')
 const TokenError = require('./error')
 
 module.exports = function createDecoder(options) {
   const { json, complete, encoding, cache } = { encoding: 'utf-8', ...options }
-  let cacheGet = () => false
-  let cacheSet = () => false
 
-  if (cache) {
-    const size = parseInt(cache, 10)
-    const cacheInstance = new Cache(size >= 1 ? size : defaultCacheSize)
+  // Prepare the caching layer
+  const [cacheInstance, cacheGet, cacheSet] = createCache(cache)
 
-    cacheGet = cacheInstance.get.bind(cacheInstance)
-    cacheSet = cacheInstance.set.bind(cacheInstance)
-  }
-
-  // TODO@PI: Cache and handle failures
-  return function decode(token) {
+  const decoder = function decode(token) {
     // Make sure the token is a string or a Buffer - Other cases make no sense to even try to validate
     if (token instanceof Buffer) {
       token = token.toString(encoding)
@@ -27,23 +17,29 @@ module.exports = function createDecoder(options) {
       throw new TokenError(TokenError.codes.invalidType, 'The token must be a string or a buffer.')
     }
 
+    // Check the cache
     const cached = cacheGet(token)
 
     if (cached) {
+      if (cached instanceof TokenError) {
+        throw cached
+      }
+
       return cached
     }
 
-    // Split the string
-    const [rawHeader, rawPayload, rawSignature] = token.split('.', 3)
-
-    if (typeof rawPayload !== 'string' || typeof rawSignature !== 'string') {
-      throw new TokenError(TokenError.codes.malformed, 'The token is malformed.')
-    }
-
-    // Decode header and payload
     let header
 
     try {
+      // Split the string
+      const [rawHeader, rawPayload, rawSignature] = token.split('.', 3)
+
+      if (typeof rawPayload !== 'string' || typeof rawSignature !== 'string') {
+        throw new TokenError(TokenError.codes.malformed, 'The token is malformed.')
+      }
+
+      // Decode header and payload
+
       header = JSON.parse(Buffer.from(base64UrlDecode(rawHeader), 'base64').toString(encoding))
 
       let payload = Buffer.from(base64UrlDecode(rawPayload), 'base64').toString(encoding)
@@ -59,11 +55,17 @@ module.exports = function createDecoder(options) {
       cacheSet(token, result)
       return result
     } catch (e) {
-      throw new TokenError(
+      const error = TokenError.wrap(
+        e,
         TokenError.codes.malformed,
-        `The token ${header ? 'payload' : 'header'} is not a valid base64url serialized JSON.`,
-        { originalError: e }
+        `The token ${header ? 'payload' : 'header'} is not a valid base64url serialized JSON.`
       )
+
+      cacheSet(token, error)
+      throw error
     }
   }
+
+  decoder.cache = cacheInstance
+  return decoder
 }
