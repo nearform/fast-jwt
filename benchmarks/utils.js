@@ -1,6 +1,6 @@
 'use strict'
 
-const Benchmark = require('benchmark')
+const cronometro = require('cronometro')
 const { mkdir, writeFile } = require('fs').promises
 const { resolve } = require('path')
 const { sign: jsonwebtokenSign, decode: jsonwebtokenDecode, verify: jsonwebtokenVerify } = require('jsonwebtoken')
@@ -60,78 +60,26 @@ async function compareSigning(payload, algorithm, privateKey, publicKey) {
     log('-------')
   }
 
-  let promiseResolve, promiseReject
-
-  const promise = new Promise((resolve, reject) => {
-    promiseResolve = resolve
-    promiseReject = reject
-  })
-
-  const suite = new Benchmark.Suite()
-
-  suite
-    .add(`${algorithm} - sign - fast-jwt (sync)`, function() {
+  return cronometro({
+    [`${algorithm} - sign - fast-jwt (sync)`]: function() {
       fastjwtSign(payload)
-    })
-    .add(`${algorithm} - sign - fast-jwt (async)`, {
-      defer: true,
-      fn(deferred) {
-        fastjwtSignAsync(payload, err => {
-          if (err) {
-            deferred.reject()
-            return
-          }
-
-          deferred.resolve()
-        })
-      }
-    })
-    .add(`${algorithm} - sign - fast-jwt (sync with cache)`, function() {
+    },
+    [`${algorithm} - sign - fast-jwt (async)`]: function(done) {
+      fastjwtSignAsync(payload, done)
+    },
+    [`${algorithm} - sign - fast-jwt (sync with cache)`]: function() {
       fastjwtCachedSign(payload)
-    })
-    .add(`${algorithm} - sign - fast-jwt (async with cache)`, {
-      defer: true,
-      fn(deferred) {
-        fastjwtCachedSignAsync(payload, err => {
-          if (err) {
-            deferred.reject()
-            return
-          }
-
-          deferred.resolve()
-        })
-      }
-    })
-    .add(`${algorithm} - sign - jsonwebtoken (sync)`, function() {
+    },
+    [`${algorithm} - sign - fast-jwt (async with cache)`]: function(done) {
+      fastjwtCachedSignAsync(payload, done)
+    },
+    [`${algorithm} - sign - jsonwebtoken (sync)`]: function() {
       jsonwebtokenSign(payload, privateKey, { algorithm, noTimestamp: true })
-    })
-    .add(`${algorithm} - sign - jsonwebtoken (async)`, {
-      defer: true,
-      fn(deferred) {
-        jsonwebtokenSign(payload, privateKey, { algorithm, noTimestamp: true }, err => {
-          if (err) {
-            deferred.reject()
-            return
-          }
-
-          deferred.resolve()
-        })
-      }
-    })
-    .on('cycle', function(event) {
-      log(`Executed: ${event.target}`)
-    })
-    .on('complete', async function() {
-      const fastest = this.filter('fastest')
-        .map(i => i.name.split(' - ').pop())
-        .join(' OR ')
-      log(`Fastest ${algorithm} sign implementation is: ${fastest}\n`)
-      promiseResolve()
-    })
-    .on('error', promiseReject)
-    .run({ async: true })
-
-  return promise
+    },
+    [`${algorithm} - sign - jsonwebtoken (async)`]: function(done) {
+      jsonwebtokenSign(payload, privateKey, { algorithm, noTimestamp: true }, done)
+    }
+  })
 }
 
 function compareDecoding(token, algorithm) {
@@ -150,48 +98,26 @@ function compareDecoding(token, algorithm) {
     log('-------')
   }
 
-  let promiseResolve, promiseReject
-
-  const promise = new Promise((resolve, reject) => {
-    promiseResolve = resolve
-    promiseReject = reject
-  })
-
-  const suite = new Benchmark.Suite()
-
-  suite
-    .add(`${algorithm} - decode - fast-jwt`, function() {
+  return cronometro({
+    [`${algorithm} - decode - fast-jwt`]: function() {
       fastjwtDecoder(token)
-    })
-    .add(`${algorithm} - decode - fast-jwt (complete)`, function() {
+    },
+    [`${algorithm} - decode - fast-jwt (complete)`]: function() {
       fastjwtCompleteDecoder(token)
-    })
-    .add(`${algorithm} - decode - fast-jwt (with cache)`, function() {
+    },
+    [`${algorithm} - decode - fast-jwt (with cache)`]: function() {
       fastjwtCachedDecoder(token)
-    })
-    .add(`${algorithm} - decode - fast-jwt (complete with cache)`, function() {
+    },
+    [`${algorithm} - decode - fast-jwt (complete with cache)`]: function() {
       fastjwtCachedCompleteDecoder(token)
-    })
-    .add(`${algorithm} - decode - jsonwebtoken`, function() {
+    },
+    [`${algorithm} - decode - jsonwebtoken`]: function() {
       jsonwebtokenDecode(token)
-    })
-    .add(`${algorithm} - decode - jsonwebtoken - complete`, function() {
+    },
+    [`${algorithm} - decode - jsonwebtoken - complete`]: function() {
       jsonwebtokenDecode(token, { complete: true })
-    })
-    .on('cycle', function(event) {
-      log(`Executed: ${event.target}`)
-    })
-    .on('complete', async function() {
-      const fastest = this.filter('fastest')
-        .map(i => i.name.split(' - ').pop())
-        .join(' OR ')
-      log(`Fastest ${algorithm} decode implementation is: ${fastest}\n`)
-      promiseResolve()
-    })
-    .on('error', promiseReject)
-    .run({ async: true })
-
-  return promise
+    }
+  })
 }
 
 function compareVerifying(token, algorithm, publicKey) {
@@ -210,78 +136,26 @@ function compareVerifying(token, algorithm, publicKey) {
     log('-------')
   }
 
-  let promiseResolve, promiseReject
-
-  const promise = new Promise((resolve, reject) => {
-    promiseResolve = resolve
-    promiseReject = reject
-  })
-
-  const suite = new Benchmark.Suite()
-
-  suite
-    .add(`${algorithm} - verify - fast-jwt (sync)`, function() {
+  return cronometro({
+    [`${algorithm} - verify - fast-jwt (sync)`]: function() {
       fastjwtVerify(token)
-    })
-    .add(`${algorithm} - verify - fast-jwt (async)`, {
-      defer: true,
-      fn(deferred) {
-        fastjwtVerifyAsync(token, err => {
-          if (err) {
-            deferred.reject()
-            return
-          }
-
-          deferred.resolve()
-        })
-      }
-    })
-    .add(`${algorithm} - verify - fast-jwt (sync with cache)`, function() {
+    },
+    [`${algorithm} - verify - fast-jwt (async)`]: function(done) {
+      fastjwtVerifyAsync(token, done)
+    },
+    [`${algorithm} - verify - fast-jwt (sync with cache)`]: function() {
       fastjwtCachedVerify(token)
-    })
-    .add(`${algorithm} - verify - fast-jwt (async with cache)`, {
-      defer: true,
-      fn(deferred) {
-        fastjwtCachedVerifyAsync(token, err => {
-          if (err) {
-            deferred.reject()
-            return
-          }
-
-          deferred.resolve()
-        })
-      }
-    })
-    .add(`${algorithm} - verify - jsonwebtoken (sync)`, function() {
+    },
+    [`${algorithm} - verify - fast-jwt (async with cache)`]: function(done) {
+      fastjwtCachedVerifyAsync(token, done)
+    },
+    [`${algorithm} - verify - jsonwebtoken (sync)`]: function() {
       jsonwebtokenVerify(token, publicKey)
-    })
-    .add(`${algorithm} - verify - jsonwebtoken (async)`, {
-      defer: true,
-      fn(deferred) {
-        jsonwebtokenVerify(token, publicKey, err => {
-          if (err) {
-            deferred.reject()
-            return
-          }
-
-          deferred.resolve()
-        })
-      }
-    })
-    .on('cycle', function(event) {
-      log(`Executed: ${event.target}`)
-    })
-    .on('complete', async function() {
-      const fastest = this.filter('fastest')
-        .map(i => i.name.split(' - ').pop())
-        .join(' OR ')
-      log(`Fastest ${algorithm} verify implementation is: ${fastest}\n`)
-      promiseResolve()
-    })
-    .on('error', promiseReject)
-    .run({ async: true })
-
-  return promise
+    },
+    [`${algorithm} - verify - jsonwebtoken (async)`]: function(done) {
+      jsonwebtokenVerify(token, publicKey, done)
+    }
+  })
 }
 
 module.exports = { compareSigning, compareDecoding, compareVerifying, saveLogs }
