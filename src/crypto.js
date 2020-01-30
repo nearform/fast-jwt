@@ -74,14 +74,14 @@ function getSupportedAlgorithms(secret) {
 
 function createSignature(algorithm, secret, header, payload) {
   try {
-    const type = algorithm.slice(0, 2).toLowerCase()
+    const type = algorithm.slice(0, 2)
     const bits = algorithm.slice(2)
     const input = `${header}.${payload}`
     let signer, signature
 
     switch (type) {
-      case 'rs':
-      case 'es':
+      case 'RS':
+      case 'ES':
         validatePrivateKey(algorithm, secret)
 
         signer = createSign(`RSA-SHA${bits}`)
@@ -94,7 +94,7 @@ function createSignature(algorithm, secret, header, payload) {
         }
 
         break
-      case 'ps':
+      case 'PS':
         validatePrivateKey(algorithm, secret)
 
         signer = createSign(`RSA-SHA${bits}`)
@@ -110,7 +110,7 @@ function createSignature(algorithm, secret, header, payload) {
         )
         break
       default:
-        // hs
+        // HS
         validateSecretKey(algorithm, secret)
 
         signer = createHmac(`SHA${bits}`, secret)
@@ -126,13 +126,13 @@ function createSignature(algorithm, secret, header, payload) {
 
 function verifySignature(algorithm, secret, input, signature) {
   try {
-    const type = algorithm.slice(0, 2).toLowerCase()
+    const type = algorithm.slice(0, 2)
     const bits = algorithm.slice(2)
     let verifier
 
     switch (type) {
-      case 'es':
-      case 'rs':
+      case 'ES':
+      case 'RS':
         validatePublicKey(algorithm, secret)
 
         verifier = createVerify(`RSA-SHA${bits}`)
@@ -143,7 +143,7 @@ function verifySignature(algorithm, secret, input, signature) {
           type === 'es' ? joseToDer(signature, `ES${bits}`).toString('base64') : signature,
           'base64'
         )
-      case 'ps':
+      case 'PS':
         validatePublicKey(algorithm, secret)
 
         verifier = createVerify(`RSA-SHA${bits}`)
@@ -159,7 +159,7 @@ function verifySignature(algorithm, secret, input, signature) {
           'base64'
         )
       default:
-        // hs
+        // HS
         validateSecretKey(algorithm, secret)
 
         verifier = createHmac(`SHA${bits}`, secret)
