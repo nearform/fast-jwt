@@ -191,109 +191,181 @@ This is the lisf of currently supported algorithms:
 ### Signing
 
 ```
-Executed: HS512 - sign - fast-jwt (sync) x 100,450 ops/sec ±1.45% (82 runs sampled)
-Executed: HS512 - sign - fast-jwt (async) x 91,219 ops/sec ±1.35% (78 runs sampled)
-Executed: HS512 - sign - fast-jwt (sync with cache) x 8,718,626 ops/sec ±1.28% (87 runs sampled)
-Executed: HS512 - sign - fast-jwt (async with cache) x 164,722 ops/sec ±2.44% (59 runs sampled)
-Executed: HS512 - sign - jsonwebtoken (sync) x 95,234 ops/sec ±1.19% (89 runs sampled)
-Executed: HS512 - sign - jsonwebtoken (async) x 69,411 ops/sec ±0.88% (79 runs sampled)
-Fastest HS512 sign implementation is: fast-jwt (sync with cache)
+╔════════════════════════════════════════════╤═════════╤═══════════════════╤═══════════╗
+║ Test                                       │ Samples │            Result │ Tolerance ║
+╟────────────────────────────────────────────┼─────────┼───────────────────┼───────────╢
+║ HS512 - sign - jsonwebtoken (async)        │   10000 │   68651.23 op/sec │ ±  1.71 % ║
+║ HS512 - sign - jsonwebtoken (sync)         │   10000 │   74610.01 op/sec │ ±  1.87 % ║
+║ HS512 - sign - fast-jwt (sync)             │   10000 │   81847.37 op/sec │ ±  2.19 % ║
+║ HS512 - sign - fast-jwt (async)            │   10000 │   93871.52 op/sec │ ±  2.09 % ║
+║ HS512 - sign - fast-jwt (async with cache) │   10000 │ 1657089.24 op/sec │ ± 27.18 % ║
+╟────────────────────────────────────────────┼─────────┼───────────────────┼───────────╢
+║ Fastest test                               │ Samples │            Result │ Tolerance ║
+╟────────────────────────────────────────────┼─────────┼───────────────────┼───────────╢
+║ HS512 - sign - fast-jwt (sync with cache)  │   10000 │ 1699953.17 op/sec │ ± 22.65 % ║
+╚════════════════════════════════════════════╧═════════╧═══════════════════╧═══════════╝
 
-Executed: ES512 - sign - fast-jwt (sync) x 11,351 ops/sec ±1.24% (86 runs sampled)
-Executed: ES512 - sign - fast-jwt (async) x 10,155 ops/sec ±0.83% (82 runs sampled)
-Executed: ES512 - sign - fast-jwt (sync with cache) x 9,135,171 ops/sec ±0.92% (90 runs sampled)
-Executed: ES512 - sign - fast-jwt (async with cache) x 168,939 ops/sec ±21.41% (24 runs sampled)
-Executed: ES512 - sign - jsonwebtoken (sync) x 10,923 ops/sec ±1.07% (85 runs sampled)
-Executed: ES512 - sign - jsonwebtoken (async) x 9,593 ops/sec ±0.94% (81 runs sampled)
-Fastest ES512 sign implementation is: fast-jwt (sync with cache)
+╔════════════════════════════════════════════╤═════════╤═══════════════════╤═══════════╗
+║ Test                                       │ Samples │            Result │ Tolerance ║
+╟────────────────────────────────────────────┼─────────┼───────────────────┼───────────╢
+║ ES512 - sign - fast-jwt (sync)             │    3000 │   10565.37 op/sec │ ±  0.96 % ║
+║ ES512 - sign - jsonwebtoken (sync)         │    2001 │   10841.32 op/sec │ ±  0.89 % ║
+║ ES512 - sign - jsonwebtoken (async)        │    1500 │   10957.96 op/sec │ ±  0.82 % ║
+║ ES512 - sign - fast-jwt (async)            │    1500 │   11619.48 op/sec │ ±  0.85 % ║
+║ ES512 - sign - fast-jwt (sync with cache)  │   10000 │ 2676030.63 op/sec │ ± 25.56 % ║
+╟────────────────────────────────────────────┼─────────┼───────────────────┼───────────╢
+║ Fastest test                               │ Samples │            Result │ Tolerance ║
+╟────────────────────────────────────────────┼─────────┼───────────────────┼───────────╢
+║ ES512 - sign - fast-jwt (async with cache) │   10000 │ 3483443.02 op/sec │ ± 12.08 % ║
+╚════════════════════════════════════════════╧═════════╧═══════════════════╧═══════════╝
 
-Executed: RS512 - sign - fast-jwt (sync) x 215 ops/sec ±0.81% (83 runs sampled)
-Executed: RS512 - sign - fast-jwt (async) x 193 ops/sec ±1.05% (81 runs sampled)
-Executed: RS512 - sign - fast-jwt (sync with cache) x 8,804,472 ops/sec ±1.17% (90 runs sampled)
-Executed: RS512 - sign - fast-jwt (async with cache) x 148,252 ops/sec ±6.99% (77 runs sampled)
-Executed: RS512 - sign - jsonwebtoken (sync) x 217 ops/sec ±0.75% (83 runs sampled)
-Executed: RS512 - sign - jsonwebtoken (async) x 193 ops/sec ±0.85% (81 runs sampled)
-Fastest RS512 sign implementation is: fast-jwt (sync with cache)
+╔════════════════════════════════════════════╤═════════╤═══════════════════╤═══════════╗
+║ Test                                       │ Samples │            Result │ Tolerance ║
+╟────────────────────────────────────────────┼─────────┼───────────────────┼───────────╢
+║ RS512 - sign - fast-jwt (sync)             │    1500 │     218.45 op/sec │ ±  0.23 % ║
+║ RS512 - sign - fast-jwt (async)            │    1500 │     223.78 op/sec │ ±  0.15 % ║
+║ RS512 - sign - jsonwebtoken (async)        │    1500 │     226.58 op/sec │ ±  0.14 % ║
+║ RS512 - sign - jsonwebtoken (sync)         │    1500 │     228.36 op/sec │ ±  0.11 % ║
+║ RS512 - sign - fast-jwt (async with cache) │   10000 │ 1395754.26 op/sec │ ± 64.43 % ║
+╟────────────────────────────────────────────┼─────────┼───────────────────┼───────────╢
+║ Fastest test                               │ Samples │            Result │ Tolerance ║
+╟────────────────────────────────────────────┼─────────┼───────────────────┼───────────╢
+║ RS512 - sign - fast-jwt (sync with cache)  │   10000 │ 1496408.77 op/sec │ ± 64.24 % ║
+╚════════════════════════════════════════════╧═════════╧═══════════════════╧═══════════╝
 
-Executed: PS512 - sign - fast-jwt (sync) x 216 ops/sec ±0.83% (82 runs sampled)
-Executed: PS512 - sign - fast-jwt (async) x 193 ops/sec ±1.11% (80 runs sampled)
-Executed: PS512 - sign - fast-jwt (sync with cache) x 8,409,535 ops/sec ±1.84% (83 runs sampled)
-Executed: PS512 - sign - fast-jwt (async with cache) x 123,051 ops/sec ±42.34% (36 runs sampled)
-Executed: PS512 - sign - jsonwebtoken (sync) x 207 ops/sec ±1.32% (80 runs sampled)
-Executed: PS512 - sign - jsonwebtoken (async) x 191 ops/sec ±1.15% (74 runs sampled)
-Fastest PS512 sign implementation is: fast-jwt (sync with cache)
+╔════════════════════════════════════════════╤═════════╤═══════════════════╤═══════════╗
+║ Test                                       │ Samples │            Result │ Tolerance ║
+╟────────────────────────────────────────────┼─────────┼───────────────────┼───────────╢
+║ PS512 - sign - fast-jwt (sync)             │    1500 │     225.55 op/sec │ ±  0.12 % ║
+║ PS512 - sign - fast-jwt (async)            │    1500 │     226.44 op/sec │ ±  0.15 % ║
+║ PS512 - sign - jsonwebtoken (sync)         │    1500 │     227.84 op/sec │ ±  0.12 % ║
+║ PS512 - sign - jsonwebtoken (async)        │    1500 │     228.34 op/sec │ ±  0.13 % ║
+║ PS512 - sign - fast-jwt (async with cache) │   10000 │ 1531958.02 op/sec │ ± 66.76 % ║
+╟────────────────────────────────────────────┼─────────┼───────────────────┼───────────╢
+║ Fastest test                               │ Samples │            Result │ Tolerance ║
+╟────────────────────────────────────────────┼─────────┼───────────────────┼───────────╢
+║ PS512 - sign - fast-jwt (sync with cache)  │   10000 │ 1556430.65 op/sec │ ± 64.51 % ║
+╚════════════════════════════════════════════╧═════════╧═══════════════════╧═══════════╝
 ```
 
 ### Decoding
 
 ```
-Executed: HS512 - decode - fast-jwt x 279,474 ops/sec ±1.66% (85 runs sampled)
-Executed: HS512 - decode - fast-jwt (complete) x 214,984 ops/sec ±1.19% (88 runs sampled)
-Executed: HS512 - decode - fast-jwt (with cache) x 31,297,380 ops/sec ±1.04% (86 runs sampled)
-Executed: HS512 - decode - fast-jwt (complete with cache) x 31,231,233 ops/sec ±1.16% (89 runs sampled)
-Executed: HS512 - decode - jsonwebtoken x 193,014 ops/sec ±1.04% (89 runs sampled)
-Executed: HS512 - decode - jsonwebtoken - complete x 184,695 ops/sec ±1.26% (86 runs sampled)
-Fastest HS512 decode implementation is: fast-jwt (with cache) OR fast-jwt (complete with cache)
+╔═════════════════════════════════════════════════╤═══════════════════╤═══════════╗
+║ Test                                            │            Result │ Tolerance ║
+╟─────────────────────────────────────────────────┼───────────────────┼───────────╢
+║ HS512 - decode - jsonwebtoken                   │  133590.42 op/sec │ ±  2.15 % ║
+║ HS512 - decode - jsonwebtoken - complete        │  146678.27 op/sec │ ±  2.49 % ║
+║ HS512 - decode - fast-jwt (complete)            │  157087.46 op/sec │ ±  2.54 % ║
+║ HS512 - decode - fast-jwt                       │  169393.63 op/sec │ ±  3.04 % ║
+║ HS512 - decode - fast-jwt (with cache)          │ 1346410.52 op/sec │ ± 22.80 % ║
+╟─────────────────────────────────────────────────┼───────────────────┼───────────╢
+║ Fastest test                                    │            Result │ Tolerance ║
+╟─────────────────────────────────────────────────┼───────────────────┼───────────╢
+║ HS512 - decode - fast-jwt (complete with cache) │ 2260927.95 op/sec │ ± 23.91 % ║
+╚═════════════════════════════════════════════════╧═══════════════════╧═══════════╝
 
-Executed: ES512 - decode - fast-jwt x 281,957 ops/sec ±1.36% (85 runs sampled)
-Executed: ES512 - decode - fast-jwt (complete) x 221,500 ops/sec ±1.19% (89 runs sampled)
-Executed: ES512 - decode - fast-jwt (with cache) x 23,560,218 ops/sec ±0.92% (87 runs sampled)
-Executed: ES512 - decode - fast-jwt (complete with cache) x 23,667,858 ops/sec ±0.94% (90 runs sampled)
-Executed: ES512 - decode - jsonwebtoken x 189,484 ops/sec ±0.83% (90 runs sampled)
-Executed: ES512 - decode - jsonwebtoken - complete x 186,878 ops/sec ±1.59% (88 runs sampled)
-Fastest ES512 decode implementation is: fast-jwt (complete with cache) OR fast-jwt (with cache)
+╔═════════════════════════════════════════════════╤═══════════════════╤═══════════╗
+║ Test                                            │            Result │ Tolerance ║
+╟─────────────────────────────────────────────────┼───────────────────┼───────────╢
+║ ES512 - decode - jsonwebtoken                   │  149777.70 op/sec │  ± 1.80 % ║
+║ ES512 - decode - jsonwebtoken - complete        │  160821.20 op/sec │  ± 1.27 % ║
+║ ES512 - decode - fast-jwt (complete)            │  186599.21 op/sec │  ± 0.65 % ║
+║ ES512 - decode - fast-jwt                       │  223111.91 op/sec │  ± 0.87 % ║
+║ ES512 - decode - fast-jwt (with cache)          │ 3035478.46 op/sec │  ± 7.62 % ║
+╟─────────────────────────────────────────────────┼───────────────────┼───────────╢
+║ Fastest test                                    │            Result │ Tolerance ║
+╟─────────────────────────────────────────────────┼───────────────────┼───────────╢
+║ ES512 - decode - fast-jwt (complete with cache) │ 4131311.34 op/sec │  ± 1.79 % ║
+╚═════════════════════════════════════════════════╧═══════════════════╧═══════════╝
 
-Executed: RS512 - decode - fast-jwt x 270,117 ops/sec ±2.15% (84 runs sampled)
-Executed: RS512 - decode - fast-jwt (complete) x 161,117 ops/sec ±0.98% (90 runs sampled)
-Executed: RS512 - decode - fast-jwt (with cache) x 23,574,709 ops/sec ±0.72% (89 runs sampled)
-Executed: RS512 - decode - fast-jwt (complete with cache) x 23,881,450 ops/sec ±0.62% (90 runs sampled)
-Executed: RS512 - decode - jsonwebtoken x 175,141 ops/sec ±1.06% (91 runs sampled)
-Executed: RS512 - decode - jsonwebtoken - complete x 174,509 ops/sec ±0.76% (88 runs sampled)
-Fastest RS512 decode implementation is: fast-jwt (complete with cache)
+╔═════════════════════════════════════════════════╤═══════════════════╤═══════════╗
+║ Test                                            │            Result │ Tolerance ║
+╟─────────────────────────────────────────────────┼───────────────────┼───────────╢
+║ RS512 - decode - fast-jwt (complete)            │  130119.11 op/sec │  ± 0.62 % ║
+║ RS512 - decode - jsonwebtoken                   │  147891.25 op/sec │  ± 0.44 % ║
+║ RS512 - decode - jsonwebtoken - complete        │  149441.58 op/sec │  ± 0.48 % ║
+║ RS512 - decode - fast-jwt                       │  225592.85 op/sec │  ± 0.84 % ║
+║ RS512 - decode - fast-jwt (complete with cache) │ 4283876.07 op/sec │  ± 6.09 % ║
+╟─────────────────────────────────────────────────┼───────────────────┼───────────╢
+║ Fastest test                                    │            Result │ Tolerance ║
+╟─────────────────────────────────────────────────┼───────────────────┼───────────╢
+║ RS512 - decode - fast-jwt (with cache)          │ 4910784.87 op/sec │  ± 2.36 % ║
+╚═════════════════════════════════════════════════╧═══════════════════╧═══════════╝
 
-Executed: PS512 - decode - fast-jwt x 280,091 ops/sec ±1.50% (88 runs sampled)
-Executed: PS512 - decode - fast-jwt (complete) x 159,377 ops/sec ±1.37% (86 runs sampled)
-Executed: PS512 - decode - fast-jwt (with cache) x 22,586,591 ops/sec ±1.26% (87 runs sampled)
-Executed: PS512 - decode - fast-jwt (complete with cache) x 22,799,881 ops/sec ±1.05% (88 runs sampled)
-Executed: PS512 - decode - jsonwebtoken x 170,633 ops/sec ±1.87% (88 runs sampled)
-Executed: PS512 - decode - jsonwebtoken - complete x 176,970 ops/sec ±0.60% (91 runs sampled)
-Fastest PS512 decode implementation is: fast-jwt (complete with cache) OR fast-jwt (with cache)
+╔═════════════════════════════════════════════════╤═══════════════════╤═══════════╗
+║ Test                                            │            Result │ Tolerance ║
+╟─────────────────────────────────────────────────┼───────────────────┼───────────╢
+║ PS512 - decode - fast-jwt (complete)            │  131923.01 op/sec │  ± 0.58 % ║
+║ PS512 - decode - jsonwebtoken                   │  148500.24 op/sec │  ± 0.39 % ║
+║ PS512 - decode - jsonwebtoken - complete        │  149895.47 op/sec │  ± 0.29 % ║
+║ PS512 - decode - fast-jwt                       │  224998.94 op/sec │  ± 0.43 % ║
+║ PS512 - decode - fast-jwt (complete with cache) │ 4557971.14 op/sec │  ± 2.55 % ║
+╟─────────────────────────────────────────────────┼───────────────────┼───────────╢
+║ Fastest test                                    │            Result │ Tolerance ║
+╟─────────────────────────────────────────────────┼───────────────────┼───────────╢
+║ PS512 - decode - fast-jwt (with cache)          │ 4814183.86 op/sec │  ± 2.32 % ║
+╚═════════════════════════════════════════════════╧═══════════════════╧═══════════╝
 ```
 
 ### Verifying
 
 ```
-Executed: HS512 - verify - fast-jwt (sync) x 83,074 ops/sec ±1.67% (85 runs sampled)
-Executed: HS512 - verify - fast-jwt (async) x 73,180 ops/sec ±1.32% (77 runs sampled)
-Executed: HS512 - verify - fast-jwt (sync with cache) x 10,513,746 ops/sec ±1.49% (84 runs sampled)
-Executed: HS512 - verify - fast-jwt (async with cache) x 264,280 ops/sec ±1.12% (66 runs sampled)
-Executed: HS512 - verify - jsonwebtoken (sync) x 68,314 ops/sec ±1.33% (87 runs sampled)
-Executed: HS512 - verify - jsonwebtoken (async) x 24,863 ops/sec ±15.24% (53 runs sampled)
-Fastest HS512 verify implementation is: fast-jwt (sync with cache)
+╔══════════════════════════════════════════════╤═════════╤═══════════════════╤═══════════╗
+║ Test                                         │ Samples │            Result │ Tolerance ║
+╟──────────────────────────────────────────────┼─────────┼───────────────────┼───────────╢
+║ HS512 - verify - jsonwebtoken (sync)         │   10000 │   54602.83 op/sec │ ±  1.41 % ║
+║ HS512 - verify - fast-jwt (sync)             │   10000 │   55864.01 op/sec │ ±  1.64 % ║
+║ HS512 - verify - fast-jwt (async)            │   10000 │   62636.54 op/sec │ ±  1.71 % ║
+║ HS512 - verify - jsonwebtoken (async)        │   10000 │   63385.51 op/sec │ ±  0.99 % ║
+║ HS512 - verify - fast-jwt (async with cache) │   10000 │ 1462111.43 op/sec │ ± 21.81 % ║
+╟──────────────────────────────────────────────┼─────────┼───────────────────┼───────────╢
+║ Fastest test                                 │ Samples │            Result │ Tolerance ║
+╟──────────────────────────────────────────────┼─────────┼───────────────────┼───────────╢
+║ HS512 - verify - fast-jwt (sync with cache)  │   10000 │ 1480927.94 op/sec │ ± 19.13 % ║
+╚══════════════════════════════════════════════╧═════════╧═══════════════════╧═══════════╝
 
-Executed: ES512 - verify - fast-jwt (sync) x 7,689 ops/sec ±1.60% (89 runs sampled)
-Executed: ES512 - verify - fast-jwt (async) x 7,097 ops/sec ±0.98% (80 runs sampled)
-Executed: ES512 - verify - fast-jwt (sync with cache) x 8,928,787 ops/sec ±5.13% (82 runs sampled)
-Executed: ES512 - verify - fast-jwt (async with cache) x 224,465 ops/sec ±20.72% (35 runs sampled)
-Executed: ES512 - verify - jsonwebtoken (sync) x 7,126 ops/sec ±2.23% (83 runs sampled)
-Executed: ES512 - verify - jsonwebtoken (async) x 6,947 ops/sec ±1.77% (81 runs sampled)
-Fastest ES512 verify implementation is: fast-jwt (sync with cache)
+╔══════════════════════════════════════════════╤═════════╤═══════════════════╤═══════════╗
+║ Test                                         │ Samples │            Result │ Tolerance ║
+╟──────────────────────────────────────────────┼─────────┼───────────────────┼───────────╢
+║ ES512 - verify - fast-jwt (sync)             │    2001 │    7060.35 op/sec │  ± 0.88 % ║
+║ ES512 - verify - jsonwebtoken (sync)         │    1500 │    7428.13 op/sec │  ± 0.93 % ║
+║ ES512 - verify - fast-jwt (async)            │    1500 │    7665.73 op/sec │  ± 0.74 % ║
+║ ES512 - verify - jsonwebtoken (async)        │    1500 │    8282.75 op/sec │  ± 0.63 % ║
+║ ES512 - verify - fast-jwt (sync with cache)  │   10000 │ 2473653.73 op/sec │  ± 9.94 % ║
+╟──────────────────────────────────────────────┼─────────┼───────────────────┼───────────╢
+║ Fastest test                                 │ Samples │            Result │ Tolerance ║
+╟──────────────────────────────────────────────┼─────────┼───────────────────┼───────────╢
+║ ES512 - verify - fast-jwt (async with cache) │   10000 │ 3419232.43 op/sec │  ± 8.76 % ║
+╚══════════════════════════════════════════════╧═════════╧═══════════════════╧═══════════╝
 
-Executed: RS512 - verify - fast-jwt (sync) x 8,799 ops/sec ±3.30% (89 runs sampled)
-Executed: RS512 - verify - fast-jwt (async) x 8,171 ops/sec ±1.40% (80 runs sampled)
-Executed: RS512 - verify - fast-jwt (sync with cache) x 9,267,146 ops/sec ±1.74% (83 runs sampled)
-Executed: RS512 - verify - fast-jwt (async with cache) x 230,088 ops/sec ±4.39% (48 runs sampled)
-Executed: RS512 - verify - jsonwebtoken (sync) x 7,731 ops/sec ±2.09% (83 runs sampled)
-Executed: RS512 - verify - jsonwebtoken (async) x 7,790 ops/sec ±1.68% (79 runs sampled)
-Fastest RS512 verify implementation is: fast-jwt (sync with cache)
+╔══════════════════════════════════════════════╤═════════╤═══════════════════╤═══════════╗
+║ Test                                         │ Samples │            Result │ Tolerance ║
+╟──────────────────────────────────────────────┼─────────┼───────────────────┼───────────╢
+║ RS512 - verify - fast-jwt (sync)             │    1500 │    9437.64 op/sec │ ±  0.70 % ║
+║ RS512 - verify - jsonwebtoken (async)        │    1500 │    9445.71 op/sec │ ±  0.63 % ║
+║ RS512 - verify - jsonwebtoken (sync)         │    1500 │    9484.53 op/sec │ ±  0.74 % ║
+║ RS512 - verify - fast-jwt (async)            │    1500 │    9735.93 op/sec │ ±  0.53 % ║
+║ RS512 - verify - fast-jwt (sync with cache)  │   10000 │ 3556539.37 op/sec │ ± 10.80 % ║
+╟──────────────────────────────────────────────┼─────────┼───────────────────┼───────────╢
+║ Fastest test                                 │ Samples │            Result │ Tolerance ║
+╟──────────────────────────────────────────────┼─────────┼───────────────────┼───────────╢
+║ RS512 - verify - fast-jwt (async with cache) │   10000 │ 3658708.37 op/sec │ ± 10.05 % ║
+╚══════════════════════════════════════════════╧═════════╧═══════════════════╧═══════════╝
 
-Executed: PS512 - verify - fast-jwt (sync) x 7,972 ops/sec ±1.57% (82 runs sampled)
-Executed: PS512 - verify - fast-jwt (async) x 7,619 ops/sec ±1.13% (78 runs sampled)
-Executed: PS512 - verify - fast-jwt (sync with cache) x 9,275,591 ops/sec ±1.77% (86 runs sampled)
-Executed: PS512 - verify - fast-jwt (async with cache) x 224,085 ops/sec ±16.53% (53 runs sampled)
-Executed: PS512 - verify - jsonwebtoken (sync) x 7,928 ops/sec ±1.32% (89 runs sampled)
-Executed: PS512 - verify - jsonwebtoken (async) x 6,803 ops/sec ±1.64% (78 runs sampled)
-Fastest PS512 verify implementation is: fast-jwt (sync with cache)
+╔══════════════════════════════════════════════╤═════════╤═══════════════════╤═══════════╗
+║ Test                                         │ Samples │            Result │ Tolerance ║
+╟──────────────────────────────────────────────┼─────────┼───────────────────┼───────────╢
+║ PS512 - verify - jsonwebtoken (async)        │    1500 │    8158.49 op/sec │ ±  0.93 % ║
+║ PS512 - verify - fast-jwt (sync)             │    2001 │    8600.43 op/sec │ ±  0.86 % ║
+║ PS512 - verify - jsonwebtoken (sync)         │    1500 │    8617.49 op/sec │ ±  0.68 % ║
+║ PS512 - verify - fast-jwt (async)            │    1500 │    8876.50 op/sec │ ±  0.69 % ║
+║ PS512 - verify - fast-jwt (sync with cache)  │   10000 │ 3395266.39 op/sec │ ± 10.28 % ║
+╟──────────────────────────────────────────────┼─────────┼───────────────────┼───────────╢
+║ Fastest test                                 │ Samples │            Result │ Tolerance ║
+╟──────────────────────────────────────────────┼─────────┼───────────────────┼───────────╢
+║ PS512 - verify - fast-jwt (async with cache) │   10000 │ 3625159.91 op/sec │ ±  8.13 % ║
+╚══════════════════════════════════════════════╧═════════╧═══════════════════╧═══════════╝
 ```
 
 ## Contributing
