@@ -76,7 +76,7 @@ async function test() {
 Create a decoder function by calling `createDecoder` and providing one or more of the following options:
 
 - `complete`: Return an object with the decoded header, payload, signature and input (the token part before the signature), instead of just the content of the payload. Default is `false`.
-- `json`: Always parse the payload as JSON even if the `typ` claim of the header is not `JWT`. Default is `false`.
+- `json`: Always parse the payload as JSON even if the `typ` claim of the header is not `JWT`. Default is `true`.
 - `encoding`: The token encoding, default is `utf-8`.
 - `cache`: A positive number specifying the size of the decoded tokens cache (using LRU strategy). Setting to `true` is equivalent to provide the size `1000`. When enabled, as you can see in the benchmarks section below, performances dramatically improve. By default the cache is disabled.
 
@@ -114,6 +114,7 @@ Create a verifier function by calling `createVerifier` and providing one or more
 - `secret`: A string, buffer or object containing the secret for `HS*` algorithms or the PEM encoded public key for `RS*`, `PS*` and `ES*` algorithms (whose format is defined by the Node's crypto module documentation). The secret can also be a function accepting a Node style callback or a function returning a promise. This is the only mandatory option, which must NOT be provided if the token algorithm is `none`.
 - `algorithms`: List of strings with the names of the allowed algorithms. By default, all algorithms are accepted.
 - `complete`: Return an object with the decoded header, payload, signature and input (the token part before the signature), instead of just the content of the payload. Default is `false`.
+- `json`: Always parse the payload as JSON even if the `typ` claim of the header is not `JWT`. Default is `true`.
 - `encoding`: The token encoding. Default is `utf-8`.
 - `cache`: A positive number specifying the size of the verified tokens cache (using LRU strategy). Setting to `true` is equivalent to provide the size `1000`. When enabled, as you can see in the benchmarks section below, performances dramatically improve. By default the cache is disabled.
 - `allowedJti`: A string, a regular expression, an array of strings or an array of regular expressions containing allowed values for the id claim (`jti`). By default, all values are accepted.

@@ -101,6 +101,7 @@ module.exports = function createVerifier(options) {
   let {
     secret,
     algorithms: allowedAlgorithms,
+    json,
     complete,
     encoding,
     cache,
@@ -177,7 +178,7 @@ module.exports = function createVerifier(options) {
     validators.push({ type: 'string', claim: 'nonce', allowed: ensureStringClaimMatcher(allowedNonce) })
   }
 
-  const decodeJwt = createDecoder({ complete: true, encoding, cache })
+  const decodeJwt = createDecoder({ json, complete: true, encoding, cache })
 
   // Prepare the caching layer
   let [cacheInstance, cacheGet, cacheSet] = createCache(getCacheSize(cache))

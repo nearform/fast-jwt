@@ -4,7 +4,7 @@ const { base64UrlDecode, getCacheSize, createCache } = require('./utils')
 const TokenError = require('./error')
 
 module.exports = function createDecoder(options) {
-  const { json, complete, encoding, cache } = { encoding: 'utf-8', ...options }
+  const { json, complete, encoding, cache } = { json: true, encoding: 'utf-8', ...options }
 
   // Prepare the caching layer
   const [cacheInstance, cacheGet, cacheSet] = createCache(getCacheSize(cache))
