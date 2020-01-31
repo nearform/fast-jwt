@@ -11,7 +11,6 @@ const { joseToDer, derToJose } = require('ecdsa-sig-formatter')
 const TokenError = require('./error')
 
 const publicKeyAlgorithms = ['RS256', 'RS384', 'RS512', 'ES256', 'ES384', 'ES512', 'PS256', 'PS384', 'PS512']
-const rsaKeyAlgorithms = ['RS256', 'RS384', 'RS512', 'PS256', 'PS384', 'PS512']
 const hashAlgorithms = ['HS256', 'HS384', 'HS512']
 const publicKeyMatcher = /BEGIN (?:PUBLIC KEY|CERTIFICATE)/
 
@@ -63,8 +62,6 @@ function getSupportedAlgorithms(secret) {
 
   if (!secretString) {
     return ['none']
-  } else if (secretString.includes('BEGIN RSA PUBLIC KEY')) {
-    return rsaKeyAlgorithms
   } else if (secretString.match(publicKeyMatcher)) {
     return publicKeyAlgorithms
   }
@@ -89,7 +86,7 @@ function createSignature(algorithm, secret, header, payload) {
 
         signature = signer.sign(secret, 'base64')
 
-        if (type === 'es') {
+        if (type === 'ES') {
           signature = derToJose(signature, `ES${bits}`).toString('base64')
         }
 
@@ -140,7 +137,7 @@ function verifySignature(algorithm, secret, input, signature) {
 
         return verifier.verify(
           secret,
-          type === 'es' ? joseToDer(signature, `ES${bits}`).toString('base64') : signature,
+          type === 'ES' ? joseToDer(signature, `ES${bits}`).toString('base64') : signature,
           'base64'
         )
       case 'PS':
@@ -174,7 +171,6 @@ function verifySignature(algorithm, secret, input, signature) {
 
 module.exports = {
   publicKeyAlgorithms,
-  rsaKeyAlgorithms,
   hashAlgorithms,
   getSupportedAlgorithms,
   createSignature,

@@ -16,9 +16,7 @@ for (const bits of [256, 384, 512]) {
     const verified = createVerifier({ secret: 'secretsecretsecret' })(token)
 
     t.equal(verified.payload, 'PAYLOAD')
-
     t.true(verified.iat >= start)
-
     t.true(verified.iat < Date.now() / 1000)
 
     t.end()
@@ -32,9 +30,7 @@ for (const bits of [256, 384, 512]) {
     const verified = createVerifier({ secret: 'secretsecretsecret' })(token)
 
     t.equal(verified.payload, 'PAYLOAD')
-
     t.true(verified.iat >= start)
-
     t.true(verified.iat < Date.now() / 1000)
 
     t.end()

@@ -21,9 +21,9 @@ const psToken =
 
 async function runSuites() {
   await compareVerifying(hsToken, 'HS512', 'secretsecretsecret')
-  await compareVerifying(esToken, 'ES512', readFileSync(resolve(__dirname, './keys/es-public.key')))
-  await compareVerifying(rsToken, 'RS512', readFileSync(resolve(__dirname, './keys/rs-public.key')))
-  await compareVerifying(psToken, 'PS512', readFileSync(resolve(__dirname, './keys/ps-public.key')))
+  await compareVerifying(esToken, 'ES512', readFileSync(resolve(__dirname, './keys/es-512-public.key')))
+  await compareVerifying(rsToken, 'RS512', readFileSync(resolve(__dirname, './keys/rs-512-public.key')))
+  await compareVerifying(psToken, 'PS512', readFileSync(resolve(__dirname, './keys/ps-512-public.key')))
 
   await saveLogs('verify')
 }
