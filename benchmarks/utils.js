@@ -35,13 +35,6 @@ function log(message) {
 async function compareSigning(payload, algorithm, privateKey, publicKey) {
   const fastjwtSign = createSigner({ algorithm, secret: privateKey, noTimestamp: true })
   const fastjwtSignAsync = createSigner({ algorithm, secret: async () => privateKey, noTimestamp: true })
-  const fastjwtCachedSign = createSigner({ algorithm, secret: privateKey, noTimestamp: true, cache: true })
-  const fastjwtCachedSignAsync = createSigner({
-    algorithm,
-    secret: async () => privateKey,
-    noTimestamp: true,
-    cache: true
-  })
   const fastjwtVerify = createVerifier({ secret: publicKey })
 
   if ((process.env.NODE_DEBUG || '').includes('fast-jwt')) {
@@ -52,8 +45,6 @@ async function compareSigning(payload, algorithm, privateKey, publicKey) {
     log(`Generated ${algorithm} tokens (equal=${jsonwebtokenGenerated === fastjwtGenerated}):`)
     log(`       jsonwebtoken: ${JSON.stringify(jsonwebtokenSign(payload, privateKey))}`)
     log(`            fastjwt: ${JSON.stringify(fastjwtSign(payload))}`)
-    log(` fastjwt+cache-miss: ${JSON.stringify(fastjwtCachedSign(payload))}`)
-    log(`  fastjwt+cache-hit: ${JSON.stringify(fastjwtCachedSign(payload))}`)
     log('Generated tokens verification:')
     log(`       fastjwt: ${JSON.stringify(fastjwtVerify(fastjwtGenerated))}`)
     log(`  jsonwebtoken: ${JSON.stringify(jsonwebtokenVerify(jsonwebtokenGenerated, publicKey))}`)
@@ -66,12 +57,6 @@ async function compareSigning(payload, algorithm, privateKey, publicKey) {
     },
     [`${algorithm} - sign - fast-jwt (async)`]: function(done) {
       fastjwtSignAsync(payload, done)
-    },
-    [`${algorithm} - sign - fast-jwt (sync with cache)`]: function() {
-      fastjwtCachedSign(payload)
-    },
-    [`${algorithm} - sign - fast-jwt (async with cache)`]: function(done) {
-      fastjwtCachedSignAsync(payload, done)
     },
     [`${algorithm} - sign - jsonwebtoken (sync)`]: function() {
       jsonwebtokenSign(payload, privateKey, { algorithm, noTimestamp: true })

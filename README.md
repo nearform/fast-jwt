@@ -188,19 +188,15 @@ This is the lisf of currently supported algorithms:
 
 ## Caching
 
-fast-jwt supports caching of signed, decoded and verified tokens.
+fast-jwt supports caching of decoded and verified tokens.
 
 The cache layer, powered by [mnemonist](https://www.npmjs.com/package/mnemonist), is a LRU cache which dimension is controlled by the user, as described in the option list.
-
-Signed tokens are cached only if the `iat` claim (which being time sensitive would be make the caching not meaningful) is not present inside the payload.
 
 Decoded and verified tokens are always cached. If the decoding fails once, the error is cached as well and the operation is not retried.
 
 For verified tokens, caching considers the time sensitive claims of the token (`iat`, `nbf` and `exp`) and make sure the verification is retried after a token becomes valid or after a token becomes expired.
 
 Performances improvements varies by uses cases and by the type of the operation performed.
-
-In our tests, performances improved by 10 times in case of decoding to 10000 times in the case of RS256 signing.
 
 ## Benchmarks
 

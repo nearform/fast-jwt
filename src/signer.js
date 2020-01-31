@@ -2,14 +2,7 @@
 
 const { publicKeyAlgorithms, rsaKeyAlgorithms, hashAlgorithms, createSignature } = require('./crypto')
 const TokenError = require('./error')
-const {
-  base64UrlEncode,
-  getAsyncSecret,
-  ensurePromiseCallback,
-  getCacheSize,
-  createCache,
-  handleCachedResult
-} = require('./utils')
+const { base64UrlEncode, getAsyncSecret, ensurePromiseCallback } = require('./utils')
 
 const supportedAlgorithms = Array.from(
   new Set([...publicKeyAlgorithms, ...rsaKeyAlgorithms, ...hashAlgorithms, 'none'])
@@ -20,7 +13,6 @@ module.exports = function createSigner(options) {
     secret,
     algorithm,
     encoding,
-    cache,
     noTimestamp,
     mutatePayload,
     clockTimestamp,
@@ -115,41 +107,6 @@ module.exports = function createSigner(options) {
     nonce
   }
 
-  // Prepare the caching layer
-  const cacheSize = getCacheSize(cache)
-
-  if (cacheSize) {
-    if (!noTimestamp) {
-      throw new TokenError(
-        TokenError.codes.invalidOption,
-        'The cache option cannot be set without providing the noTimestamp option.'
-      )
-    }
-
-    if (expiresIn) {
-      throw new TokenError(
-        TokenError.codes.invalidOption,
-        'The cache option cannot be set when providing the expiresIn option.'
-      )
-    }
-
-    if (notBefore) {
-      throw new TokenError(
-        TokenError.codes.invalidOption,
-        'The cache option cannot be set when providing the notBefore option.'
-      )
-    }
-
-    if (mutatePayload) {
-      throw new TokenError(
-        TokenError.codes.invalidOption,
-        'The cache option cannot be set when providing the mutatePayload option.'
-      )
-    }
-  }
-
-  const [cacheInstance, cacheGet, cacheSet] = createCache(cacheSize)
-
   // Return the signer
   const signer = function sign(payload, cb) {
     const [callback, promise] = typeof secret === 'function' ? ensurePromiseCallback(cb) : []
@@ -160,12 +117,6 @@ module.exports = function createSigner(options) {
       throw new TokenError(TokenError.codes.invalidType, 'The payload must be a object, a string or a buffer.')
     } else if (payload instanceof Buffer) {
       payload = payload.toString(encoding)
-    }
-
-    const cached = cacheGet(payload)
-
-    if (cached) {
-      return handleCachedResult(cached, callback, promise)
     }
 
     const header = Object.assign(
@@ -206,23 +157,15 @@ module.exports = function createSigner(options) {
 
     // We're get the secret synchronously
     if (!callback) {
-      try {
-        const encodedSignature =
-          algorithm === 'none' ? '' : base64UrlEncode(createSignature(algorithm, secret, encodedHeader, encodedPayload))
+      const encodedSignature =
+        algorithm === 'none' ? '' : base64UrlEncode(createSignature(algorithm, secret, encodedHeader, encodedPayload))
 
-        const result = `${encodedHeader}.${encodedPayload}.${encodedSignature}`
-        cacheSet(payload, result)
-        return result
-      } catch (e) {
-        cacheSet(payload, e)
-        throw e
-      }
+      return `${encodedHeader}.${encodedPayload}.${encodedSignature}`
     }
 
     getAsyncSecret(secret, header, (err, currentSecret) => {
       if (err) {
         const error = TokenError.wrap(err, TokenError.codes.secretFetchingError, 'Cannot fetch secret.')
-        cacheSet(payload, error)
         return callback(error)
       }
 
@@ -234,17 +177,14 @@ module.exports = function createSigner(options) {
 
         token = `${encodedHeader}.${encodedPayload}.${encodedSignature}`
       } catch (e) {
-        cacheSet(payload, e)
         return callback(e)
       }
 
-      cacheSet(payload, token)
       callback(null, token)
     })
 
     return promise
   }
 
-  signer.cache = cacheInstance
   return signer
 }
