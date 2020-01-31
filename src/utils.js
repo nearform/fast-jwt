@@ -1,6 +1,8 @@
 'use strict'
 
+const { createHash } = require('crypto')
 const Cache = require('mnemonist/lru-cache')
+
 const TokenError = require('./error')
 
 const decoderReplacer = /[-_]/g
@@ -58,6 +60,19 @@ function getCacheSize(rawSize) {
   return size > 0 ? size : null
 }
 
+function hashKey(key) {
+  return createHash('sha512')
+    .update(key)
+    .digest('hex')
+}
+function readCache(cache, key) {
+  return cache.get(hashKey(key))
+}
+
+function writeCache(cache, key, value) {
+  return cache.set(hashKey(key), value)
+}
+
 function createCache(size) {
   let get = () => false
   let set = () => false
@@ -66,8 +81,8 @@ function createCache(size) {
 
   if (size) {
     cache = new Cache(size)
-    get = cache.get.bind(cache)
-    set = cache.set.bind(cache)
+    get = readCache.bind(null, cache)
+    set = writeCache.bind(null, cache)
   }
 
   return [cache, get, set]
@@ -99,5 +114,6 @@ module.exports = {
   ensurePromiseCallback,
   getCacheSize,
   createCache,
+  hashKey,
   handleCachedResult
 }
