@@ -60,11 +60,28 @@ function getCacheSize(rawSize) {
   return size > 0 ? size : null
 }
 
-function hashKey(key) {
-  return createHash('sha512')
+function hashKey(key, algorithm) {
+  if (!algorithm) {
+    algorithm = 'sha256'
+  }
+
+  try {
+    const [rawHeader] = key.split('.', 1)
+    const header = JSON.parse(Buffer.from(base64UrlDecode(rawHeader), 'base64').toString('utf-8'))
+    const complexity = header.alg.slice(-3)
+
+    if (complexity === '384' || complexity === '512') {
+      algorithm = `sha${complexity}`
+    }
+  } catch (e) {
+    // No-op, default to sha512
+  }
+
+  return createHash(algorithm)
     .update(key)
     .digest('hex')
 }
+
 function readCache(cache, key) {
   return cache.get(hashKey(key))
 }

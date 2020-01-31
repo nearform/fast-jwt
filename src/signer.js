@@ -1,12 +1,10 @@
 'use strict'
 
-const { publicKeyAlgorithms, rsaKeyAlgorithms, hashAlgorithms, createSignature } = require('./crypto')
+const { publicKeyAlgorithms, hashAlgorithms, createSignature } = require('./crypto')
 const TokenError = require('./error')
 const { base64UrlEncode, getAsyncSecret, ensurePromiseCallback } = require('./utils')
 
-const supportedAlgorithms = Array.from(
-  new Set([...publicKeyAlgorithms, ...rsaKeyAlgorithms, ...hashAlgorithms, 'none'])
-).join(', ')
+const supportedAlgorithms = Array.from(new Set([...publicKeyAlgorithms, ...hashAlgorithms, 'none'])).join(', ')
 
 module.exports = function createSigner(options) {
   const {
@@ -28,12 +26,7 @@ module.exports = function createSigner(options) {
   } = { algorithm: 'HS256', clockTimestamp: 0, ...options }
 
   // Validate options
-  if (
-    algorithm !== 'none' &&
-    !publicKeyAlgorithms.includes(algorithm) &&
-    !rsaKeyAlgorithms.includes(algorithm) &&
-    !hashAlgorithms.includes(algorithm)
-  ) {
+  if (algorithm !== 'none' && !publicKeyAlgorithms.includes(algorithm) && !hashAlgorithms.includes(algorithm)) {
     throw new TokenError(
       TokenError.codes.invalidOption,
       `The algorithm option must be one of the following values: ${supportedAlgorithms}.`

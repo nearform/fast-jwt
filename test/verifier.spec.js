@@ -1,9 +1,30 @@
 'use strict'
 
+const { readFileSync } = require('fs')
+const { resolve } = require('path')
 const { test } = require('tap')
 const { install: fakeTime } = require('lolex')
+
 const { createSigner, createVerifier, TokenError } = require('../src')
 const { hashKey } = require('../src/utils')
+
+const privateKeys = {
+  HS: 'secretsecretsecret',
+  ES256: readFileSync(resolve(__dirname, '../benchmarks/keys/es-256-private.key')),
+  ES384: readFileSync(resolve(__dirname, '../benchmarks/keys/es-384-private.key')),
+  ES512: readFileSync(resolve(__dirname, '../benchmarks/keys/es-512-private.key')),
+  RS: readFileSync(resolve(__dirname, '../benchmarks/keys/rs-512-private.key')),
+  PS: readFileSync(resolve(__dirname, '../benchmarks/keys/ps-512-private.key'))
+}
+
+const publicKeys = {
+  HS: 'secretsecretsecret',
+  ES256: readFileSync(resolve(__dirname, '../benchmarks/keys/es-256-public.key')),
+  ES384: readFileSync(resolve(__dirname, '../benchmarks/keys/es-384-public.key')),
+  ES512: readFileSync(resolve(__dirname, '../benchmarks/keys/es-512-public.key')),
+  RS: readFileSync(resolve(__dirname, '../benchmarks/keys/rs-512-public.key')),
+  PS: readFileSync(resolve(__dirname, '../benchmarks/keys/ps-512-public.key'))
+}
 
 function verify(token, options, callback) {
   const verifier = createVerifier({ secret: 'secret', ...options })
@@ -782,6 +803,26 @@ test('caching - async', async t => {
   t.strictDeepEqual(verifier.cache.get(hashKey(token))[0], { a: 1 })
   t.true(verifier.cache.get(hashKey(invalidToken))[0] instanceof TokenError)
 })
+
+for (const type of ['HS', 'ES', 'RS', 'PS']) {
+  for (const bits of ['256', '384', '512']) {
+    const algorithm = `${type}${bits}`
+    const privateKey = privateKeys[type === 'ES' ? algorithm : type]
+    const publicKey = publicKeys[type === 'ES' ? algorithm : type]
+
+    test(`caching - should use the right hash method for storing values - ${algorithm}`, t => {
+      const signer = createSigner({ algorithm, secret: privateKey, noTimestamp: 1 })
+      const verifier = createVerifier({ algorithm, secret: publicKey, cache: true })
+      const token = signer({ a: 1 })
+
+      t.strictDeepEqual(verifier(token), { a: 1 })
+      t.equal(verifier.cache.size, 1)
+      t.equal(Array.from(verifier.cache.keys())[0], hashKey(token, `sha${bits}`))
+
+      t.end()
+    })
+  }
+}
 
 test('caching - should correctly expire cached token using the exp claim', t => {
   const clock = fakeTime({ now: 100000 })
