@@ -21,19 +21,20 @@ const publicKeys = {
   PS: readFileSync(resolve(__dirname, '../benchmarks/keys/ps-public.key'))
 }
 
-test('fastjwt should correcty verify tokens created by jsonwebtoken', t => {
-  for (const type of ['HS', 'ES', 'RS', 'PS']) {
-    for (const bits of ['256', '384', '512']) {
-      const algorithm = `${type}${bits}`
+for (const type of ['HS', 'ES', 'RS', 'PS']) {
+  for (const bits of ['256', '384', '512']) {
+    const algorithm = `${type}${bits}`
+
+    test(`fastjwt should correcty verify tokens created by jsonwebtoken - ${algorithm}`, t => {
       const verify = createVerifier({ algorithm, secret: publicKeys[type] })
       const token = jsonwebtokenSign({ a: 1, b: 2, c: 3 }, privateKeys[type], { algorithm, noTimestamp: true })
 
       t.strictDeepEqual(verify(token), { a: 1, b: 2, c: 3 })
-    }
-  }
 
-  t.end()
-})
+      t.end()
+    })
+  }
+}
 
 test('jsonwebtoken should correcty verify tokens created by fast-jwt', t => {
   for (const type of ['HS', 'ES', 'RS', 'PS']) {
