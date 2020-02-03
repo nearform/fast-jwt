@@ -752,6 +752,18 @@ test('options validation - clockTolerance', t => {
   t.end()
 })
 
+test('options validation - cacheTTL', t => {
+  t.throws(() => createVerifier({ secret: 'secret', cacheTTL: '123' }), {
+    message: 'The cacheTTL option must be a positive number.'
+  })
+
+  t.throws(() => createVerifier({ secret: 'secret', cacheTTL: -1 }), {
+    message: 'The cacheTTL option must be a positive number.'
+  })
+
+  t.end()
+})
+
 test('options validation - encoding', t => {
   t.throws(() => createVerifier({ secret: 'secret', encoding: 123 }), {
     message: 'The encoding option must be a string.'
@@ -823,6 +835,29 @@ for (const type of ['HS', 'ES', 'RS', 'PS']) {
     })
   }
 }
+
+test('caching - should be able to manipulate cache directy', t => {
+  const clock = fakeTime({ now: 100000 })
+
+  const signer = createSigner({ secret: 'secret', expiresIn: 100000 })
+  const verifier = createVerifier({ secret: 'secret', cache: true })
+  const token = signer({ a: 1 })
+
+  t.equal(verifier.cache.size, 0)
+  t.strictDeepEqual(verifier(token), { a: 1, iat: 100, exp: 200 })
+  t.equal(verifier.cache.size, 1)
+  t.strictDeepEqual(verifier.readCacheEntry(token), [{ a: 1, iat: 100, exp: 200 }, 0, 200000])
+  verifier.clearCache()
+  t.equal(verifier.cache.size, 0)
+  verifier.writeCacheEntry(token, 'WHATEVER')
+  t.strictDeepEqual(verifier.readCacheEntry(token), 'WHATEVER')
+  verifier.deleteCacheEntry(token)
+  t.strictDeepEqual(verifier.readCacheEntry(token), null)
+
+  clock.uninstall()
+
+  t.end()
+})
 
 test('caching - should correctly expire cached token using the exp claim', t => {
   const clock = fakeTime({ now: 100000 })
@@ -917,7 +952,7 @@ test('caching - should correctly expire not yet cached token using the nbf claim
   t.equal(verifier.cache.size, 1)
   t.strictDeepEqual(verifier(token), { a: 1, iat: 100, nbf: 300 })
   t.equal(verifier.cache.size, 1)
-  t.strictDeepEqual(verifier.cache.get(hashKey(token)), [{ a: 1, iat: 100, nbf: 300 }, 300000, 0])
+  t.strictDeepEqual(verifier.cache.get(hashKey(token)), [{ a: 1, iat: 100, nbf: 300 }, 300000, 700000])
 
   clock.uninstall()
   t.end()
@@ -1009,7 +1044,7 @@ test('caching - should ignore the nbf and exp when asked to', t => {
   t.equal(verifierNoExp.cache.size, 1)
   t.strictDeepEqual(verifierNoExp(token), { a: 1, iat: 100, nbf: 300, exp: 500 })
   t.equal(verifierNoExp.cache.size, 1)
-  t.strictDeepEqual(verifierNoExp.cache.get(hashKey(token)), [{ a: 1, iat: 100, nbf: 300, exp: 500 }, 300000, 0])
+  t.strictDeepEqual(verifierNoExp.cache.get(hashKey(token)), [{ a: 1, iat: 100, nbf: 300, exp: 500 }, 300000, 700000])
 
   clock.uninstall()
   t.end()

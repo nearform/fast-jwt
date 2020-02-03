@@ -105,6 +105,7 @@ module.exports = function createVerifier(options) {
     complete,
     encoding,
     cache,
+    cacheTTL,
     clockTimestamp,
     clockTolerance,
     ignoreExpiration,
@@ -115,7 +116,7 @@ module.exports = function createVerifier(options) {
     allowedIss,
     allowedSub,
     allowedNonce
-  } = { ...options }
+  } = { cacheTTL: 600000, ...options }
 
   // Validate options
   if (typeof secret !== 'string' && !(secret instanceof Buffer) && typeof secret !== 'function') {
@@ -137,6 +138,10 @@ module.exports = function createVerifier(options) {
 
   if (encoding && typeof encoding !== 'string') {
     throw new TokenError(TokenError.codes.invalidOption, 'The encoding option must be a string.')
+  }
+
+  if (cacheTTL && (typeof cacheTTL !== 'number' || cacheTTL < 0)) {
+    throw new TokenError(TokenError.codes.invalidOption, 'The cacheTTL option must be a positive number.')
   }
 
   if (!Array.isArray(allowedAlgorithms)) {
@@ -178,12 +183,12 @@ module.exports = function createVerifier(options) {
     validators.push({ type: 'string', claim: 'nonce', allowed: ensureStringClaimMatcher(allowedNonce) })
   }
 
-  const decodeJwt = createDecoder({ json, complete: true, encoding, cache })
+  const decodeJwt = createDecoder({ json, complete: true, encoding, cache, cacheTTL })
 
   // Prepare the caching layer
-  let [cacheInstance, cacheGet, cacheSet] = createCache(getCacheSize(cache))
+  let [cacheGet, cacheSet, cacheProperties] = createCache(getCacheSize(cache))
 
-  if (cacheInstance) {
+  if (cacheProperties) {
     const [cacheGetInner, cacheSetInner] = [cacheGet, cacheSet]
 
     cacheGet = function(key) {
@@ -200,9 +205,10 @@ module.exports = function createVerifier(options) {
 
     cacheSet = function(token, payload, result) {
       const value = [result, 0, 0]
+      const hasIat = typeof payload.iat === 'number'
 
       // Add time range of the key
-      if (typeof payload.iat === 'number') {
+      if (hasIat) {
         value[1] = !ignoreNotBefore && typeof payload.nbf === 'number' ? payload.nbf * 1000 : 0
 
         if (!ignoreExpiration) {
@@ -213,6 +219,10 @@ module.exports = function createVerifier(options) {
           }
         }
       }
+
+      // The maximum TTL for the token cannot exceed the configured cacheTTL
+      const maxTTL = (hasIat ? payload.iat * 1000 : (clockTimestamp || Date.now()) + clockTolerance) + cacheTTL
+      value[2] = value[2] === 0 ? maxTTL : Math.min(value[2], maxTTL)
 
       cacheSetInner(token, value)
     }
@@ -303,6 +313,6 @@ module.exports = function createVerifier(options) {
     return promise
   }
 
-  verifier.cache = cacheInstance
+  Object.assign(verifier, cacheProperties)
   return verifier
 }

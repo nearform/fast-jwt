@@ -94,15 +94,27 @@ function createCache(size) {
   let get = () => false
   let set = () => false
 
-  let cache
+  let cacheProperties
 
   if (size) {
-    cache = new Cache(size)
+    const cache = new Cache(size)
     get = readCache.bind(null, cache)
     set = writeCache.bind(null, cache)
+
+    cacheProperties = {
+      cache,
+      clearCache() {
+        cache.clear()
+      },
+      readCacheEntry: get,
+      writeCacheEntry: set,
+      deleteCacheEntry(key) {
+        set(key, null)
+      }
+    }
   }
 
-  return [cache, get, set]
+  return [get, set, cacheProperties]
 }
 
 function handleCachedResult(cached, callback, promise) {
