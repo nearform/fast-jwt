@@ -33,9 +33,9 @@ function log(message) {
 }
 
 async function compareSigning(payload, algorithm, privateKey, publicKey) {
-  const fastjwtSign = createSigner({ algorithm, secret: privateKey, noTimestamp: true })
-  const fastjwtSignAsync = createSigner({ algorithm, secret: async () => privateKey, noTimestamp: true })
-  const fastjwtVerify = createVerifier({ secret: publicKey })
+  const fastjwtSign = createSigner({ algorithm, key: privateKey, noTimestamp: true })
+  const fastjwtSignAsync = createSigner({ algorithm, key: async () => privateKey, noTimestamp: true })
+  const fastjwtVerify = createVerifier({ key: publicKey })
 
   if ((process.env.NODE_DEBUG || '').includes('fast-jwt')) {
     const fastjwtGenerated = fastjwtSign(payload)
@@ -106,10 +106,10 @@ function compareDecoding(token, algorithm) {
 }
 
 function compareVerifying(token, algorithm, publicKey) {
-  const fastjwtVerify = createVerifier({ secret: publicKey })
-  const fastjwtVerifyAsync = createVerifier({ secret: async () => publicKey })
-  const fastjwtCachedVerify = createVerifier({ secret: publicKey, cache: true })
-  const fastjwtCachedVerifyAsync = createVerifier({ secret: async () => publicKey, cache: true })
+  const fastjwtVerify = createVerifier({ key: publicKey })
+  const fastjwtVerifyAsync = createVerifier({ key: async () => publicKey })
+  const fastjwtCachedVerify = createVerifier({ key: publicKey, cache: true })
+  const fastjwtCachedVerifyAsync = createVerifier({ key: async () => publicKey, cache: true })
 
   if ((process.env.NODE_DEBUG || '').includes('fast-jwt')) {
     log('-------')

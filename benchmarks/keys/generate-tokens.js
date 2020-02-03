@@ -17,9 +17,9 @@ const privateKeys = {
 for (const type of ['HS', 'ES', 'RS', 'PS']) {
   for (const bits of ['256', '384', '512']) {
     const algorithm = `${type}${bits}`
-    const privateKey = privateKeys[type === 'ES' ? algorithm : type]
+    const key = privateKeys[type === 'ES' ? algorithm : type]
 
-    const sign = createSigner({ algorithm, secret: privateKey, kid: '123' })
+    const sign = createSigner({ algorithm, key, kid: '123' })
     console.log(`------- ${algorithm} -------`)
     console.log(`${sign({ a: 1, b: 2, c: 3 })}\n`)
   }

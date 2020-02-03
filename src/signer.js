@@ -2,13 +2,13 @@
 
 const { publicKeyAlgorithms, hashAlgorithms, createSignature } = require('./crypto')
 const TokenError = require('./error')
-const { base64UrlEncode, getAsyncSecret, ensurePromiseCallback } = require('./utils')
+const { base64UrlEncode, getAsyncKey, ensurePromiseCallback } = require('./utils')
 
 const supportedAlgorithms = Array.from(new Set([...publicKeyAlgorithms, ...hashAlgorithms, 'none'])).join(', ')
 
 module.exports = function createSigner(options) {
   const {
-    secret,
+    key,
     algorithm,
     encoding,
     noTimestamp,
@@ -34,16 +34,16 @@ module.exports = function createSigner(options) {
   }
 
   if (algorithm === 'none') {
-    if (secret) {
+    if (key) {
       throw new TokenError(
         TokenError.codes.invalidOption,
-        'The secret option must not be provided when the algorithm option is "none".'
+        'The key option must not be provided when the algorithm option is "none".'
       )
     }
-  } else if (!secret || (typeof secret !== 'string' && typeof secret !== 'object' && typeof secret !== 'function')) {
+  } else if (!key || (typeof key !== 'string' && typeof key !== 'object' && typeof key !== 'function')) {
     throw new TokenError(
       TokenError.codes.invalidOption,
-      'The secret option must be a string, buffer, object or callback containing a secret or a private key.'
+      'The key option must be a string, buffer, object or callback containing a secret or a private key.'
     )
   }
 
@@ -102,7 +102,7 @@ module.exports = function createSigner(options) {
 
   // Return the signer
   const signer = function sign(payload, cb) {
-    const [callback, promise] = typeof secret === 'function' ? ensurePromiseCallback(cb) : []
+    const [callback, promise] = typeof key === 'function' ? ensurePromiseCallback(cb) : []
 
     // Prepare header and payload
     // Prepare the header
@@ -148,25 +148,23 @@ module.exports = function createSigner(options) {
     const encodedHeader = base64UrlEncode(Buffer.from(JSON.stringify(header)).toString('base64'))
     const encodedPayload = base64UrlEncode(Buffer.from(finalPayload).toString('base64'))
 
-    // We're get the secret synchronously
+    // We're get the key synchronously
     if (!callback) {
       const encodedSignature =
-        algorithm === 'none' ? '' : base64UrlEncode(createSignature(algorithm, secret, encodedHeader, encodedPayload))
+        algorithm === 'none' ? '' : base64UrlEncode(createSignature(algorithm, key, encodedHeader, encodedPayload))
 
       return `${encodedHeader}.${encodedPayload}.${encodedSignature}`
     }
 
-    getAsyncSecret(secret, header, (err, currentSecret) => {
+    getAsyncKey(key, header, (err, currentKey) => {
       if (err) {
-        const error = TokenError.wrap(err, TokenError.codes.secretFetchingError, 'Cannot fetch secret.')
+        const error = TokenError.wrap(err, TokenError.codes.keyFetchingError, 'Cannot fetch key.')
         return callback(error)
       }
 
       let token
       try {
-        const encodedSignature = base64UrlEncode(
-          createSignature(algorithm, currentSecret, encodedHeader, encodedPayload)
-        )
+        const encodedSignature = base64UrlEncode(createSignature(algorithm, currentKey, encodedHeader, encodedPayload))
 
         token = `${encodedHeader}.${encodedPayload}.${encodedSignature}`
       } catch (e) {

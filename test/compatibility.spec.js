@@ -32,7 +32,7 @@ for (const type of ['ES']) {
     const publicKey = publicKeys[type === 'ES' ? algorithm : type]
 
     test(`fastjwt should correcty verify tokens created by jsonwebtoken - ${algorithm}`, t => {
-      const verify = createVerifier({ algorithm, secret: publicKey.toString() })
+      const verify = createVerifier({ algorithm, key: publicKey.toString() })
       const token = jsonwebtokenSign({ a: 1, b: 2, c: 3 }, privateKey.toString(), { algorithm, noTimestamp: true })
 
       t.strictDeepEqual(verify(token), { a: 1, b: 2, c: 3 })
@@ -41,7 +41,7 @@ for (const type of ['ES']) {
     })
 
     test('jsonwebtoken should correcty verify tokens created by fast-jwt', t => {
-      const signer = createSigner({ algorithm, secret: privateKey, noTimestamp: true })
+      const signer = createSigner({ algorithm, key: privateKey, noTimestamp: true })
       const token = signer({ a: 1, b: 2, c: 3 })
 
       t.strictDeepEqual(jsonwebtokenVerify(token, publicKey, { algorithm }), { a: 1, b: 2, c: 3 })

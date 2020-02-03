@@ -9,8 +9,8 @@ const privateKey = readFileSync(resolve(__dirname, './keys/rs-512-private.key'))
 const publicKey = readFileSync(resolve(__dirname, './keys/rs-512-public.key'))
 
 const { sign: signerJwt, verify: verifierJwt } = require('jsonwebtoken')
-const signerFast = createSigner({ algorithm: 'RS256', secret: async () => privateKey, cache: true })
-const verifierFast = createVerifier({ secret: async () => publicKey, cache: true })
+const signerFast = createSigner({ algorithm: 'RS256', key: async () => privateKey, cache: true })
+const verifierFast = createVerifier({ key: async () => publicKey, cache: true })
 
 fastify.post('/sign-jwt', {
   schema: {

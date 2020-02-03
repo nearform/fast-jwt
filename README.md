@@ -22,7 +22,7 @@ npm install fast-jwt
 
 Create a signer function by calling `createSigner` and providing one or more of the following options:
 
-- `secret`: A string, buffer or object containing the secret for `HS*` algorithms or the PEM encoded public key for `RS*`, `PS*` and `ES*` algorithms (whose format is defined by the Node's crypto module documentation). The secret can also be a function accepting a Node style callback or a function returning a promise. This is the only mandatory option.
+- `key`: A string, buffer or object containing the secret for `HS*` algorithms or the PEM encoded public key for `RS*`, `PS*` and `ES*` algorithms (whose format is defined by the Node's crypto module documentation). The key can also be a function accepting a Node style callback or a function returning a promise. This is the only mandatory option.
 - `algorithm`: The algorithm to use to sign the token, default is `HS256`.
 - `encoding`: The token encoding, default is `utf-8`.
 - `cache`: A positive number specifying the size of the signed tokens cache (using LRU strategy). Setting to `true` is equivalent to provide the size `1000`. When enabled, as you can see in the benchmarks section below, performances dramatically improve. A error will be thrown if this option is provided and the `noTimestamp` option is not `true` or any of the `mutatePayload`, `expiresIn` or `notBefore` are set.
@@ -43,7 +43,7 @@ The signer is a function which accepts a payload and returns the token.
 
 The payload must be a object, a buffer or a string. If not a object, all the options of the signer which modify the the payload will be ignored. If `iat` claim is already present, it won't be overwritten with the current timestamp.
 
-If the `secret` option is a function, the signer will also accept a Node style callback and will return a promise, supporting therefore both callback and async/await styles.
+If the `key` option is a function, the signer will also accept a Node style callback and will return a promise, supporting therefore both callback and async/await styles.
 
 #### Example
 
@@ -51,20 +51,20 @@ If the `secret` option is a function, the signer will also accept a Node style c
 const {createSigner} = require('fast-jwt')
 
 // Sync style
-const signSync = createSigner({ secret: 'secret' })
+const signSync = createSigner({ key: 'secret' })
 const token = signSync({a: 1, b: 2, c: 3})
 // => eyJhbGciOiJIUzUxMiIsInR5cCI6IkpXVCJ9.eyJhIjoxLCJiIjoyLCJjIjozLCJpYXQiOjE1Nzk1MjEyMTJ9.mIcxteEVjbh2MnKQ3EQlojZojGSyA_guqRBYHQURcfnCSSBTT2OShF8lo9_ogjAv-5oECgmCur_cDWB7x3X53g
 
 // Callback style
-const signWithCallback = createSigner({ secret: (callback) => callback(null, 'secret') })
+const signWithCallback = createSigner({ key: (callback) => callback(null, 'secret') })
 
 signWithCallback({a: 1, b: 2, c: 3}, (err, token) => {
   // token === eyJhbGciOiJIUzUxMiIsInR5cCI6IkpXVCJ9.eyJhIjoxLCJiIjoyLCJjIjozLCJpYXQiOjE1Nzk1MjEyMTJ9.mIcxteEVjbh2MnKQ3EQlojZojGSyA_guqRBYHQURcfnCSSBTT2OShF8lo9_ogjAv-5oECgmCur_cDWB7x3X53g
 })
 
-// Promise style - Note that the secret function style and the signer function style are unrelated
+// Promise style - Note that the key function style and the signer function style are unrelated
 async function test() {
-  const signWithPromise = createSigner({ async secret(): => 'secret' })
+  const signWithPromise = createSigner({ async key(): => 'secret' })
 
   const token = await signWithPromise({a: 1, b: 2, c: 3})
   // => eyJhbGciOiJIUzUxMiIsInR5cCI6IkpXVCJ9.eyJhIjoxLCJiIjoyLCJjIjozLCJpYXQiOjE1Nzk1MjEyMTJ9.mIcxteEVjbh2MnKQ3EQlojZojGSyA_guqRBYHQURcfnCSSBTT2OShF8lo9_ogjAv-5oECgmCur_cDWB7x3X53g
@@ -111,7 +111,7 @@ const sections = decodeComplete(token)
 
 Create a verifier function by calling `createVerifier` and providing one or more of the following options:
 
-- `secret`: A string, buffer or object containing the secret for `HS*` algorithms or the PEM encoded public key for `RS*`, `PS*` and `ES*` algorithms (whose format is defined by the Node's crypto module documentation). The secret can also be a function accepting a Node style callback or a function returning a promise. This is the only mandatory option, which must NOT be provided if the token algorithm is `none`.
+- `key`: A string, buffer or object containing the secret for `HS*` algorithms or the PEM encoded public key for `RS*`, `PS*` and `ES*` algorithms (whose format is defined by the Node's crypto module documentation). The key can also be a function accepting a Node style callback or a function returning a promise. This is the only mandatory option, which must NOT be provided if the token algorithm is `none`.
 - `algorithms`: List of strings with the names of the allowed algorithms. By default, all algorithms are accepted.
 - `complete`: Return an object with the decoded header, payload, signature and input (the token part before the signature), instead of just the content of the payload. Default is `false`.
 - `json`: Always parse the payload as JSON even if the `typ` claim of the header is not `JWT`. Default is `true`.
@@ -131,7 +131,7 @@ Create a verifier function by calling `createVerifier` and providing one or more
 
 The verifier is a function which accepts a token (as Buffer or string) and returns the payload or the sections of the token.
 
-If the `secret` option is a function, the signer will also accept a Node style callback and will return a promise, supporting therefore both callback and async/await styles.
+If the `key` option is a function, the signer will also accept a Node style callback and will return a promise, supporting therefore both callback and async/await styles.
 
 #### Examples
 
@@ -141,12 +141,12 @@ const token =
   'eyJhbGciOiJIUzUxMiIsInR5cCI6IkpXVCJ9.eyJhIjoxLCJiIjoyLCJjIjozLCJpYXQiOjE1Nzk1MjEyMTJ9.mIcxteEVjbh2MnKQ3EQlojZojGSyA_guqRBYHQURcfnCSSBTT2OShF8lo9_ogjAv-5oECgmCur_cDWB7x3X53g'
 
 // Sync style
-const verifySync = createVerifier({ secret: 'secret' })
+const verifySync = createVerifier({ key: 'secret' })
 const payload = verifySync(token)
 // => { a: 1, b: 2, c: 3, iat: 1579521212 }
 
 // Callback style with complete return
-const verifyWithCallback = createVerifier({ secret: callback => callback(null, 'secret'), complete: true })
+const verifyWithCallback = createVerifier({ key: callback => callback(null, 'secret'), complete: true })
 
 verifyWithCallback(token, (err, sections) => {
   /*
@@ -159,9 +159,9 @@ verifyWithCallback(token, (err, sections) => {
 */
 })
 
-// Promise style - Note that the secret function style and the verifier function style are unrelated
+// Promise style - Note that the key function style and the verifier function style are unrelated
 async function test() {
-  const verifyWithPromise = createVerifier({ async secret(): => 'secret' })
+  const verifyWithPromise = createVerifier({ async key(): => 'secret' })
 
   const payload = await verifyWithPromise(token)
   // => { a: 1, b: 2, c: 3, iat: 1579521212 }

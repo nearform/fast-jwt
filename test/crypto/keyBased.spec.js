@@ -32,9 +32,9 @@ for (const type of ['RS', 'PS', 'ES']) {
     const privateKey = privateKeys[type === 'ES' ? algorithm : type]
     const publicKey = publicKeys[type === 'ES' ? algorithm : type]
 
-    test(`${algorithm} based tokens round trip with buffer secrets`, t => {
-      const token = createSigner({ algorithm, secret: privateKey })({ payload: 'PAYLOAD' })
-      const verified = createVerifier({ secret: publicKey })(token)
+    test(`${algorithm} based tokens round trip with buffer keys`, t => {
+      const token = createSigner({ algorithm, key: privateKey })({ payload: 'PAYLOAD' })
+      const verified = createVerifier({ key: publicKey })(token)
 
       t.equal(verified.payload, 'PAYLOAD')
       t.true(verified.iat >= start)
@@ -43,11 +43,11 @@ for (const type of ['RS', 'PS', 'ES']) {
       t.end()
     })
 
-    test(`${algorithm} based tokens round trip with string secrets`, t => {
-      const token = createSigner({ algorithm, secret: privateKey.toString('utf8') })({
+    test(`${algorithm} based tokens round trip with string keys`, t => {
+      const token = createSigner({ algorithm, key: privateKey.toString('utf8') })({
         payload: 'PAYLOAD'
       })
-      const verified = createVerifier({ algorithms: [algorithm], secret: publicKey.toString('utf8') })(token)
+      const verified = createVerifier({ algorithms: [algorithm], key: publicKey.toString('utf8') })(token)
 
       t.equal(verified.payload, 'PAYLOAD')
       t.true(verified.iat >= start)
@@ -57,14 +57,14 @@ for (const type of ['RS', 'PS', 'ES']) {
     })
 
     if (type !== 'PS') {
-      test(`${algorithm} based tokens round trip with object secrets`, t => {
+      test(`${algorithm} based tokens round trip with object keys`, t => {
         const token = createSigner({
           algorithm,
-          secret: { key: privateKey.toString('utf8') }
+          key: { key: privateKey.toString('utf8') }
         })({
           payload: 'PAYLOAD'
         })
-        const verified = createVerifier({ algorithms: [algorithm], secret: publicKey.toString('utf8') })(token)
+        const verified = createVerifier({ algorithms: [algorithm], key: publicKey.toString('utf8') })(token)
 
         t.equal(verified.payload, 'PAYLOAD')
         t.true(verified.iat >= start)
@@ -76,46 +76,46 @@ for (const type of ['RS', 'PS', 'ES']) {
 
     test(`${algorithm} based tokens should validate the private key`, async t => {
       await t.rejects(
-        createSigner({ algorithm, secret: async () => 123 })({ payload: 'PAYLOAD' }),
+        createSigner({ algorithm, key: async () => 123 })({ payload: 'PAYLOAD' }),
         {
           message: 'Cannot create the signature.',
-          originalError: { message: `The secret for algorithm ${algorithm} must be a string, a object or a buffer.` }
+          originalError: { message: `The key for algorithm ${algorithm} must be a string, a object or a buffer.` }
         },
         null
       )
 
       await t.rejects(
-        createSigner({ algorithm, secret: async () => ({ key: 123, passphrase: 123 }) })({
+        createSigner({ algorithm, key: async () => ({ key: 123, passphrase: 123 }) })({
           payload: 'PAYLOAD'
         }),
         {
           message: 'Cannot create the signature.',
           originalError: {
-            message: `The secret object for algorithm ${algorithm} must have the key property as string or buffer containing the private key.`
+            message: `The key object for algorithm ${algorithm} must have the key property as string or buffer containing the private key.`
           }
         }
       )
 
       await t.rejects(
-        createSigner({ algorithm, secret: async () => ({ key: '123', passphrase: 123 }) })({
+        createSigner({ algorithm, key: async () => ({ key: '123', passphrase: 123 }) })({
           payload: 'PAYLOAD'
         }),
         {
           message: 'Cannot create the signature.',
           originalError: {
-            message: `The secret object for algorithm ${algorithm} must have the passphrase property as string or buffer containing the private key.`
+            message: `The key object for algorithm ${algorithm} must have the passphrase property as string or buffer containing the private key.`
           }
         }
       )
     })
 
     test(`${algorithm} based tokens should validate the public key`, async t => {
-      const token = createSigner({ algorithm, secret: privateKey })({ payload: 'PAYLOAD' })
+      const token = createSigner({ algorithm, key: privateKey })({ payload: 'PAYLOAD' })
 
-      await t.rejects(createVerifier({ algorithms: [algorithm], secret: async () => 123 })(token), {
+      await t.rejects(createVerifier({ algorithms: [algorithm], key: async () => 123 })(token), {
         message: 'Cannot verify the signature.',
         originalError: {
-          message: `The secret for algorithm ${algorithm} must be a string or a buffer containing the public key.`
+          message: `The key for algorithm ${algorithm} must be a string or a buffer containing the public key.`
         }
       })
     })

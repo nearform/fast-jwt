@@ -17,7 +17,7 @@ const publicKeyMatcher = /BEGIN (?:PUBLIC KEY|CERTIFICATE)/
 function validateSecretKey(algorithm, key) {
   if (!(key instanceof Buffer) && typeof key !== 'string') {
     throw new TokenError(
-      TokenError.codes.invalidSecret,
+      TokenError.codes.invalidKey,
       `The secret for algorithm ${algorithm} must be a string or a buffer.`
     )
   }
@@ -27,23 +27,23 @@ function validatePrivateKey(algorithm, key) {
   if (typeof key === 'object') {
     if (typeof key.key !== 'string' && !(key instanceof Buffer)) {
       throw new TokenError(
-        TokenError.codes.invalidSecret,
-        `The secret object for algorithm ${algorithm} must have the key property as string or buffer containing the private key.`
+        TokenError.codes.invalidKey,
+        `The key object for algorithm ${algorithm} must have the key property as string or buffer containing the private key.`
       )
     }
 
     if (key.passphrase && typeof key.passphrase !== 'string') {
       throw new TokenError(
-        TokenError.codes.invalidSecret,
-        `The secret object for algorithm ${algorithm} must have the passphrase property as string or buffer containing the private key.`
+        TokenError.codes.invalidKey,
+        `The key object for algorithm ${algorithm} must have the passphrase property as string or buffer containing the private key.`
       )
     }
   }
 
   if (typeof key !== 'string' && typeof key !== 'object' && !(key instanceof Buffer)) {
     throw new TokenError(
-      TokenError.codes.invalidSecret,
-      `The secret for algorithm ${algorithm} must be a string, a object or a buffer.`
+      TokenError.codes.invalidKey,
+      `The key for algorithm ${algorithm} must be a string, a object or a buffer.`
     )
   }
 }
@@ -51,25 +51,25 @@ function validatePrivateKey(algorithm, key) {
 function validatePublicKey(algorithm, key) {
   if (!(key instanceof Buffer) && typeof key !== 'string') {
     throw new TokenError(
-      TokenError.codes.invalidSecret,
-      `The secret for algorithm ${algorithm} must be a string or a buffer containing the public key.`
+      TokenError.codes.invalidKey,
+      `The key for algorithm ${algorithm} must be a string or a buffer containing the public key.`
     )
   }
 }
 
-function getSupportedAlgorithms(secret) {
-  const secretString = secret instanceof Buffer ? secret.toString('utf8') : secret
+function getSupportedAlgorithms(key) {
+  const keyString = key instanceof Buffer ? key.toString('utf8') : key
 
-  if (!secretString) {
+  if (!keyString) {
     return ['none']
-  } else if (secretString.match(publicKeyMatcher)) {
+  } else if (keyString.match(publicKeyMatcher)) {
     return publicKeyAlgorithms
   }
 
   return hashAlgorithms
 }
 
-function createSignature(algorithm, secret, header, payload) {
+function createSignature(algorithm, key, header, payload) {
   try {
     const type = algorithm.slice(0, 2)
     const bits = algorithm.slice(2)
@@ -79,12 +79,12 @@ function createSignature(algorithm, secret, header, payload) {
     switch (type) {
       case 'RS':
       case 'ES':
-        validatePrivateKey(algorithm, secret)
+        validatePrivateKey(algorithm, key)
 
         signer = createSign(`RSA-SHA${bits}`)
         signer.update(input)
 
-        signature = signer.sign(secret, 'base64')
+        signature = signer.sign(key, 'base64')
 
         if (type === 'ES') {
           signature = derToJose(signature, `ES${bits}`).toString('base64')
@@ -92,14 +92,14 @@ function createSignature(algorithm, secret, header, payload) {
 
         break
       case 'PS':
-        validatePrivateKey(algorithm, secret)
+        validatePrivateKey(algorithm, key)
 
         signer = createSign(`RSA-SHA${bits}`)
         signer.update(input)
 
         signature = signer.sign(
           {
-            key: secret,
+            key: key,
             padding: RSA_PKCS1_PSS_PADDING,
             saltLength: RSA_PSS_SALTLEN_DIGEST
           },
@@ -108,9 +108,9 @@ function createSignature(algorithm, secret, header, payload) {
         break
       default:
         // HS
-        validateSecretKey(algorithm, secret)
+        validateSecretKey(algorithm, key)
 
-        signer = createHmac(`SHA${bits}`, secret)
+        signer = createHmac(`SHA${bits}`, key)
         signer.update(input)
         signature = signer.digest('base64')
     }
@@ -121,7 +121,7 @@ function createSignature(algorithm, secret, header, payload) {
   }
 }
 
-function verifySignature(algorithm, secret, input, signature) {
+function verifySignature(algorithm, key, input, signature) {
   try {
     const type = algorithm.slice(0, 2)
     const bits = algorithm.slice(2)
@@ -130,25 +130,25 @@ function verifySignature(algorithm, secret, input, signature) {
     switch (type) {
       case 'ES':
       case 'RS':
-        validatePublicKey(algorithm, secret)
+        validatePublicKey(algorithm, key)
 
         verifier = createVerify(`RSA-SHA${bits}`)
         verifier.update(input)
 
         return verifier.verify(
-          secret,
+          key,
           type === 'ES' ? joseToDer(signature, `ES${bits}`).toString('base64') : signature,
           'base64'
         )
       case 'PS':
-        validatePublicKey(algorithm, secret)
+        validatePublicKey(algorithm, key)
 
         verifier = createVerify(`RSA-SHA${bits}`)
         verifier.update(input)
 
         return verifier.verify(
           {
-            key: secret,
+            key: key,
             padding: RSA_PKCS1_PSS_PADDING,
             saltLength: RSA_PSS_SALTLEN_DIGEST
           },
@@ -157,9 +157,9 @@ function verifySignature(algorithm, secret, input, signature) {
         )
       default:
         // HS
-        validateSecretKey(algorithm, secret)
+        validateSecretKey(algorithm, key)
 
-        verifier = createHmac(`SHA${bits}`, secret)
+        verifier = createHmac(`SHA${bits}`, key)
         verifier.update(input)
 
         return verifier.digest('base64') === signature

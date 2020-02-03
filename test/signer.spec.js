@@ -5,7 +5,7 @@ const { test } = require('tap')
 const { createSigner, TokenError } = require('../src')
 
 function sign(payload, options, callback) {
-  const signer = createSigner({ secret: 'secret', ...options })
+  const signer = createSigner({ key: 'secret', ...options })
   return signer(payload, callback)
 }
 
@@ -23,39 +23,36 @@ test('it correctly returns a token - sync', t => {
   )
 
   t.equal(
-    sign({ a: 1 }, { noTimestamp: true, algorithm: 'none', secret: null }),
+    sign({ a: 1 }, { noTimestamp: true, algorithm: 'none', key: null }),
     'eyJhbGciOiJub25lIiwidHlwIjoiSldUIn0.eyJhIjoxfQ.'
   )
 
   t.end()
 })
 
-test('it correctly returns a token - async - secret with callback', async t => {
+test('it correctly returns a token - async - key with callback', async t => {
   t.equal(
-    await sign(
-      { a: 1 },
-      { secret: (_h, callback) => setTimeout(() => callback(null, 'secret'), 10), noTimestamp: true }
-    ),
+    await sign({ a: 1 }, { key: (_h, callback) => setTimeout(() => callback(null, 'secret'), 10), noTimestamp: true }),
     'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxfQ.57TF7smP9XDhIexBqPC-F1toZReYZLWb_YRU5tv0sxM'
   )
 })
 
-test('it correctly returns a token - async - secret as promise', async t => {
+test('it correctly returns a token - async - key as promise', async t => {
   t.equal(
-    await sign({ a: 1 }, { secret: async () => 'secret', noTimestamp: true }),
+    await sign({ a: 1 }, { key: async () => 'secret', noTimestamp: true }),
     'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxfQ.57TF7smP9XDhIexBqPC-F1toZReYZLWb_YRU5tv0sxM'
   )
 })
 
-test('it correctly returns a token - async - static secret', async t => {
+test('it correctly returns a token - async - static key', async t => {
   t.equal(
     await sign({ a: 1 }, { noTimestamp: true }),
     'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxfQ.57TF7smP9XDhIexBqPC-F1toZReYZLWb_YRU5tv0sxM'
   )
 })
 
-test('it correctly returns a token - callback - secret as promise', t => {
-  sign({ a: 1 }, { secret: async () => 'secret', noTimestamp: true }, (error, token) => {
+test('it correctly returns a token - callback - key as promise', t => {
+  sign({ a: 1 }, { key: async () => 'secret', noTimestamp: true }, (error, token) => {
     t.type(error, 'null')
     t.equal(token, 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxfQ.57TF7smP9XDhIexBqPC-F1toZReYZLWb_YRU5tv0sxM')
     t.end()
@@ -244,20 +241,20 @@ test('it correctly handle errors - async callback', async t => {
     sign(
       { a: 1 },
       {
-        secret: async () => {
+        key: async () => {
           throw new Error('FAILED')
         },
         noTimestamp: true
       }
     ),
-    { message: 'Cannot fetch secret.' }
+    { message: 'Cannot fetch key.' }
   )
 
   await t.rejects(
     sign(
       { a: 1 },
       {
-        secret: async () => {
+        key: async () => {
           throw new TokenError(null, 'FAILED')
         },
         noTimestamp: true
@@ -271,14 +268,14 @@ test('it correctly handle errors - callback', t => {
   sign(
     { a: 1 },
     {
-      secret: (header, callback) => {
+      key: (header, callback) => {
         callback(new Error('FAILED'))
       },
       noTimestamp: true
     },
     (error, token) => {
       t.true(error instanceof TokenError)
-      t.equal(error.message, 'Cannot fetch secret.')
+      t.equal(error.message, 'Cannot fetch key.')
 
       t.end()
     }
@@ -289,7 +286,7 @@ test('it correctly handle errors - evented callback', t => {
   sign(
     { a: 1 },
     {
-      secret: (header, callback) => {
+      key: (header, callback) => {
         process.nextTick(() => callback(null, 'FAILED'))
       },
       noTimestamp: true,
@@ -304,9 +301,9 @@ test('it correctly handle errors - evented callback', t => {
   )
 })
 
-test('returns a promise according to secret option', t => {
-  const s1 = createSigner({ secret: 'secret' })('PAYLOAD')
-  const s2 = createSigner({ secret: async () => 'secret' })('PAYLOAD')
+test('returns a promise according to key option', t => {
+  const s1 = createSigner({ key: 'secret' })('PAYLOAD')
+  const s2 = createSigner({ key: async () => 'secret' })('PAYLOAD')
 
   t.true(typeof s1.then === 'undefined')
   t.true(typeof s2.then === 'function')
@@ -320,11 +317,11 @@ test('returns a promise according to secret option', t => {
 })
 
 test('payload validation', t => {
-  t.throws(() => createSigner({ secret: 'secret' })(123), {
+  t.throws(() => createSigner({ key: 'secret' })(123), {
     message: 'The payload must be a object, a string or a buffer.'
   })
 
-  t.rejects(async () => createSigner({ secret: () => 'secret' })(123), {
+  t.rejects(async () => createSigner({ key: () => 'secret' })(123), {
     message: 'The payload must be a object, a string or a buffer.'
   })
 
@@ -332,7 +329,7 @@ test('payload validation', t => {
 })
 
 test('options validation - algorithm', t => {
-  t.throws(() => createSigner({ secret: 'secret', algorithm: 'FOO' }), {
+  t.throws(() => createSigner({ key: 'secret', algorithm: 'FOO' }), {
     message:
       'The algorithm option must be one of the following values: RS256, RS384, RS512, ES256, ES384, ES512, PS256, PS384, PS512, HS256, HS384, HS512, none.'
   })
@@ -340,20 +337,20 @@ test('options validation - algorithm', t => {
   t.end()
 })
 
-test('options validation - secret', t => {
-  t.throws(() => createSigner({ secret: 123 }), {
-    message: 'The secret option must be a string, buffer, object or callback containing a secret or a private key.'
+test('options validation - key', t => {
+  t.throws(() => createSigner({ key: 123 }), {
+    message: 'The key option must be a string, buffer, object or callback containing a secret or a private key.'
   })
 
-  t.throws(() => createSigner({ algorithm: 'none', secret: 123 }), {
-    message: 'The secret option must not be provided when the algorithm option is "none".'
+  t.throws(() => createSigner({ algorithm: 'none', key: 123 }), {
+    message: 'The key option must not be provided when the algorithm option is "none".'
   })
 
   t.end()
 })
 
 test('options validation - encoding', t => {
-  t.throws(() => createSigner({ secret: 'secret', encoding: 123 }), {
+  t.throws(() => createSigner({ key: 'secret', encoding: 123 }), {
     message: 'The encoding option must be a string.'
   })
 
@@ -361,11 +358,11 @@ test('options validation - encoding', t => {
 })
 
 test('options validation - clockTimestamp', t => {
-  t.throws(() => createSigner({ secret: 'secret', clockTimestamp: '123' }), {
+  t.throws(() => createSigner({ key: 'secret', clockTimestamp: '123' }), {
     message: 'The clockTimestamp option must be a positive number.'
   })
 
-  t.throws(() => createSigner({ secret: 'secret', clockTimestamp: -1 }), {
+  t.throws(() => createSigner({ key: 'secret', clockTimestamp: -1 }), {
     message: 'The clockTimestamp option must be a positive number.'
   })
 
@@ -373,11 +370,11 @@ test('options validation - clockTimestamp', t => {
 })
 
 test('options validation - expiresIn', t => {
-  t.throws(() => createSigner({ secret: 'secret', expiresIn: '123' }), {
+  t.throws(() => createSigner({ key: 'secret', expiresIn: '123' }), {
     message: 'The expiresIn option must be a positive number.'
   })
 
-  t.throws(() => createSigner({ secret: 'secret', expiresIn: -1 }), {
+  t.throws(() => createSigner({ key: 'secret', expiresIn: -1 }), {
     message: 'The expiresIn option must be a positive number.'
   })
 
@@ -385,11 +382,11 @@ test('options validation - expiresIn', t => {
 })
 
 test('options validation - notBefore', t => {
-  t.throws(() => createSigner({ secret: 'secret', notBefore: '123' }), {
+  t.throws(() => createSigner({ key: 'secret', notBefore: '123' }), {
     message: 'The notBefore option must be a positive number.'
   })
 
-  t.throws(() => createSigner({ secret: 'secret', notBefore: -1 }), {
+  t.throws(() => createSigner({ key: 'secret', notBefore: -1 }), {
     message: 'The notBefore option must be a positive number.'
   })
 
@@ -397,7 +394,7 @@ test('options validation - notBefore', t => {
 })
 
 test('options validation - aud', t => {
-  t.throws(() => createSigner({ secret: 'secret', aud: 123 }), {
+  t.throws(() => createSigner({ key: 'secret', aud: 123 }), {
     message: 'The aud option must be a string or an array of strings.'
   })
 
@@ -406,7 +403,7 @@ test('options validation - aud', t => {
 
 for (const option of ['jti', 'iss', 'sub', 'nonce', 'kid']) {
   test(`options validation - ${option}`, t => {
-    t.throws(() => createSigner({ secret: 'secret', [option]: 123 }), {
+    t.throws(() => createSigner({ key: 'secret', [option]: 123 }), {
       message: `The ${option} option must be a string.`
     })
 
@@ -415,7 +412,7 @@ for (const option of ['jti', 'iss', 'sub', 'nonce', 'kid']) {
 }
 
 test('options validation - header', t => {
-  t.throws(() => createSigner({ secret: 'secret', header: 123 }), {
+  t.throws(() => createSigner({ key: 'secret', header: 123 }), {
     message: 'The header option must be a object.'
   })
 

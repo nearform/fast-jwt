@@ -23,11 +23,11 @@ function base64UrlDecode(base64url) {
     .replace(decoderReplacer, c => decoderMap[c])
 }
 
-function getAsyncSecret(handler, header, callback) {
+function getAsyncKey(handler, header, callback) {
   const result = handler(header, callback)
 
   if (result && typeof result.then === 'function') {
-    result.then(secret => callback(null, secret)).catch(callback)
+    result.then(key => callback(null, key)).catch(callback)
   }
 }
 
@@ -139,7 +139,7 @@ module.exports = {
   defaultCacheSize,
   base64UrlDecode,
   base64UrlEncode,
-  getAsyncSecret,
+  getAsyncKey,
   ensurePromiseCallback,
   getCacheSize,
   createCache,

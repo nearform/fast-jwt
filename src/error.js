@@ -21,15 +21,15 @@ TokenError.codes = {
   invalidAlgorithm: 'FAST_JWT_INVALID_ALGORITHM',
   invalidClaimType: 'FAST_JWT_INVALID_CLAIM_TYPE',
   invalidClaimValue: 'FAST_JWT_INVALID_CLAIM_VALUE',
-  invalidSecret: 'FAST_JWT_INVALID_SECRET',
+  invalidKey: 'FAST_JWT_INVALID_KEY',
   invalidSignature: 'FAST_JWT_INVALID_SIGNATURE',
   malformed: 'FAST_JWT_MALFORMED',
   inactive: 'FAST_JWT_INACTIVE',
   expired: 'FAST_JWT_EXPIRED',
-  missingSecret: 'FAST_JWT_MISSING_SECRET',
-  secretFetchingError: 'FAST_JWT_SECRET_FETCHING_ERROR',
-  signError: 'FAST_JWT_SECRET_SIGN_ERROR',
-  verifyError: 'FAST_JWT_SECRET_VERIFY_ERROR'
+  missingKey: 'FAST_JWT_MISSING_KEY',
+  keyFetchingError: 'FAST_JWT_KEY_FETCHING_ERROR',
+  signError: 'FAST_JWT_SIGN_ERROR',
+  verifyError: 'FAST_JWT__VERIFY_ERROR'
 }
 
 TokenError.wrap = function(originalError, code, message) {
