@@ -30,16 +30,17 @@
   "main": "src/index.js",
   "scripts": {
     "prepublishOnly": "npm run ci",
+    "postpublish": "git push origin && git push origin -f --tags",
     "ci": "npm run lint && tap --no-color --reporter=spec --coverage-report=json --coverage-report=text --branches 90 --functions 90 --lines 90 --statements 90 test/*.spec.js test/**/*.spec.js",
     "lint": "eslint src/**/*.js test/**/*.js",
     "test": "tap --reporter=spec --coverage-report=html --coverage-report=text --no-browser test/*.spec.js test/**/*.spec.js",
     "test:watch": "tap --watch --reporter=spec --coverage-report=html --coverage-report=text --no-browser test/*.spec.js test/**/*.spec.js",
-    "test:generate-keys": "cd benchmarks/keys && sh generate-keys.sh",
-    "postpublish": "git push origin && git push origin -f --tags",
-    "benchmark:sign": "cd benchmarks && node sign.js",
-    "benchmark:decode": "cd benchmarks && node decode.js",
-    "benchmark:verify": "cd benchmarks && node verify.js",
-    "benchmark:auth0": "cd benchmarks && node auth0.js"
+    "test:generate-keys": "node benchmarks/keys/generate-keys.js",
+    "test:generate-tokens": "node benchmarks/keys/generate-tokens.js",
+    "benchmark:sign": "node benchmarks/sign.js",
+    "benchmark:decode": "node benchmarks/decode.js",
+    "benchmark:verify": "node benchmarks/verify.js",
+    "benchmark:auth0": "node benchmarks/auth0.js"
   },
   "dependencies": {
     "ecdsa-sig-formatter": "^1.0.11",

@@ -197,7 +197,7 @@ Decoded and verified tokens are always cached. If the decoding fails once, the e
 
 For verified tokens, caching considers the time sensitive claims of the token (`iat`, `nbf` and `exp`) and make sure the verification is retried after a token becomes valid or after a token becomes expired.
 
-Performances improvements varies by uses cases and by the type of the operation performed.
+Performances improvements varies by uses cases and by the type of the operation performed and the algorithm used.
 
 ## Benchmarks
 

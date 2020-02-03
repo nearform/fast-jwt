@@ -8,9 +8,8 @@ const { compareVerifying, saveLogs } = require('./utils')
 const hsToken =
   'eyJhbGciOiJIUzUxMiIsInR5cCI6IkpXVCJ9.eyJhIjoxLCJiIjoyLCJjIjozLCJpYXQiOjE1Nzk1MjEyMTJ9.mIcxteEVjbh2MnKQ3EQlojZojGSyA_guqRBYHQURcfnCSSBTT2OShF8lo9_ogjAv-5oECgmCur_cDWB7x3X53g'
 /*
-  Remember to update the following tokens when you regenerate the keys by running:
-
-  NODE_DEBUG=fast-jwt npm run benchmark:sign
+  Regenerate these tokens after regenerating the keys
+  by running `npm run generate-tokens` and getting the ES512, RS512 and PS512 tokens
 */
 const esToken =
   'eyJhbGciOiJFUzUxMiIsInR5cCI6IkpXVCJ9.eyJhIjoxLCJiIjoyLCJjIjozLCJpYXQiOjE1Nzk1MjEyMzd9.AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAKTpS291yG8D4qZDAViA7FZrisOAovyytEyK80nYyTtsAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAKfxaw6zzSnY3W8TzHgp-z6uPHqRfXfuPmEzbFycuoBA'
