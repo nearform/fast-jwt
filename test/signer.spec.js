@@ -1,8 +1,28 @@
 'use strict'
 
+const { readFileSync } = require('fs')
+const { resolve } = require('path')
 const { test } = require('tap')
 
-const { createSigner, TokenError } = require('../src')
+const { createSigner, createVerifier, TokenError } = require('../src')
+
+const privateKeys = {
+  HS: 'secretsecretsecret',
+  ES256: readFileSync(resolve(__dirname, '../benchmarks/keys/es-256-private.key')),
+  ES384: readFileSync(resolve(__dirname, '../benchmarks/keys/es-384-private.key')),
+  ES512: readFileSync(resolve(__dirname, '../benchmarks/keys/es-512-private.key')),
+  RS: readFileSync(resolve(__dirname, '../benchmarks/keys/rs-512-private.key')),
+  PS: readFileSync(resolve(__dirname, '../benchmarks/keys/ps-512-private.key'))
+}
+
+const publicKeys = {
+  HS: 'secretsecretsecret',
+  ES256: readFileSync(resolve(__dirname, '../benchmarks/keys/es-256-public.key')),
+  ES384: readFileSync(resolve(__dirname, '../benchmarks/keys/es-384-public.key')),
+  ES512: readFileSync(resolve(__dirname, '../benchmarks/keys/es-512-public.key')),
+  RS: readFileSync(resolve(__dirname, '../benchmarks/keys/rs-512-public.key')),
+  PS: readFileSync(resolve(__dirname, '../benchmarks/keys/ps-512-public.key'))
+}
 
 function sign(payload, options, callback) {
   const signer = createSigner({ key: 'secret', ...options })
@@ -57,6 +77,41 @@ test('it correctly returns a token - callback - key as promise', t => {
     t.equal(token, 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxfQ.57TF7smP9XDhIexBqPC-F1toZReYZLWb_YRU5tv0sxM')
     t.end()
   })
+})
+
+test('it correctly autodetects the algorithm depending on the secret provided', t => {
+  const hsVerifier = createVerifier({ complete: true, key: publicKeys.HS, algorithm: 'HS256' })
+  const rsVerifier = createVerifier({ complete: true, key: publicKeys.RS, algorithm: 'RS256' })
+  const psVerifier = createVerifier({ complete: true, key: publicKeys.PS, algorithm: 'PS256' })
+  const es256Verifier = createVerifier({ complete: true, key: publicKeys.ES256, algorithm: 'ES256' })
+  const es384Verifier = createVerifier({ complete: true, key: publicKeys.ES384, algorithm: 'ES384' })
+  const es512Verifier = createVerifier({ complete: true, key: publicKeys.ES512, algorithm: 'ES512' })
+
+  let token = createSigner({ key: privateKeys.HS })({ a: 1 })
+  let verification = hsVerifier(token)
+  t.is(verification.header.alg, 'HS256')
+
+  token = createSigner({ key: privateKeys.RS })({ a: 1 })
+  verification = rsVerifier(token)
+  t.is(verification.header.alg, 'RS256')
+
+  token = createSigner({ key: privateKeys.PS })({ a: 1 })
+  verification = psVerifier(token)
+  t.is(verification.header.alg, 'RS256')
+
+  token = createSigner({ key: privateKeys.ES256 })({ a: 1 })
+  verification = es256Verifier(token)
+  t.is(verification.header.alg, 'ES256')
+
+  token = createSigner({ key: privateKeys.ES384 })({ a: 1 })
+  verification = es384Verifier(token)
+  t.is(verification.header.alg, 'ES384')
+
+  token = createSigner({ key: privateKeys.ES512 })({ a: 1 })
+  verification = es512Verifier(token)
+  t.is(verification.header.alg, 'ES512')
+
+  t.end()
 })
 
 test('it correctly set a timestamp', t => {
@@ -329,6 +384,8 @@ test('payload validation', t => {
 })
 
 test('options validation - algorithm', t => {
+  createSigner({ key: 'secret' })
+
   t.throws(() => createSigner({ key: 'secret', algorithm: 'FOO' }), {
     message:
       'The algorithm option must be one of the following values: RS256, RS384, RS512, ES256, ES384, ES512, PS256, PS384, PS512, HS256, HS384, HS512, none.'

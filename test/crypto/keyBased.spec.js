@@ -26,7 +26,7 @@ const publicKeys = {
   PS: readFileSync(resolve(__dirname, '../../benchmarks/keys/ps-512-public.key'))
 }
 
-for (const type of ['RS', 'PS', 'ES']) {
+for (const type of ['ES', 'RS', 'PS']) {
   for (const bits of [256, 384, 512]) {
     const algorithm = `${type}${bits}`
     const privateKey = privateKeys[type === 'ES' ? algorithm : type]

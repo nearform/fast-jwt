@@ -12,6 +12,17 @@ const configurations = {
 
 for (const [prefix, configuration] of Object.entries(configurations)) {
   for (const [bits, namedCurve] of Object.entries(configuration)) {
+    let type = 'pkcs8'
+    let format = 'pem'
+
+    if (prefix === 'ps') {
+      type = 'pkcs1'
+      format = 'der'
+    } else if (prefix === 'es' && bits === '256') {
+      type = 'sec1'
+      format = 'der'
+    }
+
     generateKeyPair(
       prefix === 'es' ? 'ec' : 'rsa',
       {
@@ -22,13 +33,24 @@ for (const [prefix, configuration] of Object.entries(configurations)) {
           format: 'pem'
         },
         privateKeyEncoding: {
-          type: 'pkcs8',
-          format: 'pem'
+          type,
+          format
         }
       },
       (err, publicKey, privateKey) => {
         if (err) {
           throw err
+        }
+
+        if (format === 'der') {
+          const label = prefix === 'es' ? 'EC' : 'RSA'
+
+          const lines = privateKey
+            .toString('base64')
+            .match(/.{1,64}/g)
+            .join('\n')
+
+          privateKey = `-----BEGIN ${label} PRIVATE KEY-----\n${lines}\n-----END ${label} PRIVATE KEY-----`
         }
 
         writeFileSync(resolve(__dirname, `${prefix}-${bits}-private.key`), privateKey)

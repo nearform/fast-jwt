@@ -1,13 +1,14 @@
 'use strict'
 
 const { publicKeyAlgorithms, hashAlgorithms, createSignature } = require('./crypto')
+const { detectAlgorithm } = require('./privateKeyParser')
 const TokenError = require('./error')
 const { base64UrlEncode, getAsyncKey, ensurePromiseCallback } = require('./utils')
 
 const supportedAlgorithms = Array.from(new Set([...publicKeyAlgorithms, ...hashAlgorithms, 'none'])).join(', ')
 
 module.exports = function createSigner(options) {
-  const {
+  let {
     key,
     algorithm,
     encoding,
@@ -23,10 +24,15 @@ module.exports = function createSigner(options) {
     nonce,
     kid,
     header: additionalHeader
-  } = { algorithm: 'HS256', clockTimestamp: 0, ...options }
+  } = { clockTimestamp: 0, ...options }
 
   // Validate options
-  if (algorithm !== 'none' && !publicKeyAlgorithms.includes(algorithm) && !hashAlgorithms.includes(algorithm)) {
+  if (
+    algorithm &&
+    algorithm !== 'none' &&
+    !publicKeyAlgorithms.includes(algorithm) &&
+    !hashAlgorithms.includes(algorithm)
+  ) {
     throw new TokenError(
       TokenError.codes.invalidOption,
       `The algorithm option must be one of the following values: ${supportedAlgorithms}.`
@@ -105,17 +111,13 @@ module.exports = function createSigner(options) {
     const [callback, promise] = typeof key === 'function' ? ensurePromiseCallback(cb) : []
 
     // Prepare header and payload
-    // Prepare the header
     if (typeof payload !== 'string' && typeof payload !== 'object') {
       throw new TokenError(TokenError.codes.invalidType, 'The payload must be a object, a string or a buffer.')
     } else if (payload instanceof Buffer) {
       payload = payload.toString(encoding)
     }
 
-    const header = Object.assign(
-      { alg: algorithm, typ: typeof payload === 'object' ? 'JWT' : undefined, kid },
-      additionalHeader
-    )
+    const header = { alg: algorithm, typ: typeof payload === 'object' ? 'JWT' : undefined, kid, ...additionalHeader }
 
     // Prepare the payload
     // All the claims are added only if the payload is not a string
@@ -145,11 +147,15 @@ module.exports = function createSigner(options) {
       }
     }
 
-    const encodedHeader = base64UrlEncode(Buffer.from(JSON.stringify(header)).toString('base64'))
     const encodedPayload = base64UrlEncode(Buffer.from(finalPayload).toString('base64'))
 
     // We're get the key synchronously
     if (!callback) {
+      if (!algorithm) {
+        algorithm = header.alg = detectAlgorithm(key)
+      }
+
+      const encodedHeader = base64UrlEncode(Buffer.from(JSON.stringify(header)).toString('base64'))
       const encodedSignature =
         algorithm === 'none' ? '' : base64UrlEncode(createSignature(algorithm, key, encodedHeader, encodedPayload))
 
@@ -164,6 +170,11 @@ module.exports = function createSigner(options) {
 
       let token
       try {
+        if (!algorithm) {
+          algorithm = header.alg = detectAlgorithm(key)
+        }
+
+        const encodedHeader = base64UrlEncode(Buffer.from(JSON.stringify(header)).toString('base64'))
         const encodedSignature = base64UrlEncode(createSignature(algorithm, currentKey, encodedHeader, encodedPayload))
 
         token = `${encodedHeader}.${encodedPayload}.${encodedSignature}`

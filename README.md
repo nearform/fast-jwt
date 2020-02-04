@@ -22,8 +22,8 @@ npm install fast-jwt
 
 Create a signer function by calling `createSigner` and providing one or more of the following options:
 
-- `key`: A string, buffer or object containing the secret for `HS*` algorithms or the PEM encoded public key for `RS*`, `PS*` and `ES*` algorithms (whose format is defined by the Node's crypto module documentation). The key can also be a function accepting a Node style callback or a function returning a promise. This is the only mandatory option.
-- `algorithm`: The algorithm to use to sign the token, default is `HS256`.
+- `key`: A string, buffer or object containing the secret for `HS*` algorithms or the PEM encoded public key for `RS*`, `PS*` and `ES*` algorithms. The key can also be a function accepting a Node style callback or a function returning a promise. This is the only mandatory option.
+- `algorithm`: The algorithm to use to sign the token. The default is autodetected from the key, using `RS256` for RSA private keys, `HS256` for plain secrets and the correspondent `ES` algorithm for EC private keys.
 - `encoding`: The token encoding, default is `utf-8`.
 - `cache`: A positive number specifying the size of the signed tokens cache (using LRU strategy). Setting to `true` is equivalent to provide the size `1000`. When enabled, as you can see in the benchmarks section below, performances dramatically improve. A error will be thrown if this option is provided and the `noTimestamp` option is not `true` or any of the `mutatePayload`, `expiresIn` or `notBefore` are set.
 - `mutatePayload`: If the original payload must be modified in place (via `Object.assign`) and thus will result changed to the caller funciton.
@@ -111,7 +111,7 @@ const sections = decodeComplete(token)
 
 Create a verifier function by calling `createVerifier` and providing one or more of the following options:
 
-- `key`: A string, buffer or object containing the secret for `HS*` algorithms or the PEM encoded public key for `RS*`, `PS*` and `ES*` algorithms (whose format is defined by the Node's crypto module documentation). The key can also be a function accepting a Node style callback or a function returning a promise. This is the only mandatory option, which must NOT be provided if the token algorithm is `none`.
+- `key`: A string, buffer or object containing the secret for `HS*` algorithms or the PEM encoded public key for `RS*`, `PS*` and `ES*` algorithms. The key can also be a function accepting a Node style callback or a function returning a promise. This is the only mandatory option, which must NOT be provided if the token algorithm is `none`.
 - `algorithms`: List of strings with the names of the allowed algorithms. By default, all algorithms are accepted.
 - `complete`: Return an object with the decoded header, payload, signature and input (the token part before the signature), instead of just the content of the payload. Default is `false`.
 - `json`: Always parse the payload as JSON even if the `typ` claim of the header is not `JWT`. Default is `true`.
