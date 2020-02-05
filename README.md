@@ -194,7 +194,7 @@ fast-jwt supports caching of decoded and verified tokens.
 
 The cache layer, powered by [mnemonist](https://www.npmjs.com/package/mnemonist), is a LRU cache which dimension is controlled by the user, as described in the option list.
 
-Decoded and verified tokens are always cached. If the decoding fails once, the error is cached as well and the operation is not retried.
+When caching is enabled, decoded and verified tokens are always stored in cache. If the decoding fails once, the error is cached as well and the operation is not retried.
 
 For verified tokens, caching considers the time sensitive claims of the token (`iat`, `nbf` and `exp`) and make sure the verification is retried after a token becomes valid or after a token becomes expired.
 

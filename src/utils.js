@@ -66,7 +66,7 @@ function hashKey(key, algorithm) {
   }
 
   try {
-    const [rawHeader] = key.split('.', 1)
+    const [rawHeader] = key.toString().split('.', 1)
     const header = JSON.parse(Buffer.from(base64UrlDecode(rawHeader), 'base64').toString('utf-8'))
     const complexity = header.alg.slice(-3)
 
