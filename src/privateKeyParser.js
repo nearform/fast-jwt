@@ -4,7 +4,9 @@ const asn = require('asn1.js')
 
 const TokenError = require('./error')
 
-const pemMatcher = /(?:-+)(?:BEGIN|END)(?:\s+(RSA|EC))?\s+(?:PRIVATE|PUBLIC)\s+KEY(?:-+)/
+const privateKeyPemMatcher = /^-----BEGIN(?: (RSA|EC))? PRIVATE KEY-----/
+const publicKeyPemMatcher = /^-----BEGIN(?: (RSA|EC))? (?:(?:PUBLIC KEY)|CERTIFICATE)-----/
+
 const ecCurves = {
   '1.2.840.10045.3.1.7': { bits: '256', names: ['P-256', 'prime256v1'] },
   '1.3.132.0.10': { bits: '256', names: ['P-256', 'secp256k1'] },
@@ -56,7 +58,16 @@ function detectAlgorithm(key) {
       key = key.key
     }
 
-    const pemData = key.toString().match(pemMatcher)
+    key = key.toString().trim()
+
+    if (key.match(publicKeyPemMatcher)) {
+      throw new TokenError(TokenError.codes.invalidKey, 'Public keys are not supported for signing.')
+    }
+
+    const pemData = key
+      .toString()
+      .trim()
+      .match(privateKeyPemMatcher)
 
     if (!pemData) {
       // Not a PEM, assume a plain secret

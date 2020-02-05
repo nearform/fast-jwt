@@ -15,6 +15,8 @@ const privateKeys = {
   PS: readFileSync(resolve(__dirname, '../../benchmarks/keys/ps-512-private.key'))
 }
 
+const publicKey = readFileSync(resolve(__dirname, '../../benchmarks/keys/es-256-public.key'))
+
 const invalidPKCS8 = `
 -----BEGIN PRIVATE KEY-----
 MIIBSwIBADCCASsGByqGSM44BAEwggEeAoGBAMGxOb7Tft3j9ibDnbRQmSzNFVWI
@@ -80,8 +82,16 @@ test('malformed or encrypted key objects must be rejected', t => {
 })
 
 test('malformed PEM files should be rejected', t => {
-  t.throws(() => detectAlgorithm('----- BEGIN PUBLIC KEY-----WHATEVER-----END PUBLIC KEY-----'), {
+  t.throws(() => detectAlgorithm('-----BEGIN PRIVATE KEY-----WHATEVER-----END PRIVATE KEY-----'), {
     message: 'Unsupported PEM key.'
+  })
+
+  t.end()
+})
+
+test('public keys should be rejected', t => {
+  t.throws(() => detectAlgorithm(publicKey), {
+    message: 'Public keys are not supported for signing.'
   })
 
   t.end()
