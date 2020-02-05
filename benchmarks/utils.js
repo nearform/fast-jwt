@@ -51,20 +51,23 @@ async function compareSigning(payload, algorithm, privateKey, publicKey) {
     log('-------')
   }
 
-  return cronometro({
-    [`${algorithm} - sign - fast-jwt (sync)`]: function() {
-      fastjwtSign(payload)
+  return cronometro(
+    {
+      [`${algorithm} - sign - fast-jwt (sync)`]: function() {
+        fastjwtSign(payload)
+      },
+      [`${algorithm} - sign - fast-jwt (async)`]: function(done) {
+        fastjwtSignAsync(payload, done)
+      },
+      [`${algorithm} - sign - jsonwebtoken (sync)`]: function() {
+        jsonwebtokenSign(payload, privateKey, { algorithm, noTimestamp: true })
+      },
+      [`${algorithm} - sign - jsonwebtoken (async)`]: function(done) {
+        jsonwebtokenSign(payload, privateKey, { algorithm, noTimestamp: true }, done)
+      }
     },
-    [`${algorithm} - sign - fast-jwt (async)`]: function(done) {
-      fastjwtSignAsync(payload, done)
-    },
-    [`${algorithm} - sign - jsonwebtoken (sync)`]: function() {
-      jsonwebtokenSign(payload, privateKey, { algorithm, noTimestamp: true })
-    },
-    [`${algorithm} - sign - jsonwebtoken (async)`]: function(done) {
-      jsonwebtokenSign(payload, privateKey, { algorithm, noTimestamp: true }, done)
-    }
-  })
+    { print: { compare: true, compareMode: 'base' } }
+  )
 }
 
 function compareDecoding(token, algorithm) {
@@ -83,26 +86,29 @@ function compareDecoding(token, algorithm) {
     log('-------')
   }
 
-  return cronometro({
-    [`${algorithm} - decode - fast-jwt`]: function() {
-      fastjwtDecoder(token)
+  return cronometro(
+    {
+      [`${algorithm} - decode - fast-jwt`]: function() {
+        fastjwtDecoder(token)
+      },
+      [`${algorithm} - decode - fast-jwt (complete)`]: function() {
+        fastjwtCompleteDecoder(token)
+      },
+      [`${algorithm} - decode - fast-jwt (with cache)`]: function() {
+        fastjwtCachedDecoder(token)
+      },
+      [`${algorithm} - decode - fast-jwt (complete with cache)`]: function() {
+        fastjwtCachedCompleteDecoder(token)
+      },
+      [`${algorithm} - decode - jsonwebtoken`]: function() {
+        jsonwebtokenDecode(token)
+      },
+      [`${algorithm} - decode - jsonwebtoken - complete`]: function() {
+        jsonwebtokenDecode(token, { complete: true })
+      }
     },
-    [`${algorithm} - decode - fast-jwt (complete)`]: function() {
-      fastjwtCompleteDecoder(token)
-    },
-    [`${algorithm} - decode - fast-jwt (with cache)`]: function() {
-      fastjwtCachedDecoder(token)
-    },
-    [`${algorithm} - decode - fast-jwt (complete with cache)`]: function() {
-      fastjwtCachedCompleteDecoder(token)
-    },
-    [`${algorithm} - decode - jsonwebtoken`]: function() {
-      jsonwebtokenDecode(token)
-    },
-    [`${algorithm} - decode - jsonwebtoken - complete`]: function() {
-      jsonwebtokenDecode(token, { complete: true })
-    }
-  })
+    { print: { compare: true, compareMode: 'base' } }
+  )
 }
 
 function compareVerifying(token, algorithm, publicKey) {
@@ -121,26 +127,29 @@ function compareVerifying(token, algorithm, publicKey) {
     log('-------')
   }
 
-  return cronometro({
-    [`${algorithm} - verify - fast-jwt (sync)`]: function() {
-      fastjwtVerify(token)
+  return cronometro(
+    {
+      [`${algorithm} - verify - fast-jwt (sync)`]: function() {
+        fastjwtVerify(token)
+      },
+      [`${algorithm} - verify - fast-jwt (async)`]: function(done) {
+        fastjwtVerifyAsync(token, done)
+      },
+      [`${algorithm} - verify - fast-jwt (sync with cache)`]: function() {
+        fastjwtCachedVerify(token)
+      },
+      [`${algorithm} - verify - fast-jwt (async with cache)`]: function(done) {
+        fastjwtCachedVerifyAsync(token, done)
+      },
+      [`${algorithm} - verify - jsonwebtoken (sync)`]: function() {
+        jsonwebtokenVerify(token, publicKey)
+      },
+      [`${algorithm} - verify - jsonwebtoken (async)`]: function(done) {
+        jsonwebtokenVerify(token, publicKey, done)
+      }
     },
-    [`${algorithm} - verify - fast-jwt (async)`]: function(done) {
-      fastjwtVerifyAsync(token, done)
-    },
-    [`${algorithm} - verify - fast-jwt (sync with cache)`]: function() {
-      fastjwtCachedVerify(token)
-    },
-    [`${algorithm} - verify - fast-jwt (async with cache)`]: function(done) {
-      fastjwtCachedVerifyAsync(token, done)
-    },
-    [`${algorithm} - verify - jsonwebtoken (sync)`]: function() {
-      jsonwebtokenVerify(token, publicKey)
-    },
-    [`${algorithm} - verify - jsonwebtoken (async)`]: function(done) {
-      jsonwebtokenVerify(token, publicKey, done)
-    }
-  })
+    { print: { compare: true, compareMode: 'base' } }
+  )
 }
 
 module.exports = { compareSigning, compareDecoding, compareVerifying, saveLogs }
