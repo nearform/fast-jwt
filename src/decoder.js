@@ -4,10 +4,10 @@ const { base64UrlDecode, getCacheSize, createCache } = require('./utils')
 const TokenError = require('./error')
 
 module.exports = function createDecoder(options) {
-  const { json, complete, encoding, cache } = { encoding: 'utf-8', ...options }
+  const { json, complete, encoding, cache } = { json: true, encoding: 'utf-8', ...options }
 
   // Prepare the caching layer
-  const [cacheInstance, cacheGet, cacheSet] = createCache(getCacheSize(cache))
+  const [cacheGet, cacheSet, cacheProperties] = createCache(getCacheSize(cache))
 
   const decoder = function decode(token) {
     // Make sure the token is a string or a Buffer - Other cases make no sense to even try to validate
@@ -66,6 +66,6 @@ module.exports = function createDecoder(options) {
     }
   }
 
-  decoder.cache = cacheInstance
+  Object.assign(decoder, cacheProperties)
   return decoder
 }

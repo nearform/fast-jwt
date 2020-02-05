@@ -1,26 +1,17 @@
 'use strict'
 
-const { publicKeyAlgorithms, rsaKeyAlgorithms, hashAlgorithms, createSignature } = require('./crypto')
+const { publicKeyAlgorithms, hashAlgorithms, createSignature } = require('./crypto')
+const { detectAlgorithm } = require('./privateKeyParser')
 const TokenError = require('./error')
-const {
-  base64UrlEncode,
-  getAsyncSecret,
-  ensurePromiseCallback,
-  getCacheSize,
-  createCache,
-  handleCachedResult
-} = require('./utils')
+const { base64UrlEncode, getAsyncKey, ensurePromiseCallback } = require('./utils')
 
-const supportedAlgorithms = Array.from(
-  new Set([...publicKeyAlgorithms, ...rsaKeyAlgorithms, ...hashAlgorithms, 'none'])
-).join(', ')
+const supportedAlgorithms = Array.from(new Set([...publicKeyAlgorithms, ...hashAlgorithms, 'none'])).join(', ')
 
 module.exports = function createSigner(options) {
-  const {
-    secret,
+  let {
+    key,
     algorithm,
     encoding,
-    cache,
     noTimestamp,
     mutatePayload,
     clockTimestamp,
@@ -33,13 +24,13 @@ module.exports = function createSigner(options) {
     nonce,
     kid,
     header: additionalHeader
-  } = { algorithm: 'HS256', clockTimestamp: 0, ...options }
+  } = { clockTimestamp: 0, ...options }
 
   // Validate options
   if (
+    algorithm &&
     algorithm !== 'none' &&
     !publicKeyAlgorithms.includes(algorithm) &&
-    !rsaKeyAlgorithms.includes(algorithm) &&
     !hashAlgorithms.includes(algorithm)
   ) {
     throw new TokenError(
@@ -49,16 +40,16 @@ module.exports = function createSigner(options) {
   }
 
   if (algorithm === 'none') {
-    if (secret) {
+    if (key) {
       throw new TokenError(
         TokenError.codes.invalidOption,
-        'The secret option must not be provided when the algorithm option is "none".'
+        'The key option must not be provided when the algorithm option is "none".'
       )
     }
-  } else if (!secret || (typeof secret !== 'string' && typeof secret !== 'object' && typeof secret !== 'function')) {
+  } else if (!key || (typeof key !== 'string' && typeof key !== 'object' && typeof key !== 'function')) {
     throw new TokenError(
       TokenError.codes.invalidOption,
-      'The secret option must be a string, buffer, object or callback containing a secret or a private key.'
+      'The key option must be a string, buffer, object or callback containing a secret or a private key.'
     )
   }
 
@@ -115,63 +106,18 @@ module.exports = function createSigner(options) {
     nonce
   }
 
-  // Prepare the caching layer
-  const cacheSize = getCacheSize(cache)
-
-  if (cacheSize) {
-    if (!noTimestamp) {
-      throw new TokenError(
-        TokenError.codes.invalidOption,
-        'The cache option cannot be set without providing the noTimestamp option.'
-      )
-    }
-
-    if (expiresIn) {
-      throw new TokenError(
-        TokenError.codes.invalidOption,
-        'The cache option cannot be set when providing the expiresIn option.'
-      )
-    }
-
-    if (notBefore) {
-      throw new TokenError(
-        TokenError.codes.invalidOption,
-        'The cache option cannot be set when providing the notBefore option.'
-      )
-    }
-
-    if (mutatePayload) {
-      throw new TokenError(
-        TokenError.codes.invalidOption,
-        'The cache option cannot be set when providing the mutatePayload option.'
-      )
-    }
-  }
-
-  const [cacheInstance, cacheGet, cacheSet] = createCache(cacheSize)
-
   // Return the signer
   const signer = function sign(payload, cb) {
-    const [callback, promise] = typeof secret === 'function' ? ensurePromiseCallback(cb) : []
+    const [callback, promise] = typeof key === 'function' ? ensurePromiseCallback(cb) : []
 
     // Prepare header and payload
-    // Prepare the header
     if (typeof payload !== 'string' && typeof payload !== 'object') {
       throw new TokenError(TokenError.codes.invalidType, 'The payload must be a object, a string or a buffer.')
     } else if (payload instanceof Buffer) {
       payload = payload.toString(encoding)
     }
 
-    const cached = cacheGet(payload)
-
-    if (cached) {
-      return handleCachedResult(cached, callback, promise)
-    }
-
-    const header = Object.assign(
-      { alg: algorithm, typ: typeof payload === 'object' ? 'JWT' : undefined, kid },
-      additionalHeader
-    )
+    const header = { alg: algorithm, typ: typeof payload === 'object' ? 'JWT' : undefined, kid, ...additionalHeader }
 
     // Prepare the payload
     // All the claims are added only if the payload is not a string
@@ -201,50 +147,46 @@ module.exports = function createSigner(options) {
       }
     }
 
-    const encodedHeader = base64UrlEncode(Buffer.from(JSON.stringify(header)).toString('base64'))
     const encodedPayload = base64UrlEncode(Buffer.from(finalPayload).toString('base64'))
 
-    // We're get the secret synchronously
+    // We're get the key synchronously
     if (!callback) {
-      try {
-        const encodedSignature =
-          algorithm === 'none' ? '' : base64UrlEncode(createSignature(algorithm, secret, encodedHeader, encodedPayload))
-
-        const result = `${encodedHeader}.${encodedPayload}.${encodedSignature}`
-        cacheSet(payload, result)
-        return result
-      } catch (e) {
-        cacheSet(payload, e)
-        throw e
+      if (!algorithm) {
+        algorithm = header.alg = detectAlgorithm(key)
       }
+
+      const encodedHeader = base64UrlEncode(Buffer.from(JSON.stringify(header)).toString('base64'))
+      const encodedSignature =
+        algorithm === 'none' ? '' : base64UrlEncode(createSignature(algorithm, key, encodedHeader, encodedPayload))
+
+      return `${encodedHeader}.${encodedPayload}.${encodedSignature}`
     }
 
-    getAsyncSecret(secret, header, (err, currentSecret) => {
+    getAsyncKey(key, header, (err, currentKey) => {
       if (err) {
-        const error = TokenError.wrap(err, TokenError.codes.secretFetchingError, 'Cannot fetch secret.')
-        cacheSet(payload, error)
+        const error = TokenError.wrap(err, TokenError.codes.keyFetchingError, 'Cannot fetch key.')
         return callback(error)
       }
 
       let token
       try {
-        const encodedSignature = base64UrlEncode(
-          createSignature(algorithm, currentSecret, encodedHeader, encodedPayload)
-        )
+        if (!algorithm) {
+          algorithm = header.alg = detectAlgorithm(key)
+        }
+
+        const encodedHeader = base64UrlEncode(Buffer.from(JSON.stringify(header)).toString('base64'))
+        const encodedSignature = base64UrlEncode(createSignature(algorithm, currentKey, encodedHeader, encodedPayload))
 
         token = `${encodedHeader}.${encodedPayload}.${encodedSignature}`
       } catch (e) {
-        cacheSet(payload, e)
         return callback(e)
       }
 
-      cacheSet(payload, token)
       callback(null, token)
     })
 
     return promise
   }
 
-  signer.cache = cacheInstance
   return signer
 }

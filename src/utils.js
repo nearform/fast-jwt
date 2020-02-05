@@ -1,6 +1,8 @@
 'use strict'
 
+const { createHash } = require('crypto')
 const Cache = require('mnemonist/lru-cache')
+
 const TokenError = require('./error')
 
 const decoderReplacer = /[-_]/g
@@ -21,11 +23,11 @@ function base64UrlDecode(base64url) {
     .replace(decoderReplacer, c => decoderMap[c])
 }
 
-function getAsyncSecret(handler, header, callback) {
+function getAsyncKey(handler, header, callback) {
   const result = handler(header, callback)
 
   if (result && typeof result.then === 'function') {
-    result.then(secret => callback(null, secret)).catch(callback)
+    result.then(key => callback(null, key)).catch(callback)
   }
 }
 
@@ -58,19 +60,61 @@ function getCacheSize(rawSize) {
   return size > 0 ? size : null
 }
 
+function hashKey(key, algorithm) {
+  if (!algorithm) {
+    algorithm = 'sha256'
+  }
+
+  try {
+    const [rawHeader] = key.toString().split('.', 1)
+    const header = JSON.parse(Buffer.from(base64UrlDecode(rawHeader), 'base64').toString('utf-8'))
+    const complexity = header.alg.slice(-3)
+
+    if (complexity === '384' || complexity === '512') {
+      algorithm = `sha${complexity}`
+    }
+  } catch (e) {
+    // No-op, default to sha512
+  }
+
+  return createHash(algorithm)
+    .update(key)
+    .digest('hex')
+}
+
+function readCache(cache, key) {
+  return cache.get(hashKey(key))
+}
+
+function writeCache(cache, key, value) {
+  return cache.set(hashKey(key), value)
+}
+
 function createCache(size) {
   let get = () => false
   let set = () => false
 
-  let cache
+  let cacheProperties
 
   if (size) {
-    cache = new Cache(size)
-    get = cache.get.bind(cache)
-    set = cache.set.bind(cache)
+    const cache = new Cache(size)
+    get = readCache.bind(null, cache)
+    set = writeCache.bind(null, cache)
+
+    cacheProperties = {
+      cache,
+      clearCache() {
+        cache.clear()
+      },
+      readCacheEntry: get,
+      writeCacheEntry: set,
+      deleteCacheEntry(key) {
+        set(key, null)
+      }
+    }
   }
 
-  return [cache, get, set]
+  return [get, set, cacheProperties]
 }
 
 function handleCachedResult(cached, callback, promise) {
@@ -95,9 +139,10 @@ module.exports = {
   defaultCacheSize,
   base64UrlDecode,
   base64UrlEncode,
-  getAsyncSecret,
+  getAsyncKey,
   ensurePromiseCallback,
   getCacheSize,
   createCache,
+  hashKey,
   handleCachedResult
 }

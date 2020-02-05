@@ -9,44 +9,43 @@ const { sign: jsonwebtokenSign, verify: jsonwebtokenVerify } = require('jsonwebt
 
 const privateKeys = {
   HS: 'secretsecretsecret',
-  ES: readFileSync(resolve(__dirname, '../benchmarks/keys/es-private.key')),
-  RS: readFileSync(resolve(__dirname, '../benchmarks/keys/rs-private.key')),
-  PS: readFileSync(resolve(__dirname, '../benchmarks/keys/ps-private.key'))
+  ES256: readFileSync(resolve(__dirname, '../benchmarks/keys/es-256-private.key')),
+  ES384: readFileSync(resolve(__dirname, '../benchmarks/keys/es-384-private.key')),
+  ES512: readFileSync(resolve(__dirname, '../benchmarks/keys/es-512-private.key')),
+  RS: readFileSync(resolve(__dirname, '../benchmarks/keys/rs-512-private.key')),
+  PS: readFileSync(resolve(__dirname, '../benchmarks/keys/ps-512-private.key'))
 }
 
 const publicKeys = {
   HS: 'secretsecretsecret',
-  ES: readFileSync(resolve(__dirname, '../benchmarks/keys/es-public.key')),
-  RS: readFileSync(resolve(__dirname, '../benchmarks/keys/rs-public.key')),
-  PS: readFileSync(resolve(__dirname, '../benchmarks/keys/ps-public.key'))
+  ES256: readFileSync(resolve(__dirname, '../benchmarks/keys/es-256-public.key')),
+  ES384: readFileSync(resolve(__dirname, '../benchmarks/keys/es-384-public.key')),
+  ES512: readFileSync(resolve(__dirname, '../benchmarks/keys/es-512-public.key')),
+  RS: readFileSync(resolve(__dirname, '../benchmarks/keys/rs-512-public.key')),
+  PS: readFileSync(resolve(__dirname, '../benchmarks/keys/ps-512-public.key'))
 }
 
-test('fastjwt should correcty verify tokens created by jsonwebtoken', t => {
-  for (const type of ['HS', 'ES', 'RS', 'PS']) {
-    for (const bits of ['256', '384', '512']) {
-      const algorithm = `${type}${bits}`
-      const verify = createVerifier({ algorithm, secret: publicKeys[type] })
-      const token = jsonwebtokenSign({ a: 1, b: 2, c: 3 }, privateKeys[type], { algorithm, noTimestamp: true })
+for (const type of ['ES']) {
+  for (const bits of ['256']) {
+    const algorithm = `${type}${bits}`
+    const privateKey = privateKeys[type === 'ES' ? algorithm : type]
+    const publicKey = publicKeys[type === 'ES' ? algorithm : type]
+
+    test(`fastjwt should correcty verify tokens created by jsonwebtoken - ${algorithm}`, t => {
+      const verify = createVerifier({ algorithm, key: publicKey.toString() })
+      const token = jsonwebtokenSign({ a: 1, b: 2, c: 3 }, privateKey.toString(), { algorithm, noTimestamp: true })
 
       t.strictDeepEqual(verify(token), { a: 1, b: 2, c: 3 })
-    }
-  }
 
-  t.end()
-})
+      t.end()
+    })
 
-test('jsonwebtoken should correcty verify tokens created by fast-jwt', t => {
-  for (const type of ['HS', 'ES', 'RS', 'PS']) {
-    for (const bits of ['256', '384', '512']) {
-      const algorithm = `${type}${bits}`
-      const signer = createSigner({ algorithm, secret: privateKeys[type], noTimestamp: true })
+    test('jsonwebtoken should correcty verify tokens created by fast-jwt', t => {
+      const signer = createSigner({ algorithm, key: privateKey, noTimestamp: true })
       const token = signer({ a: 1, b: 2, c: 3 })
 
-      t.strictDeepEqual(jsonwebtokenVerify(token, publicKeys[type], { algorithm }), { a: 1, b: 2, c: 3 })
-      break
-    }
-    break
+      t.strictDeepEqual(jsonwebtokenVerify(token, publicKey, { algorithm }), { a: 1, b: 2, c: 3 })
+      t.end()
+    })
   }
-
-  t.end()
-})
+}

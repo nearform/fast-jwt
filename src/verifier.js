@@ -3,7 +3,7 @@
 const { getSupportedAlgorithms, verifySignature } = require('./crypto')
 const createDecoder = require('./decoder')
 const TokenError = require('./error')
-const { getAsyncSecret, ensurePromiseCallback, createCache, getCacheSize, handleCachedResult } = require('./utils')
+const { getAsyncKey, ensurePromiseCallback, createCache, getCacheSize, handleCachedResult } = require('./utils')
 
 function ensureStringClaimMatcher(raw) {
   if (!Array.isArray(raw)) {
@@ -14,7 +14,7 @@ function ensureStringClaimMatcher(raw) {
 }
 
 function verifyToken(
-  secret,
+  key,
   input,
   header,
   payload,
@@ -24,17 +24,17 @@ function verifyToken(
   clockTimestamp,
   clockTolerance
 ) {
-  // Verify the secret
-  const hasSecret = secret instanceof Buffer ? secret.length : !!secret
+  // Verify the key
+  const hasKey = key instanceof Buffer ? key.length : !!key
 
-  if (hasSecret && !signature) {
+  if (hasKey && !signature) {
     throw new TokenError(TokenError.codes.missingSignature, 'The token signature is missing.')
-  } else if (!hasSecret && signature) {
-    throw new TokenError(TokenError.codes.missingSecret, 'The secret is missing.')
+  } else if (!hasKey && signature) {
+    throw new TokenError(TokenError.codes.missingKey, 'The key option is missing.')
   }
 
-  // According to the signature and secret, check with algorithms are supported
-  const algorithms = allowedAlgorithms.length ? allowedAlgorithms : getSupportedAlgorithms(secret)
+  // According to the signature and key, check with algorithms are supported
+  const algorithms = allowedAlgorithms.length ? allowedAlgorithms : getSupportedAlgorithms(key)
 
   // Verify the token is allowed
   if (!algorithms.includes(header.alg)) {
@@ -42,7 +42,7 @@ function verifyToken(
   }
 
   // Verify the signature, if present
-  if (signature && !verifySignature(header.alg, secret, input, signature)) {
+  if (signature && !verifySignature(header.alg, key, input, signature)) {
     throw new TokenError(TokenError.codes.invalidSignature, 'The token signature is invalid.')
   }
 
@@ -99,11 +99,13 @@ function verifyToken(
 
 module.exports = function createVerifier(options) {
   let {
-    secret,
+    key,
     algorithms: allowedAlgorithms,
+    json,
     complete,
     encoding,
     cache,
+    cacheTTL,
     clockTimestamp,
     clockTolerance,
     ignoreExpiration,
@@ -114,13 +116,13 @@ module.exports = function createVerifier(options) {
     allowedIss,
     allowedSub,
     allowedNonce
-  } = { ...options }
+  } = { cacheTTL: 600000, ...options }
 
   // Validate options
-  if (typeof secret !== 'string' && !(secret instanceof Buffer) && typeof secret !== 'function') {
+  if (typeof key !== 'string' && !(key instanceof Buffer) && typeof key !== 'function') {
     throw new TokenError(
       TokenError.codes.INVALID_OPTION,
-      'The secret option must be a string, a buffer or a function returning the algorithm secret or public key.'
+      'The key option must be a string, a buffer or a function returning the algorithm secret or public key.'
     )
   }
 
@@ -136,6 +138,10 @@ module.exports = function createVerifier(options) {
 
   if (encoding && typeof encoding !== 'string') {
     throw new TokenError(TokenError.codes.invalidOption, 'The encoding option must be a string.')
+  }
+
+  if (cacheTTL && (typeof cacheTTL !== 'number' || cacheTTL < 0)) {
+    throw new TokenError(TokenError.codes.invalidOption, 'The cacheTTL option must be a positive number.')
   }
 
   if (!Array.isArray(allowedAlgorithms)) {
@@ -177,12 +183,12 @@ module.exports = function createVerifier(options) {
     validators.push({ type: 'string', claim: 'nonce', allowed: ensureStringClaimMatcher(allowedNonce) })
   }
 
-  const decodeJwt = createDecoder({ complete: true, encoding, cache })
+  const decodeJwt = createDecoder({ json, complete: true, encoding, cache, cacheTTL })
 
   // Prepare the caching layer
-  let [cacheInstance, cacheGet, cacheSet] = createCache(getCacheSize(cache))
+  let [cacheGet, cacheSet, cacheProperties] = createCache(getCacheSize(cache))
 
-  if (cacheInstance) {
+  if (cacheProperties) {
     const [cacheGetInner, cacheSetInner] = [cacheGet, cacheSet]
 
     cacheGet = function(key) {
@@ -199,9 +205,10 @@ module.exports = function createVerifier(options) {
 
     cacheSet = function(token, payload, result) {
       const value = [result, 0, 0]
+      const hasIat = typeof payload.iat === 'number'
 
       // Add time range of the key
-      if (typeof payload.iat === 'number') {
+      if (hasIat) {
         value[1] = !ignoreNotBefore && typeof payload.nbf === 'number' ? payload.nbf * 1000 : 0
 
         if (!ignoreExpiration) {
@@ -213,13 +220,17 @@ module.exports = function createVerifier(options) {
         }
       }
 
+      // The maximum TTL for the token cannot exceed the configured cacheTTL
+      const maxTTL = (hasIat ? payload.iat * 1000 : (clockTimestamp || Date.now()) + clockTolerance) + cacheTTL
+      value[2] = value[2] === 0 ? maxTTL : Math.min(value[2], maxTTL)
+
       cacheSetInner(token, value)
     }
   }
 
   // Return the verifier
   const verifier = function verify(token, cb) {
-    const [callback, promise] = typeof secret === 'function' ? ensurePromiseCallback(cb) : []
+    const [callback, promise] = typeof key === 'function' ? ensurePromiseCallback(cb) : []
 
     // Check the cache
     const cached = cacheGet(token)
@@ -243,11 +254,11 @@ module.exports = function createVerifier(options) {
 
     const { header, payload, signature, input } = decoded
 
-    // We're get the secret synchronously
+    // We're get the key synchronously
     if (!callback) {
       try {
         verifyToken(
-          secret,
+          key,
           input,
           header,
           payload,
@@ -268,9 +279,9 @@ module.exports = function createVerifier(options) {
       }
     }
 
-    getAsyncSecret(secret, header, (err, currentSecret) => {
+    getAsyncKey(key, header, (err, currentKey) => {
       if (err) {
-        const error = TokenError.wrap(err, TokenError.codes.secretFetchingError, 'Cannot fetch secret.')
+        const error = TokenError.wrap(err, TokenError.codes.keyFetchingError, 'Cannot fetch key.')
         cacheSet(token, payload, error)
         return callback(error)
       }
@@ -278,7 +289,7 @@ module.exports = function createVerifier(options) {
       let result
       try {
         verifyToken(
-          currentSecret,
+          currentKey,
           input,
           header,
           payload,
@@ -302,6 +313,6 @@ module.exports = function createVerifier(options) {
     return promise
   }
 
-  verifier.cache = cacheInstance
+  Object.assign(verifier, cacheProperties)
   return verifier
 }

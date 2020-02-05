@@ -8,9 +8,8 @@ const { compareVerifying, saveLogs } = require('./utils')
 const hsToken =
   'eyJhbGciOiJIUzUxMiIsInR5cCI6IkpXVCJ9.eyJhIjoxLCJiIjoyLCJjIjozLCJpYXQiOjE1Nzk1MjEyMTJ9.mIcxteEVjbh2MnKQ3EQlojZojGSyA_guqRBYHQURcfnCSSBTT2OShF8lo9_ogjAv-5oECgmCur_cDWB7x3X53g'
 /*
-  Remember to update the following tokens when you regenerate the keys by running:
-
-  NODE_DEBUG=fast-jwt npm run benchmark:sign
+  Regenerate these tokens after regenerating the keys
+  by running `npm run generate-tokens` and getting the ES512, RS512 and PS512 tokens
 */
 const esToken =
   'eyJhbGciOiJFUzUxMiIsInR5cCI6IkpXVCJ9.eyJhIjoxLCJiIjoyLCJjIjozLCJpYXQiOjE1Nzk1MjEyMzd9.AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAKTpS291yG8D4qZDAViA7FZrisOAovyytEyK80nYyTtsAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAKfxaw6zzSnY3W8TzHgp-z6uPHqRfXfuPmEzbFycuoBA'
@@ -21,9 +20,9 @@ const psToken =
 
 async function runSuites() {
   await compareVerifying(hsToken, 'HS512', 'secretsecretsecret')
-  await compareVerifying(esToken, 'ES512', readFileSync(resolve(__dirname, './keys/es-public.key')))
-  await compareVerifying(rsToken, 'RS512', readFileSync(resolve(__dirname, './keys/rs-public.key')))
-  await compareVerifying(psToken, 'PS512', readFileSync(resolve(__dirname, './keys/ps-public.key')))
+  await compareVerifying(esToken, 'ES512', readFileSync(resolve(__dirname, './keys/es-512-public.key')))
+  await compareVerifying(rsToken, 'RS512', readFileSync(resolve(__dirname, './keys/rs-512-public.key')))
+  await compareVerifying(psToken, 'PS512', readFileSync(resolve(__dirname, './keys/ps-512-public.key')))
 
   await saveLogs('verify')
 }

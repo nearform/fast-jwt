@@ -1,11 +1,33 @@
 'use strict'
 
+const { readFileSync } = require('fs')
+const { resolve } = require('path')
 const { test } = require('tap')
 const { install: fakeTime } = require('lolex')
+
 const { createSigner, createVerifier, TokenError } = require('../src')
+const { hashKey } = require('../src/utils')
+
+const privateKeys = {
+  HS: 'secretsecretsecret',
+  ES256: readFileSync(resolve(__dirname, '../benchmarks/keys/es-256-private.key')),
+  ES384: readFileSync(resolve(__dirname, '../benchmarks/keys/es-384-private.key')),
+  ES512: readFileSync(resolve(__dirname, '../benchmarks/keys/es-512-private.key')),
+  RS: readFileSync(resolve(__dirname, '../benchmarks/keys/rs-512-private.key')),
+  PS: readFileSync(resolve(__dirname, '../benchmarks/keys/ps-512-private.key'))
+}
+
+const publicKeys = {
+  HS: 'secretsecretsecret',
+  ES256: readFileSync(resolve(__dirname, '../benchmarks/keys/es-256-public.key')),
+  ES384: readFileSync(resolve(__dirname, '../benchmarks/keys/es-384-public.key')),
+  ES512: readFileSync(resolve(__dirname, '../benchmarks/keys/es-512-public.key')),
+  RS: readFileSync(resolve(__dirname, '../benchmarks/keys/rs-512-public.key')),
+  PS: readFileSync(resolve(__dirname, '../benchmarks/keys/ps-512-public.key'))
+}
 
 function verify(token, options, callback) {
-  const verifier = createVerifier({ secret: 'secret', ...options })
+  const verifier = createVerifier({ key: 'secret', ...options })
   return verifier(token, callback)
 }
 
@@ -49,7 +71,7 @@ test('it correctly verifies a token - sync', t => {
   t.equal(
     verify(Buffer.from('eyJhbGciOiJub25lIn0.MTIz.'), {
       noTimestamp: true,
-      secret: ''
+      key: ''
     }),
     '123'
   )
@@ -57,10 +79,10 @@ test('it correctly verifies a token - sync', t => {
   t.end()
 })
 
-test('it correctly verifies a token - async - secret with callback', async t => {
+test('it correctly verifies a token - async - key with callback', async t => {
   t.strictDeepEqual(
     await verify('eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxfQ.57TF7smP9XDhIexBqPC-F1toZReYZLWb_YRU5tv0sxM', {
-      secret: (_h, callback) => setTimeout(() => callback(null, 'secret'), 10),
+      key: (_h, callback) => setTimeout(() => callback(null, 'secret'), 10),
       noTimestamp: true
     }),
     { a: 1 }
@@ -68,7 +90,7 @@ test('it correctly verifies a token - async - secret with callback', async t => 
 
   t.strictDeepEqual(
     await verify('eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxfQ.57TF7smP9XDhIexBqPC-F1toZReYZLWb_YRU5tv0sxM', {
-      secret: (_h, callback) => setTimeout(() => callback(null, 'secret'), 10),
+      key: (_h, callback) => setTimeout(() => callback(null, 'secret'), 10),
       noTimestamp: true,
       complete: true
     }),
@@ -80,17 +102,17 @@ test('it correctly verifies a token - async - secret with callback', async t => 
   )
 })
 
-test('it correctly verifies a token - async - secret as promise', async t => {
+test('it correctly verifies a token - async - key as promise', async t => {
   t.strictDeepEqual(
     await verify('eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxfQ.57TF7smP9XDhIexBqPC-F1toZReYZLWb_YRU5tv0sxM', {
-      secret: async () => 'secret',
+      key: async () => 'secret',
       noTimestamp: true
     }),
     { a: 1 }
   )
 })
 
-test('it correctly verifies a token - async - static secret', async t => {
+test('it correctly verifies a token - async - static key', async t => {
   t.strictDeepEqual(
     await verify('eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxfQ.57TF7smP9XDhIexBqPC-F1toZReYZLWb_YRU5tv0sxM', {
       noTimestamp: true
@@ -99,10 +121,10 @@ test('it correctly verifies a token - async - static secret', async t => {
   )
 })
 
-test('it correctly verifies a token - callback - secret as promise', t => {
+test('it correctly verifies a token - callback - key as promise', t => {
   verify(
     'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxfQ.57TF7smP9XDhIexBqPC-F1toZReYZLWb_YRU5tv0sxM',
-    { secret: async () => 'secret', noTimestamp: true },
+    { key: async () => 'secret', noTimestamp: true },
     (error, payload) => {
       t.type(error, 'null')
       t.strictDeepEqual(payload, { a: 1 })
@@ -119,14 +141,14 @@ test('it rejects invalid tokens', async t => {
   await t.rejects(
     async () => {
       return verify('eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxfQ.57TF7smP9XDhIexBqPC-aaa', {
-        secret: async () => 'secret'
+        key: async () => 'secret'
       })
     },
     { message: 'The token signature is invalid.' }
   )
 })
 
-test('it requires a signature or a secret', async t => {
+test('it requires a signature or a key', async t => {
   t.throws(() => verify('eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxfQ.', {}), {
     message: 'The token signature is missing.'
   })
@@ -134,25 +156,25 @@ test('it requires a signature or a secret', async t => {
   t.throws(
     () =>
       verify('eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxfQ.57TF7smP9XDhIexBqPC-F1toZReYZLWb_YRU5tv0sxM', {
-        secret: ''
+        key: ''
       }),
-    { message: 'The secret is missing.' }
+    { message: 'The key option is missing.' }
   )
 })
 
 test('it correctly handle errors - async callback', async t => {
   await t.rejects(
     verify('eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxfQ.57TF7smP9XDhIexBqPC-F1toZReYZLWb_YRU5tv0sxM', {
-      secret: async () => {
+      key: async () => {
         throw new Error('FAILED')
       }
     }),
-    { message: 'Cannot fetch secret.' }
+    { message: 'Cannot fetch key.' }
   )
 
   await t.rejects(
     verify('eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxfQ.57TF7smP9XDhIexBqPC-F1toZReYZLWb_YRU5tv0sxM', {
-      secret: async () => {
+      key: async () => {
         throw new TokenError(null, 'FAILED')
       }
     }),
@@ -164,13 +186,13 @@ test('it correctly handle errors - callback', t => {
   verify(
     'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxfQ.57TF7smP9XDhIexBqPC-F1toZReYZLWb_YRU5tv0sxM',
     {
-      secret: (header, callback) => {
+      key: (header, callback) => {
         callback(new Error('FAILED'))
       }
     },
     (error, token) => {
       t.true(error instanceof TokenError)
-      t.equal(error.message, 'Cannot fetch secret.')
+      t.equal(error.message, 'Cannot fetch key.')
 
       t.end()
     }
@@ -181,7 +203,7 @@ test('it correctly handle errors - evented callback', t => {
   verify(
     'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxfQ.57TF7smP9XDhIexBqPC-F1toZReYZLWb_YRU5tv0sxM',
     {
-      secret: (header, callback) => {
+      key: (header, callback) => {
         process.nextTick(() => callback(null, 'FAILED'))
       }
     },
@@ -195,11 +217,11 @@ test('it correctly handle errors - evented callback', t => {
 })
 
 test('it handles decoding errors', async t => {
-  t.throws(() => verify('TOKEN', { algorithms: ['RS256'], secret: 'secret' }), {
+  t.throws(() => verify('TOKEN', { algorithms: ['RS256'], key: 'secret' }), {
     message: 'The token is malformed.'
   })
 
-  await t.rejects(async () => verify('TOKEN', { algorithms: ['RS256'], secret: () => 'secret' }), {
+  await t.rejects(async () => verify('TOKEN', { algorithms: ['RS256'], key: () => 'secret' }), {
     message: 'The token is malformed.'
   })
 })
@@ -691,27 +713,27 @@ test('it validates the nonce claim only if explicitily enabled', t => {
 })
 
 test('token type validation', t => {
-  t.throws(() => createVerifier({ secret: 'secret' })(123), {
+  t.throws(() => createVerifier({ key: 'secret' })(123), {
     message: 'The token must be a string or a buffer.'
   })
 
   t.end()
 })
 
-test('options validation - secret', t => {
-  t.throws(() => createVerifier({ secret: 123 }), {
-    message: 'The secret option must be a string, a buffer or a function returning the algorithm secret or public key.'
+test('options validation - key', t => {
+  t.throws(() => createVerifier({ key: 123 }), {
+    message: 'The key option must be a string, a buffer or a function returning the algorithm secret or public key.'
   })
 
   t.end()
 })
 
 test('options validation - clockTimestamp', t => {
-  t.throws(() => createVerifier({ secret: 'secret', clockTimestamp: '123' }), {
+  t.throws(() => createVerifier({ key: 'secret', clockTimestamp: '123' }), {
     message: 'The clockTimestamp option must be a positive number.'
   })
 
-  t.throws(() => createVerifier({ secret: 'secret', clockTimestamp: -1 }), {
+  t.throws(() => createVerifier({ key: 'secret', clockTimestamp: -1 }), {
     message: 'The clockTimestamp option must be a positive number.'
   })
 
@@ -719,19 +741,31 @@ test('options validation - clockTimestamp', t => {
 })
 
 test('options validation - clockTolerance', t => {
-  t.throws(() => createVerifier({ secret: 'secret', clockTolerance: '123' }), {
+  t.throws(() => createVerifier({ key: 'secret', clockTolerance: '123' }), {
     message: 'The clockTolerance option must be a positive number.'
   })
 
-  t.throws(() => createVerifier({ secret: 'secret', clockTolerance: -1 }), {
+  t.throws(() => createVerifier({ key: 'secret', clockTolerance: -1 }), {
     message: 'The clockTolerance option must be a positive number.'
   })
 
   t.end()
 })
 
+test('options validation - cacheTTL', t => {
+  t.throws(() => createVerifier({ key: 'secret', cacheTTL: '123' }), {
+    message: 'The cacheTTL option must be a positive number.'
+  })
+
+  t.throws(() => createVerifier({ key: 'secret', cacheTTL: -1 }), {
+    message: 'The cacheTTL option must be a positive number.'
+  })
+
+  t.end()
+})
+
 test('options validation - encoding', t => {
-  t.throws(() => createVerifier({ secret: 'secret', encoding: 123 }), {
+  t.throws(() => createVerifier({ key: 'secret', encoding: 123 }), {
     message: 'The encoding option must be a string.'
   })
 
@@ -742,7 +776,7 @@ test('caching - sync', t => {
   const token = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxfQ.57TF7smP9XDhIexBqPC-F1toZReYZLWb_YRU5tv0sxM'
   const invalidToken = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxfQ.aaa'
 
-  const verifier = createVerifier({ secret: 'secret', cache: true })
+  const verifier = createVerifier({ key: 'secret', cache: true })
 
   t.equal(verifier.cache.size, 0)
   t.strictDeepEqual(verifier(token), { a: 1 })
@@ -755,8 +789,8 @@ test('caching - sync', t => {
   t.throws(() => verifier(invalidToken), { message: 'The token signature is invalid.' })
   t.equal(verifier.cache.size, 2)
 
-  t.strictDeepEqual(verifier.cache.get(token)[0], { a: 1 })
-  t.true(verifier.cache.get(invalidToken)[0] instanceof TokenError)
+  t.strictDeepEqual(verifier.cache.get(hashKey(token))[0], { a: 1 })
+  t.true(verifier.cache.get(hashKey(invalidToken))[0] instanceof TokenError)
 
   t.end()
 })
@@ -765,7 +799,7 @@ test('caching - async', async t => {
   const token = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxfQ.57TF7smP9XDhIexBqPC-F1toZReYZLWb_YRU5tv0sxM'
   const invalidToken = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxfQ.aaa'
 
-  const verifier = createVerifier({ secret: async () => 'secret', cache: true })
+  const verifier = createVerifier({ key: async () => 'secret', cache: true })
 
   t.equal(verifier.cache.size, 0)
   t.strictDeepEqual(await verifier(token), { a: 1 })
@@ -778,15 +812,58 @@ test('caching - async', async t => {
   await t.rejects(async () => verifier(invalidToken), { message: 'The token signature is invalid.' })
   t.equal(verifier.cache.size, 2)
 
-  t.strictDeepEqual(verifier.cache.get(token)[0], { a: 1 })
-  t.true(verifier.cache.get(invalidToken)[0] instanceof TokenError)
+  t.strictDeepEqual(verifier.cache.get(hashKey(token))[0], { a: 1 })
+  t.true(verifier.cache.get(hashKey(invalidToken))[0] instanceof TokenError)
+})
+
+for (const type of ['HS', 'ES', 'RS', 'PS']) {
+  for (const bits of ['256', '384', '512']) {
+    const algorithm = `${type}${bits}`
+    const privateKey = privateKeys[type === 'ES' ? algorithm : type]
+    const publicKey = publicKeys[type === 'ES' ? algorithm : type]
+
+    test(`caching - should use the right hash method for storing values - ${algorithm}`, t => {
+      const signer = createSigner({ algorithm, key: privateKey, noTimestamp: 1 })
+      const verifier = createVerifier({ algorithm, key: publicKey, cache: true })
+      const token = signer({ a: 1 })
+
+      t.strictDeepEqual(verifier(token), { a: 1 })
+      t.equal(verifier.cache.size, 1)
+      t.equal(Array.from(verifier.cache.keys())[0], hashKey(token, `sha${bits}`))
+
+      t.end()
+    })
+  }
+}
+
+test('caching - should be able to manipulate cache directy', t => {
+  const clock = fakeTime({ now: 100000 })
+
+  const signer = createSigner({ key: 'secret', expiresIn: 100000 })
+  const verifier = createVerifier({ key: 'secret', cache: true })
+  const token = signer({ a: 1 })
+
+  t.equal(verifier.cache.size, 0)
+  t.strictDeepEqual(verifier(token), { a: 1, iat: 100, exp: 200 })
+  t.equal(verifier.cache.size, 1)
+  t.strictDeepEqual(verifier.readCacheEntry(token), [{ a: 1, iat: 100, exp: 200 }, 0, 200000])
+  verifier.clearCache()
+  t.equal(verifier.cache.size, 0)
+  verifier.writeCacheEntry(token, 'WHATEVER')
+  t.strictDeepEqual(verifier.readCacheEntry(token), 'WHATEVER')
+  verifier.deleteCacheEntry(token)
+  t.strictDeepEqual(verifier.readCacheEntry(token), null)
+
+  clock.uninstall()
+
+  t.end()
 })
 
 test('caching - should correctly expire cached token using the exp claim', t => {
   const clock = fakeTime({ now: 100000 })
 
-  const signer = createSigner({ secret: 'secret', expiresIn: 100000 })
-  const verifier = createVerifier({ secret: 'secret', cache: true })
+  const signer = createSigner({ key: 'secret', expiresIn: 100000 })
+  const verifier = createVerifier({ key: 'secret', cache: true })
   const token = signer({ a: 1 })
 
   // First of all, make a token and verify it's cached
@@ -795,7 +872,7 @@ test('caching - should correctly expire cached token using the exp claim', t => 
   t.equal(verifier.cache.size, 1)
   t.strictDeepEqual(verifier(token), { a: 1, iat: 100, exp: 200 })
   t.equal(verifier.cache.size, 1)
-  t.strictDeepEqual(verifier.cache.get(token), [{ a: 1, iat: 100, exp: 200 }, 0, 200000])
+  t.strictDeepEqual(verifier.cache.get(hashKey(token)), [{ a: 1, iat: 100, exp: 200 }, 0, 200000])
 
   // Now advance to expired time
   clock.tick(200000)
@@ -803,7 +880,7 @@ test('caching - should correctly expire cached token using the exp claim', t => 
   // The token should now be expired and the cache should have been updated to reflect it
   t.throws(() => verifier(token), { message: 'The token has expired at 1970-01-01T00:03:20.000Z.' })
   t.equal(verifier.cache.size, 1)
-  t.true(verifier.cache.get(token)[0] instanceof TokenError)
+  t.true(verifier.cache.get(hashKey(token))[0] instanceof TokenError)
 
   t.throws(() => verifier(token), { message: 'The token has expired at 1970-01-01T00:03:20.000Z.' })
   t.throws(() => verifier(token), { message: 'The token has expired at 1970-01-01T00:03:20.000Z.' })
@@ -814,12 +891,12 @@ test('caching - should correctly expire cached token using the exp claim', t => 
   verifier.cache.clear()
   t.throws(() => verifier(token), { message: 'The token has expired at 1970-01-01T00:03:20.000Z.' })
   t.equal(verifier.cache.size, 1)
-  t.true(verifier.cache.get(token)[0] instanceof TokenError)
+  t.true(verifier.cache.get(hashKey(token))[0] instanceof TokenError)
 
-  const verifierWithTimestamp = createVerifier({ secret: 'secret', cache: true, clockTimestamp: 100000 })
+  const verifierWithTimestamp = createVerifier({ key: 'secret', cache: true, clockTimestamp: 100000 })
   t.strictDeepEqual(verifierWithTimestamp(token), { a: 1, iat: 100, exp: 200 })
   t.equal(verifierWithTimestamp.cache.size, 1)
-  t.strictDeepEqual(verifierWithTimestamp.cache.get(token), [{ a: 1, iat: 100, exp: 200 }, 0, 200000])
+  t.strictDeepEqual(verifierWithTimestamp.cache.get(hashKey(token)), [{ a: 1, iat: 100, exp: 200 }, 0, 200000])
 
   t.end()
 })
@@ -827,8 +904,8 @@ test('caching - should correctly expire cached token using the exp claim', t => 
 test('caching - should correctly expire cached token using the maxAge claim', t => {
   const clock = fakeTime({ now: 100000 })
 
-  const signer = createSigner({ secret: 'secret' })
-  const verifier = createVerifier({ secret: 'secret', cache: true, maxAge: 100000 })
+  const signer = createSigner({ key: 'secret' })
+  const verifier = createVerifier({ key: 'secret', cache: true, maxAge: 100000 })
   const token = signer({ a: 1 })
 
   // First of all, make a token and verify it's cached
@@ -837,7 +914,7 @@ test('caching - should correctly expire cached token using the maxAge claim', t 
   t.equal(verifier.cache.size, 1)
   t.strictDeepEqual(verifier(token), { a: 1, iat: 100 })
   t.equal(verifier.cache.size, 1)
-  t.strictDeepEqual(verifier.cache.get(token), [{ a: 1, iat: 100 }, 0, 200000])
+  t.strictDeepEqual(verifier.cache.get(hashKey(token)), [{ a: 1, iat: 100 }, 0, 200000])
 
   // Now advance to expired time
   clock.tick(200000)
@@ -845,7 +922,7 @@ test('caching - should correctly expire cached token using the maxAge claim', t 
   // The token should now be expired and the cache should have been updated to reflect it
   t.throws(() => verifier(token), { message: 'The token has expired at 1970-01-01T00:03:20.000Z.' })
   t.equal(verifier.cache.size, 1)
-  t.true(verifier.cache.get(token)[0] instanceof TokenError)
+  t.true(verifier.cache.get(hashKey(token))[0] instanceof TokenError)
   t.throws(() => verifier(token), { message: 'The token has expired at 1970-01-01T00:03:20.000Z.' })
   t.throws(() => verifier(token), { message: 'The token has expired at 1970-01-01T00:03:20.000Z.' })
 
@@ -856,8 +933,8 @@ test('caching - should correctly expire cached token using the maxAge claim', t 
 test('caching - should correctly expire not yet cached token using the nbf claim', t => {
   const clock = fakeTime({ now: 100000 })
 
-  const signer = createSigner({ secret: 'secret', notBefore: 200000 })
-  const verifier = createVerifier({ secret: 'secret', cache: true })
+  const signer = createSigner({ key: 'secret', notBefore: 200000 })
+  const verifier = createVerifier({ key: 'secret', cache: true })
   const token = signer({ a: 1 })
 
   // First of all, make a token and verify it's cached and rejected
@@ -865,7 +942,7 @@ test('caching - should correctly expire not yet cached token using the nbf claim
   t.throws(() => verifier(token), { message: 'The token will be active at 1970-01-01T00:05:00.000Z.' })
   t.equal(verifier.cache.size, 1)
   t.throws(() => verifier(token), { message: 'The token will be active at 1970-01-01T00:05:00.000Z.' })
-  t.true(verifier.cache.get(token)[0] instanceof TokenError)
+  t.true(verifier.cache.get(hashKey(token))[0] instanceof TokenError)
 
   // Now advance to expired time
   clock.tick(200000)
@@ -875,7 +952,7 @@ test('caching - should correctly expire not yet cached token using the nbf claim
   t.equal(verifier.cache.size, 1)
   t.strictDeepEqual(verifier(token), { a: 1, iat: 100, nbf: 300 })
   t.equal(verifier.cache.size, 1)
-  t.strictDeepEqual(verifier.cache.get(token), [{ a: 1, iat: 100, nbf: 300 }, 300000, 0])
+  t.strictDeepEqual(verifier.cache.get(hashKey(token)), [{ a: 1, iat: 100, nbf: 300 }, 300000, 700000])
 
   clock.uninstall()
   t.end()
@@ -884,8 +961,8 @@ test('caching - should correctly expire not yet cached token using the nbf claim
 test('caching - should be able to consider both nbf and exp field at the same time', t => {
   const clock = fakeTime({ now: 100000 })
 
-  const signer = createSigner({ secret: 'secret', expiresIn: 400000, notBefore: 200000 })
-  const verifier = createVerifier({ secret: 'secret', cache: true })
+  const signer = createSigner({ key: 'secret', expiresIn: 400000, notBefore: 200000 })
+  const verifier = createVerifier({ key: 'secret', cache: true })
   const token = signer({ a: 1 })
 
   // At the beginning, the token is not active yet
@@ -893,7 +970,7 @@ test('caching - should be able to consider both nbf and exp field at the same ti
   t.throws(() => verifier(token), { message: 'The token will be active at 1970-01-01T00:05:00.000Z.' })
   t.equal(verifier.cache.size, 1)
   t.throws(() => verifier(token), { message: 'The token will be active at 1970-01-01T00:05:00.000Z.' })
-  t.true(verifier.cache.get(token)[0] instanceof TokenError)
+  t.true(verifier.cache.get(hashKey(token))[0] instanceof TokenError)
 
   // Now advance to activation time
   clock.tick(200000)
@@ -903,7 +980,7 @@ test('caching - should be able to consider both nbf and exp field at the same ti
   t.equal(verifier.cache.size, 1)
   t.strictDeepEqual(verifier(token), { a: 1, iat: 100, nbf: 300, exp: 500 })
   t.equal(verifier.cache.size, 1)
-  t.strictDeepEqual(verifier.cache.get(token), [{ a: 1, iat: 100, nbf: 300, exp: 500 }, 300000, 500000])
+  t.strictDeepEqual(verifier.cache.get(hashKey(token)), [{ a: 1, iat: 100, nbf: 300, exp: 500 }, 300000, 500000])
 
   // Now advance again after the expiry time
   clock.tick(210000)
@@ -911,7 +988,7 @@ test('caching - should be able to consider both nbf and exp field at the same ti
   // The token should now be expired and the cache should have been updated to reflect it
   t.throws(() => verifier(token), { message: 'The token has expired at 1970-01-01T00:08:20.000Z.' })
   t.equal(verifier.cache.size, 1)
-  t.true(verifier.cache.get(token)[0] instanceof TokenError)
+  t.true(verifier.cache.get(hashKey(token))[0] instanceof TokenError)
   t.throws(() => verifier(token), { message: 'The token has expired at 1970-01-01T00:08:20.000Z.' })
   t.throws(() => verifier(token), { message: 'The token has expired at 1970-01-01T00:08:20.000Z.' })
 
@@ -922,10 +999,10 @@ test('caching - should be able to consider both nbf and exp field at the same ti
 test('caching - should ignore the nbf and exp when asked to', t => {
   const clock = fakeTime({ now: 100000 })
 
-  const signer = createSigner({ secret: 'secret', expiresIn: 400000, notBefore: 200000 })
-  const verifier = createVerifier({ secret: 'secret', cache: true })
-  const verifierNoNbf = createVerifier({ secret: 'secret', cache: true, ignoreNotBefore: true })
-  const verifierNoExp = createVerifier({ secret: 'secret', cache: true, ignoreExpiration: true })
+  const signer = createSigner({ key: 'secret', expiresIn: 400000, notBefore: 200000 })
+  const verifier = createVerifier({ key: 'secret', cache: true })
+  const verifierNoNbf = createVerifier({ key: 'secret', cache: true, ignoreNotBefore: true })
+  const verifierNoExp = createVerifier({ key: 'secret', cache: true, ignoreExpiration: true })
   const token = signer({ a: 1 })
 
   // At the beginning, the token is not active yet
@@ -933,14 +1010,14 @@ test('caching - should ignore the nbf and exp when asked to', t => {
   t.throws(() => verifier(token), { message: 'The token will be active at 1970-01-01T00:05:00.000Z.' })
   t.equal(verifier.cache.size, 1)
   t.throws(() => verifier(token), { message: 'The token will be active at 1970-01-01T00:05:00.000Z.' })
-  t.true(verifier.cache.get(token)[0] instanceof TokenError)
+  t.true(verifier.cache.get(hashKey(token))[0] instanceof TokenError)
 
   // For the verifier which ignores notBefore, the token is already active
   t.strictDeepEqual(verifierNoNbf(token), { a: 1, iat: 100, nbf: 300, exp: 500 })
   t.equal(verifierNoNbf.cache.size, 1)
   t.strictDeepEqual(verifierNoNbf(token), { a: 1, iat: 100, nbf: 300, exp: 500 })
   t.equal(verifierNoNbf.cache.size, 1)
-  t.strictDeepEqual(verifierNoNbf.cache.get(token), [{ a: 1, iat: 100, nbf: 300, exp: 500 }, 0, 500000])
+  t.strictDeepEqual(verifierNoNbf.cache.get(hashKey(token)), [{ a: 1, iat: 100, nbf: 300, exp: 500 }, 0, 500000])
 
   // Now advance to activation time
   clock.tick(200000)
@@ -950,7 +1027,7 @@ test('caching - should ignore the nbf and exp when asked to', t => {
   t.equal(verifier.cache.size, 1)
   t.strictDeepEqual(verifier(token), { a: 1, iat: 100, nbf: 300, exp: 500 })
   t.equal(verifier.cache.size, 1)
-  t.strictDeepEqual(verifier.cache.get(token), [{ a: 1, iat: 100, nbf: 300, exp: 500 }, 300000, 500000])
+  t.strictDeepEqual(verifier.cache.get(hashKey(token)), [{ a: 1, iat: 100, nbf: 300, exp: 500 }, 300000, 500000])
 
   // Now advance again after the expiry time
   clock.tick(210000)
@@ -958,7 +1035,7 @@ test('caching - should ignore the nbf and exp when asked to', t => {
   // The token should now be expired and the cache should have been updated to reflect it
   t.throws(() => verifier(token), { message: 'The token has expired at 1970-01-01T00:08:20.000Z.' })
   t.equal(verifier.cache.size, 1)
-  t.true(verifier.cache.get(token)[0] instanceof TokenError)
+  t.true(verifier.cache.get(hashKey(token))[0] instanceof TokenError)
   t.throws(() => verifier(token), { message: 'The token has expired at 1970-01-01T00:08:20.000Z.' })
   t.throws(() => verifier(token), { message: 'The token has expired at 1970-01-01T00:08:20.000Z.' })
 
@@ -967,7 +1044,7 @@ test('caching - should ignore the nbf and exp when asked to', t => {
   t.equal(verifierNoExp.cache.size, 1)
   t.strictDeepEqual(verifierNoExp(token), { a: 1, iat: 100, nbf: 300, exp: 500 })
   t.equal(verifierNoExp.cache.size, 1)
-  t.strictDeepEqual(verifierNoExp.cache.get(token), [{ a: 1, iat: 100, nbf: 300, exp: 500 }, 300000, 0])
+  t.strictDeepEqual(verifierNoExp.cache.get(hashKey(token)), [{ a: 1, iat: 100, nbf: 300, exp: 500 }, 300000, 700000])
 
   clock.uninstall()
   t.end()
