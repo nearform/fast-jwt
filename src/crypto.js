@@ -4,6 +4,7 @@ const {
   createHmac,
   createVerify,
   createSign,
+  timingSafeEqual,
   constants: { RSA_PKCS1_PSS_PADDING, RSA_PSS_SALTLEN_DIGEST }
 } = require('crypto')
 const { joseToDer, derToJose } = require('ecdsa-sig-formatter')
@@ -162,7 +163,11 @@ function verifySignature(algorithm, key, input, signature) {
         verifier = createHmac(`SHA${bits}`, key)
         verifier.update(input)
 
-        return verifier.digest('base64') === signature
+        try {
+          return timingSafeEqual(verifier.digest(), Buffer.from(signature, 'base64'))
+        } catch (e) {
+          return false
+        }
     }
   } catch (e) {
     throw new TokenError(TokenError.codes.verifyError, 'Cannot verify the signature.', { originalError: e })
