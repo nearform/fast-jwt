@@ -23,7 +23,7 @@ for (const bits of [256, 384, 512]) {
   })
 
   test(`${hsAlgorithm} based tokens round trip with buffer keys`, t => {
-    const token = createSigner({ algorithm: hsAlgorithm, key: Buffer.from('secretsecretsecret') })({
+    const token = createSigner({ algorithm: hsAlgorithm, key: Buffer.from('secretsecretsecret', 'utf-8') })({
       payload: 'PAYLOAD'
     })
 

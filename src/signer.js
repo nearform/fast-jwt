@@ -147,7 +147,7 @@ module.exports = function createSigner(options) {
       }
     }
 
-    const encodedPayload = base64UrlEncode(Buffer.from(finalPayload).toString('base64'))
+    const encodedPayload = base64UrlEncode(Buffer.from(finalPayload, 'utf-8'))
 
     // We're get the key synchronously
     if (!callback) {
@@ -155,7 +155,7 @@ module.exports = function createSigner(options) {
         algorithm = header.alg = detectAlgorithm(key)
       }
 
-      const encodedHeader = base64UrlEncode(Buffer.from(JSON.stringify(header)).toString('base64'))
+      const encodedHeader = base64UrlEncode(Buffer.from(JSON.stringify(header), 'utf-8'))
       const encodedSignature =
         algorithm === 'none' ? '' : base64UrlEncode(createSignature(algorithm, key, encodedHeader, encodedPayload))
 
@@ -174,7 +174,7 @@ module.exports = function createSigner(options) {
           algorithm = header.alg = detectAlgorithm(key)
         }
 
-        const encodedHeader = base64UrlEncode(Buffer.from(JSON.stringify(header)).toString('base64'))
+        const encodedHeader = base64UrlEncode(Buffer.from(JSON.stringify(header), 'utf-8'))
         const encodedSignature = base64UrlEncode(createSignature(algorithm, currentKey, encodedHeader, encodedPayload))
 
         token = `${encodedHeader}.${encodedPayload}.${encodedSignature}`

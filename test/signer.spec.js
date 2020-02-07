@@ -38,7 +38,7 @@ test('it correctly returns a token - sync', t => {
   t.equal(sign('123', { noTimestamp: true }), 'eyJhbGciOiJIUzI1NiJ9.MTIz.UqiZ2LDYZqYB3xJgkHaihGQnJ_WPTz3hERDpA7bWYjA')
 
   t.equal(
-    sign(Buffer.from('123'), { noTimestamp: true }),
+    sign(Buffer.from('123', 'utf-8'), { noTimestamp: true }),
     'eyJhbGciOiJIUzI1NiJ9.MTIz.UqiZ2LDYZqYB3xJgkHaihGQnJ_WPTz3hERDpA7bWYjA'
   )
 

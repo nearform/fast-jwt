@@ -50,7 +50,7 @@ test('it correctly verifies a token - sync', t => {
   t.equal(verify('eyJhbGciOiJIUzI1NiJ9.MTIz.UqiZ2LDYZqYB3xJgkHaihGQnJ_WPTz3hERDpA7bWYjA', { noTimestamp: true }), '123')
 
   t.equal(
-    verify(Buffer.from('eyJhbGciOiJIUzI1NiJ9.MTIz.UqiZ2LDYZqYB3xJgkHaihGQnJ_WPTz3hERDpA7bWYjA'), {
+    verify(Buffer.from('eyJhbGciOiJIUzI1NiJ9.MTIz.UqiZ2LDYZqYB3xJgkHaihGQnJ_WPTz3hERDpA7bWYjA', 'utf-8'), {
       noTimestamp: true
     }),
     '123'
@@ -64,12 +64,12 @@ test('it correctly verifies a token - sync', t => {
     {
       header: { typ: 'JWT', alg: 'HS256' },
       payload: { a: 1 },
-      signature: '57TF7smP9XDhIexBqPC+F1toZReYZLWb/YRU5tv0sxM='
+      signature: '57TF7smP9XDhIexBqPC-F1toZReYZLWb_YRU5tv0sxM'
     }
   )
 
   t.equal(
-    verify(Buffer.from('eyJhbGciOiJub25lIn0.MTIz.'), {
+    verify(Buffer.from('eyJhbGciOiJub25lIn0.MTIz.', 'utf-8'), {
       noTimestamp: true,
       key: ''
     }),
@@ -97,7 +97,7 @@ test('it correctly verifies a token - async - key with callback', async t => {
     {
       header: { typ: 'JWT', alg: 'HS256' },
       payload: { a: 1 },
-      signature: '57TF7smP9XDhIexBqPC+F1toZReYZLWb/YRU5tv0sxM='
+      signature: '57TF7smP9XDhIexBqPC-F1toZReYZLWb_YRU5tv0sxM'
     }
   )
 })

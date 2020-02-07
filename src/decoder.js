@@ -1,6 +1,6 @@
 'use strict'
 
-const { base64UrlDecode, getCacheSize, createCache } = require('./utils')
+const { getCacheSize, createCache } = require('./utils')
 const TokenError = require('./error')
 
 module.exports = function createDecoder(options) {
@@ -40,16 +40,16 @@ module.exports = function createDecoder(options) {
 
       // Decode header and payload
 
-      header = JSON.parse(Buffer.from(base64UrlDecode(rawHeader), 'base64').toString(encoding))
+      header = JSON.parse(Buffer.from(rawHeader, 'base64').toString(encoding))
 
-      let payload = Buffer.from(base64UrlDecode(rawPayload), 'base64').toString(encoding)
+      let payload = Buffer.from(rawPayload, 'base64').toString(encoding)
 
       if (json || header.typ === 'JWT') {
         payload = JSON.parse(payload)
       }
 
       const result = complete
-        ? { header, payload, signature: base64UrlDecode(rawSignature), input: `${rawHeader}.${rawPayload}` }
+        ? { header, payload, signature: rawSignature, input: `${rawHeader}.${rawPayload}` }
         : payload
 
       cacheSet(token, result)

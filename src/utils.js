@@ -5,22 +5,12 @@ const Cache = require('mnemonist/lru-cache')
 
 const TokenError = require('./error')
 
-const decoderReplacer = /[-_]/g
 const encoderReplacer = /[=+/]/g
-const decoderMap = { '-': '+', _: '/' }
 const encoderMap = { '=': '', '+': '-', '/': '_' }
 const defaultCacheSize = 1000
 
-function base64UrlEncode(base64) {
-  return base64.replace(encoderReplacer, c => encoderMap[c])
-}
-
-function base64UrlDecode(base64url) {
-  const padding = 4 - (base64url.length % 4)
-
-  return base64url
-    .padEnd(base64url.length + (padding !== 4 ? padding : 0), '=')
-    .replace(decoderReplacer, c => decoderMap[c])
+function base64UrlEncode(buffer) {
+  return buffer.toString('base64').replace(encoderReplacer, c => encoderMap[c])
 }
 
 function getAsyncKey(handler, header, callback) {
@@ -67,7 +57,7 @@ function hashKey(key, algorithm) {
 
   try {
     const [rawHeader] = key.toString().split('.', 1)
-    const header = JSON.parse(Buffer.from(base64UrlDecode(rawHeader), 'base64').toString('utf-8'))
+    const header = JSON.parse(Buffer.from(rawHeader, 'base64').toString('utf-8'))
     const complexity = header.alg.slice(-3)
 
     if (complexity === '384' || complexity === '512') {
@@ -137,7 +127,6 @@ function handleCachedResult(cached, callback, promise) {
 
 module.exports = {
   defaultCacheSize,
-  base64UrlDecode,
   base64UrlEncode,
   getAsyncKey,
   ensurePromiseCallback,
