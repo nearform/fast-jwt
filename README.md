@@ -24,7 +24,6 @@ Create a signer function by calling `createSigner` and providing one or more of 
 
 - `key`: A string, buffer or object containing the secret for `HS*` algorithms or the PEM encoded public key for `RS*`, `PS*` and `ES*` algorithms. The key can also be a function accepting a Node style callback or a function returning a promise. This is the only mandatory option.
 - `algorithm`: The algorithm to use to sign the token. The default is autodetected from the key, using `RS256` for RSA private keys, `HS256` for plain secrets and the correspondent `ES` algorithm for EC private keys.
-- `encoding`: The token encoding, default is `utf-8`.
 - `cache`: A positive number specifying the size of the signed tokens cache (using LRU strategy). Setting to `true` is equivalent to provide the size `1000`. When enabled, as you can see in the benchmarks section below, performances dramatically improve. A error will be thrown if this option is provided and the `noTimestamp` option is not `true` or any of the `mutatePayload`, `expiresIn` or `notBefore` are set.
 - `mutatePayload`: If the original payload must be modified in place (via `Object.assign`) and thus will result changed to the caller funciton.
 - `expiresIn`: Time span (in milliseconds) after which the token expires, added as the `exp` claim in the payload. This will override any existing value in the claim.
@@ -77,7 +76,6 @@ Create a decoder function by calling `createDecoder` and providing one or more o
 
 - `complete`: Return an object with the decoded header, payload, signature and input (the token part before the signature), instead of just the content of the payload. Default is `false`.
 - `json`: Always parse the payload as JSON even if the `typ` claim of the header is not `JWT`. Default is `true`.
-- `encoding`: The token encoding, default is `utf-8`.
 - `cache`: A positive number specifying the size of the decoded tokens cache (using LRU strategy). Setting to `true` is equivalent to provide the size `1000`. When enabled, as you can see in the benchmarks section below, performances dramatically improve. By default the cache is disabled.
 
 The decoder is a function which accepts a token (as Buffer or string) and returns the payload or the sections of the token.
@@ -115,7 +113,6 @@ Create a verifier function by calling `createVerifier` and providing one or more
 - `algorithms`: List of strings with the names of the allowed algorithms. By default, all algorithms are accepted.
 - `complete`: Return an object with the decoded header, payload, signature and input (the token part before the signature), instead of just the content of the payload. Default is `false`.
 - `json`: Always parse the payload as JSON even if the `typ` claim of the header is not `JWT`. Default is `true`.
-- `encoding`: The token encoding. Default is `utf-8`.
 - `cache`: A positive number specifying the size of the verified tokens cache (using LRU strategy). Setting to `true` is equivalent to provide the size `1000`. When enabled, as you can see in the benchmarks section below, performances dramatically improve. By default the cache is disabled.
 - `cacheTTL`: The maximum time to live of a cache entry (in milliseconds). If the token has a earlier expiration or the verifier has a shorter `maxAge`, the earlier takes precedence. The default is `600000`, which is 10 minutes.
 - `allowedJti`: A string, a regular expression, an array of strings or an array of regular expressions containing allowed values for the id claim (`jti`). By default, all values are accepted.

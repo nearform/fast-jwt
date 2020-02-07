@@ -406,14 +406,6 @@ test('options validation - key', t => {
   t.end()
 })
 
-test('options validation - encoding', t => {
-  t.throws(() => createSigner({ key: 'secret', encoding: 123 }), {
-    message: 'The encoding option must be a string.'
-  })
-
-  t.end()
-})
-
 test('options validation - clockTimestamp', t => {
   t.throws(() => createSigner({ key: 'secret', clockTimestamp: '123' }), {
     message: 'The clockTimestamp option must be a positive number.'

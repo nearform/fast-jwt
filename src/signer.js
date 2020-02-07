@@ -11,7 +11,6 @@ module.exports = function createSigner(options) {
   let {
     key,
     algorithm,
-    encoding,
     noTimestamp,
     mutatePayload,
     clockTimestamp,
@@ -51,10 +50,6 @@ module.exports = function createSigner(options) {
       TokenError.codes.invalidOption,
       'The key option must be a string, buffer, object or callback containing a secret or a private key.'
     )
-  }
-
-  if (encoding && typeof encoding !== 'string') {
-    throw new TokenError(TokenError.codes.invalidOption, 'The encoding option must be a string.')
   }
 
   if (expiresIn && (typeof expiresIn !== 'number' || expiresIn < 0)) {
@@ -114,7 +109,7 @@ module.exports = function createSigner(options) {
     if (typeof payload !== 'string' && typeof payload !== 'object') {
       throw new TokenError(TokenError.codes.invalidType, 'The payload must be a object, a string or a buffer.')
     } else if (payload instanceof Buffer) {
-      payload = payload.toString(encoding)
+      payload = payload.toString('utf-8')
     }
 
     const header = { alg: algorithm, typ: typeof payload === 'object' ? 'JWT' : undefined, kid, ...additionalHeader }

@@ -764,14 +764,6 @@ test('options validation - cacheTTL', t => {
   t.end()
 })
 
-test('options validation - encoding', t => {
-  t.throws(() => createVerifier({ key: 'secret', encoding: 123 }), {
-    message: 'The encoding option must be a string.'
-  })
-
-  t.end()
-})
-
 test('caching - sync', t => {
   const token = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxfQ.57TF7smP9XDhIexBqPC-F1toZReYZLWb_YRU5tv0sxM'
   const invalidToken = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxfQ.aaa'

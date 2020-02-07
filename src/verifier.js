@@ -103,7 +103,6 @@ module.exports = function createVerifier(options) {
     algorithms: allowedAlgorithms,
     json,
     complete,
-    encoding,
     cache,
     cacheTTL,
     clockTimestamp,
@@ -134,10 +133,6 @@ module.exports = function createVerifier(options) {
     throw new TokenError(TokenError.codes.invalidOption, 'The clockTolerance option must be a positive number.')
   } else {
     clockTolerance = 0
-  }
-
-  if (encoding && typeof encoding !== 'string') {
-    throw new TokenError(TokenError.codes.invalidOption, 'The encoding option must be a string.')
   }
 
   if (cacheTTL && (typeof cacheTTL !== 'number' || cacheTTL < 0)) {
@@ -183,7 +178,7 @@ module.exports = function createVerifier(options) {
     validators.push({ type: 'string', claim: 'nonce', allowed: ensureStringClaimMatcher(allowedNonce) })
   }
 
-  const decodeJwt = createDecoder({ json, complete: true, encoding, cache, cacheTTL })
+  const decodeJwt = createDecoder({ json, complete: true, cache, cacheTTL })
 
   // Prepare the caching layer
   let [cacheGet, cacheSet, cacheProperties] = createCache(getCacheSize(cache))

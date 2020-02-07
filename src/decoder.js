@@ -4,7 +4,7 @@ const { getCacheSize, createCache } = require('./utils')
 const TokenError = require('./error')
 
 module.exports = function createDecoder(options) {
-  const { json, complete, encoding, cache } = { json: true, encoding: 'utf-8', ...options }
+  const { json, complete, cache } = { json: true, ...options }
 
   // Prepare the caching layer
   const [cacheGet, cacheSet, cacheProperties] = createCache(getCacheSize(cache))
@@ -12,7 +12,7 @@ module.exports = function createDecoder(options) {
   const decoder = function decode(token) {
     // Make sure the token is a string or a Buffer - Other cases make no sense to even try to validate
     if (token instanceof Buffer) {
-      token = token.toString(encoding)
+      token = token.toString('utf-8')
     } else if (typeof token !== 'string') {
       throw new TokenError(TokenError.codes.invalidType, 'The token must be a string or a buffer.')
     }
@@ -39,10 +39,9 @@ module.exports = function createDecoder(options) {
       }
 
       // Decode header and payload
+      header = JSON.parse(Buffer.from(rawHeader, 'base64').toString('utf-8'))
 
-      header = JSON.parse(Buffer.from(rawHeader, 'base64').toString(encoding))
-
-      let payload = Buffer.from(rawPayload, 'base64').toString(encoding)
+      let payload = Buffer.from(rawPayload, 'base64').toString('utf-8')
 
       if (json || header.typ === 'JWT') {
         payload = JSON.parse(payload)
