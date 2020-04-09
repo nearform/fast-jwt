@@ -73,16 +73,12 @@ async function compareSigning(payload, algorithm, privateKey, publicKey) {
 function compareDecoding(token, algorithm) {
   const fastjwtDecoder = createDecoder()
   const fastjwtCompleteDecoder = createDecoder({ complete: true })
-  const fastjwtCachedDecoder = createDecoder({ cache: true })
-  const fastjwtCachedCompleteDecoder = createDecoder({ cache: true, complete: true })
 
   if ((process.env.NODE_DEBUG || '').includes('fast-jwt')) {
     log('-------')
     log(`Decoded ${algorithm} tokens:`)
     log(`       jsonwebtoken: ${JSON.stringify(jsonwebtokenDecode(token, { complete: true }))}`)
     log(`            fastjwt: ${JSON.stringify(fastjwtCompleteDecoder(token, { complete: true }))}`)
-    log(` fastjwt+cache-miss: ${JSON.stringify(fastjwtCachedCompleteDecoder(token, { complete: true }))}`)
-    log(`  fastjwt+cache-hit: ${JSON.stringify(fastjwtCachedCompleteDecoder(token, { complete: true }))}`)
     log('-------')
   }
 
@@ -93,12 +89,6 @@ function compareDecoding(token, algorithm) {
       },
       [`${algorithm} - decode - fast-jwt (complete)`]: function() {
         fastjwtCompleteDecoder(token)
-      },
-      [`${algorithm} - decode - fast-jwt (with cache)`]: function() {
-        fastjwtCachedDecoder(token)
-      },
-      [`${algorithm} - decode - fast-jwt (complete with cache)`]: function() {
-        fastjwtCachedCompleteDecoder(token)
       },
       [`${algorithm} - decode - jsonwebtoken`]: function() {
         jsonwebtokenDecode(token)

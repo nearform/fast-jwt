@@ -1,11 +1,113 @@
 'use strict'
 
-const { publicKeyAlgorithms, hashAlgorithms, createSignature } = require('./crypto')
-const { detectAlgorithm } = require('./privateKeyParser')
+const { base64UrlMatcher, base64UrlReplacer, createSignature } = require('./crypto')
 const TokenError = require('./error')
-const { base64UrlEncode, getAsyncKey, ensurePromiseCallback } = require('./utils')
+const { hsAlgorithms, esAlgorithms, rsaAlgorithms, detectPrivateKey } = require('./keyParser')
+const { getAsyncKey, ensurePromiseCallback, keyToBuffer } = require('./utils')
 
-const supportedAlgorithms = Array.from(new Set([...publicKeyAlgorithms, ...hashAlgorithms, 'none'])).join(', ')
+const supportedAlgorithms = Array.from(new Set([...hsAlgorithms, ...esAlgorithms, ...rsaAlgorithms, 'none'])).join(', ')
+
+function sign(
+  {
+    key,
+    algorithm,
+    noTimestamp,
+    mutatePayload,
+    clockTimestamp,
+    expiresIn,
+    notBefore,
+    kid,
+    isAsync,
+    additionalHeader,
+    fixedPayload
+  },
+  payload,
+  cb
+) {
+  const [callback, promise] = isAsync ? ensurePromiseCallback(cb) : []
+
+  // Validate header and payload
+  let payloadType = typeof payload
+  if (payload instanceof Buffer) {
+    payload = payload.toString('utf-8')
+    payloadType = 'string'
+  } else if (payloadType !== 'string' && payloadType !== 'object') {
+    throw new TokenError(TokenError.codes.invalidType, 'The payload must be a object, a string or a buffer.')
+  }
+
+  // Prepare the header
+  const header = { alg: algorithm, typ: payloadType === 'object' ? 'JWT' : undefined, kid, ...additionalHeader }
+
+  // Prepare the payload
+  let encodedPayload = ''
+
+  // All the claims are added only if the payload is not a string
+  if (payloadType !== 'string') {
+    const iat = payload.iat * 1000 || clockTimestamp || Date.now()
+
+    const finalPayload = {
+      ...payload,
+      ...fixedPayload,
+      iat: noTimestamp ? undefined : iat / 1000,
+      exp: expiresIn ? Math.floor((iat + expiresIn) / 1000) : undefined,
+      nbf: notBefore ? Math.floor((iat + notBefore) / 1000) : undefined
+    }
+
+    if (mutatePayload) {
+      Object.assign(payload, finalPayload)
+    }
+
+    encodedPayload = Buffer.from(JSON.stringify(finalPayload), 'utf-8')
+      .toString('base64')
+      .replace(base64UrlMatcher, base64UrlReplacer)
+  } else {
+    encodedPayload = Buffer.from(payload, 'utf-8')
+      .toString('base64')
+      .replace(base64UrlMatcher, base64UrlReplacer)
+  }
+
+  // We have the key
+  if (!callback) {
+    const encodedHeader = Buffer.from(JSON.stringify(header), 'utf-8')
+      .toString('base64')
+      .replace(base64UrlMatcher, base64UrlReplacer)
+
+    const input = encodedHeader + '.' + encodedPayload
+    const signature = algorithm === 'none' ? '' : createSignature(algorithm, key, input)
+
+    return input + '.' + signature
+  }
+
+  // Get the key asynchronously
+  getAsyncKey(key, header, (err, currentKey) => {
+    if (err) {
+      const error = TokenError.wrap(err, TokenError.codes.keyFetchingError, 'Cannot fetch key.')
+      return callback(error)
+    }
+
+    currentKey = keyToBuffer(currentKey)
+
+    let token
+    try {
+      if (!algorithm) {
+        algorithm = header.alg = detectPrivateKey(currentKey)
+      }
+
+      const encodedHeader = Buffer.from(JSON.stringify(header), 'utf-8')
+        .toString('base64')
+        .replace(base64UrlMatcher, base64UrlReplacer)
+
+      const input = encodedHeader + '.' + encodedPayload
+      token = input + '.' + createSignature(algorithm, currentKey, input)
+    } catch (e) {
+      return callback(e)
+    }
+
+    callback(null, token)
+  })
+
+  return promise
+}
 
 module.exports = function createSigner(options) {
   let {
@@ -29,14 +131,17 @@ module.exports = function createSigner(options) {
   if (
     algorithm &&
     algorithm !== 'none' &&
-    !publicKeyAlgorithms.includes(algorithm) &&
-    !hashAlgorithms.includes(algorithm)
+    !hsAlgorithms.includes(algorithm) &&
+    !esAlgorithms.includes(algorithm) &&
+    !rsaAlgorithms.includes(algorithm)
   ) {
     throw new TokenError(
       TokenError.codes.invalidOption,
       `The algorithm option must be one of the following values: ${supportedAlgorithms}.`
     )
   }
+
+  const keyType = typeof key
 
   if (algorithm === 'none') {
     if (key) {
@@ -45,7 +150,7 @@ module.exports = function createSigner(options) {
         'The key option must not be provided when the algorithm option is "none".'
       )
     }
-  } else if (!key || (typeof key !== 'string' && typeof key !== 'object' && typeof key !== 'function')) {
+  } else if (!key || (keyType !== 'string' && keyType !== 'object' && keyType !== 'function')) {
     throw new TokenError(
       TokenError.codes.invalidOption,
       'The key option must be a string, buffer, object or callback containing a secret or a private key.'
@@ -92,96 +197,35 @@ module.exports = function createSigner(options) {
     throw new TokenError(TokenError.codes.invalidOption, 'The header option must be a object.')
   }
 
-  // Prepare the fixed payload
-  const fixedPayload = {
-    jti,
-    aud,
-    iss,
-    sub,
-    nonce
+  // Convert the key to a buffer when not a function - If static also detect the algorithm here
+  if (key && keyType !== 'function') {
+    key = keyToBuffer(key)
+
+    if (!algorithm) {
+      algorithm = detectPrivateKey(key)
+    }
   }
 
   // Return the signer
-  const signer = function sign(payload, cb) {
-    const [callback, promise] = typeof key === 'function' ? ensurePromiseCallback(cb) : []
-
-    // Prepare header and payload
-    if (typeof payload !== 'string' && typeof payload !== 'object') {
-      throw new TokenError(TokenError.codes.invalidType, 'The payload must be a object, a string or a buffer.')
-    } else if (payload instanceof Buffer) {
-      payload = payload.toString('utf-8')
+  const context = {
+    key,
+    algorithm,
+    noTimestamp,
+    mutatePayload,
+    clockTimestamp,
+    expiresIn,
+    notBefore,
+    kid,
+    isAsync: keyType === 'function',
+    additionalHeader,
+    fixedPayload: {
+      jti,
+      aud,
+      iss,
+      sub,
+      nonce
     }
-
-    const header = { alg: algorithm, typ: typeof payload === 'object' ? 'JWT' : undefined, kid, ...additionalHeader }
-
-    // Prepare the payload
-    // All the claims are added only if the payload is not a string
-    let finalPayload = payload
-
-    if (typeof payload !== 'string') {
-      const iat = payload.iat * 1000 || clockTimestamp || Date.now()
-      const additionalPayload = {}
-
-      if (!noTimestamp) {
-        additionalPayload.iat = Math.floor(iat / 1000)
-      }
-
-      if (expiresIn) {
-        additionalPayload.exp = Math.floor((iat + expiresIn) / 1000)
-      }
-
-      if (notBefore) {
-        additionalPayload.nbf = Math.floor((iat + notBefore) / 1000)
-      }
-
-      // Assign the final payload
-      if (mutatePayload) {
-        finalPayload = JSON.stringify(Object.assign(payload, fixedPayload, additionalPayload))
-      } else {
-        finalPayload = JSON.stringify(Object.assign({}, payload, fixedPayload, additionalPayload))
-      }
-    }
-
-    const encodedPayload = base64UrlEncode(Buffer.from(finalPayload, 'utf-8'))
-
-    // We're get the key synchronously
-    if (!callback) {
-      if (!algorithm) {
-        algorithm = header.alg = detectAlgorithm(key)
-      }
-
-      const encodedHeader = base64UrlEncode(Buffer.from(JSON.stringify(header), 'utf-8'))
-      const encodedSignature =
-        algorithm === 'none' ? '' : base64UrlEncode(createSignature(algorithm, key, encodedHeader, encodedPayload))
-
-      return `${encodedHeader}.${encodedPayload}.${encodedSignature}`
-    }
-
-    getAsyncKey(key, header, (err, currentKey) => {
-      if (err) {
-        const error = TokenError.wrap(err, TokenError.codes.keyFetchingError, 'Cannot fetch key.')
-        return callback(error)
-      }
-
-      let token
-      try {
-        if (!algorithm) {
-          algorithm = header.alg = detectAlgorithm(key)
-        }
-
-        const encodedHeader = base64UrlEncode(Buffer.from(JSON.stringify(header), 'utf-8'))
-        const encodedSignature = base64UrlEncode(createSignature(algorithm, currentKey, encodedHeader, encodedPayload))
-
-        token = `${encodedHeader}.${encodedPayload}.${encodedSignature}`
-      } catch (e) {
-        return callback(e)
-      }
-
-      callback(null, token)
-    })
-
-    return promise
   }
 
-  return signer
+  return sign.bind(null, context)
 }
