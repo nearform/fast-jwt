@@ -2,13 +2,11 @@
 
 const { test } = require('tap')
 
-const { createDecoder, TokenError } = require('../src')
-const { hashKey } = require('../src/utils')
+const { createDecoder } = require('../src')
 
 const defaultDecoder = createDecoder()
 const rawDecoder = createDecoder({ json: false })
 const completeDecoder = createDecoder({ complete: true })
-const cachedDecoder = createDecoder({ cache: 10 })
 
 const token =
   'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6Ik9LIiwiaWF0Ijo5ODc2NTQzMjEwfQ.gWCa6uhcbaAgVmJC46OAIl-9yTBDAdIphDq_NP6fenY'
@@ -18,7 +16,7 @@ const nonJwtToken =
 test('should return a valid token', t => {
   t.strictDeepEqual(defaultDecoder(token), { sub: '1234567890', name: 'OK', iat: 9876543210 })
 
-  t.strictDeepEqual(completeDecoder(Buffer.from(token)), {
+  t.strictDeepEqual(completeDecoder(Buffer.from(token, 'utf-8')), {
     header: {
       alg: 'HS256',
       typ: 'JWT'
@@ -28,7 +26,7 @@ test('should return a valid token', t => {
       name: 'OK',
       iat: 9876543210
     },
-    signature: 'gWCa6uhcbaAgVmJC46OAIl+9yTBDAdIphDq/NP6fenY=',
+    signature: 'gWCa6uhcbaAgVmJC46OAIl-9yTBDAdIphDq_NP6fenY',
     input: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6Ik9LIiwiaWF0Ijo5ODc2NTQzMjEwfQ'
   })
 
@@ -39,7 +37,7 @@ test('should return a valid token', t => {
 })
 
 test('token must be a string', t => {
-  for (const token of [false, null, 0, NaN, []]) {
+  for (const token of [false, null, 0, NaN, [], { a: 1 }]) {
     t.throws(() => defaultDecoder(token), { message: 'The token must be a string or a buffer.' })
   }
 
@@ -66,24 +64,6 @@ test('invalid payload', t => {
   t.throws(() => defaultDecoder('eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.bbb.ccc'), {
     message: 'The token payload is not a valid base64url serialized JSON.'
   })
-
-  t.end()
-})
-
-test('caching', t => {
-  t.equal(cachedDecoder.cache.size, 0)
-  t.strictDeepEqual(cachedDecoder(token), { sub: '1234567890', name: 'OK', iat: 9876543210 })
-  t.equal(cachedDecoder.cache.size, 1)
-  t.strictDeepEqual(cachedDecoder(token), { sub: '1234567890', name: 'OK', iat: 9876543210 })
-  t.equal(cachedDecoder.cache.size, 1)
-
-  t.throws(() => cachedDecoder('a.b.c'), { message: 'The token header is not a valid base64url serialized JSON.' })
-  t.equal(cachedDecoder.cache.size, 2)
-  t.throws(() => cachedDecoder('a.b.c'), { message: 'The token header is not a valid base64url serialized JSON.' })
-  t.equal(cachedDecoder.cache.size, 2)
-
-  t.strictDeepEqual(cachedDecoder.cache.get(hashKey(token)), { sub: '1234567890', name: 'OK', iat: 9876543210 })
-  t.true(cachedDecoder.cache.get(hashKey('a.b.c')) instanceof TokenError)
 
   t.end()
 })

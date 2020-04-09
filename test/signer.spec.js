@@ -38,7 +38,7 @@ test('it correctly returns a token - sync', t => {
   t.equal(sign('123', { noTimestamp: true }), 'eyJhbGciOiJIUzI1NiJ9.MTIz.UqiZ2LDYZqYB3xJgkHaihGQnJ_WPTz3hERDpA7bWYjA')
 
   t.equal(
-    sign(Buffer.from('123'), { noTimestamp: true }),
+    sign(Buffer.from('123', 'utf-8'), { noTimestamp: true }),
     'eyJhbGciOiJIUzI1NiJ9.MTIz.UqiZ2LDYZqYB3xJgkHaihGQnJ_WPTz3hERDpA7bWYjA'
   )
 
@@ -388,7 +388,7 @@ test('options validation - algorithm', t => {
 
   t.throws(() => createSigner({ key: 'secret', algorithm: 'FOO' }), {
     message:
-      'The algorithm option must be one of the following values: RS256, RS384, RS512, ES256, ES384, ES512, PS256, PS384, PS512, HS256, HS384, HS512, none.'
+      'The algorithm option must be one of the following values: HS256, HS384, HS512, ES256, ES384, ES512, RS256, RS384, RS512, PS256, PS384, PS512, none.'
   })
 
   t.end()
@@ -401,14 +401,6 @@ test('options validation - key', t => {
 
   t.throws(() => createSigner({ algorithm: 'none', key: 123 }), {
     message: 'The key option must not be provided when the algorithm option is "none".'
-  })
-
-  t.end()
-})
-
-test('options validation - encoding', t => {
-  t.throws(() => createSigner({ key: 'secret', encoding: 123 }), {
-    message: 'The encoding option must be a string.'
   })
 
   t.end()

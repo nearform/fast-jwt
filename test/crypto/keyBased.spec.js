@@ -57,7 +57,7 @@ for (const type of ['ES', 'RS', 'PS']) {
     })
 
     if (type !== 'PS') {
-      test(`${algorithm} based tokens round trip with object keys`, t => {
+      test(`${algorithm} based tokens round trip with object private keys`, t => {
         const token = createSigner({
           algorithm,
           key: { key: privateKey.toString('utf8') }
@@ -79,7 +79,9 @@ for (const type of ['ES', 'RS', 'PS']) {
         createSigner({ algorithm, key: async () => 123 })({ payload: 'PAYLOAD' }),
         {
           message: 'Cannot create the signature.',
-          originalError: { message: `The key for algorithm ${algorithm} must be a string, a object or a buffer.` }
+          originalError: {
+            message: `The key for algorithm ${algorithm} must be a string, a object or a buffer containing the private key.`
+          }
         },
         null
       )
@@ -115,7 +117,7 @@ for (const type of ['ES', 'RS', 'PS']) {
       await t.rejects(createVerifier({ algorithms: [algorithm], key: async () => 123 })(token), {
         message: 'Cannot verify the signature.',
         originalError: {
-          message: `The key for algorithm ${algorithm} must be a string or a buffer containing the public key.`
+          message: `The key for algorithm ${algorithm} must be a string, a object or a buffer containing the public key.`
         }
       })
     })
