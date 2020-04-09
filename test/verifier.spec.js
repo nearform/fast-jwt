@@ -6,7 +6,7 @@ const { test } = require('tap')
 const { install: fakeTime } = require('lolex')
 
 const { createSigner, createVerifier, TokenError } = require('../src')
-const { hashKey } = require('../src/utils')
+const { hashToken } = require('../src/utils')
 
 const privateKeys = {
   HS: 'secretsecretsecret',
@@ -781,8 +781,8 @@ test('caching - sync', t => {
   t.throws(() => verifier(invalidToken), { message: 'The token signature is invalid.' })
   t.equal(verifier.cache.size, 2)
 
-  t.strictDeepEqual(verifier.cache.get(hashKey(token))[0], { a: 1 })
-  t.true(verifier.cache.get(hashKey(invalidToken))[0] instanceof TokenError)
+  t.strictDeepEqual(verifier.cache.get(hashToken(token))[0], { a: 1 })
+  t.true(verifier.cache.get(hashToken(invalidToken))[0] instanceof TokenError)
 
   t.end()
 })
@@ -804,8 +804,8 @@ test('caching - async', async t => {
   await t.rejects(async () => verifier(invalidToken), { message: 'The token signature is invalid.' })
   t.equal(verifier.cache.size, 2)
 
-  t.strictDeepEqual(verifier.cache.get(hashKey(token))[0], { a: 1 })
-  t.true(verifier.cache.get(hashKey(invalidToken))[0] instanceof TokenError)
+  t.strictDeepEqual(verifier.cache.get(hashToken(token))[0], { a: 1 })
+  t.true(verifier.cache.get(hashToken(invalidToken))[0] instanceof TokenError)
 })
 
 for (const type of ['HS', 'ES', 'RS', 'PS']) {
@@ -821,7 +821,7 @@ for (const type of ['HS', 'ES', 'RS', 'PS']) {
 
       t.strictDeepEqual(verifier(token), { a: 1 })
       t.equal(verifier.cache.size, 1)
-      t.equal(Array.from(verifier.cache.keys())[0], hashKey(token, `sha${bits}`))
+      t.equal(Array.from(verifier.cache.keys())[0], hashToken(token, `sha${bits}`))
 
       t.end()
     })
@@ -838,13 +838,13 @@ test('caching - should be able to manipulate cache directy', t => {
   t.equal(verifier.cache.size, 0)
   t.strictDeepEqual(verifier(token), { a: 1, iat: 100, exp: 200 })
   t.equal(verifier.cache.size, 1)
-  t.strictDeepEqual(verifier.readCacheEntry(token), [{ a: 1, iat: 100, exp: 200 }, 0, 200000])
-  verifier.clearCache()
+  t.strictDeepEqual(verifier.cache.get(hashToken(token)), [{ a: 1, iat: 100, exp: 200 }, 0, 200000])
+  verifier.cache.clear()
   t.equal(verifier.cache.size, 0)
-  verifier.writeCacheEntry(token, 'WHATEVER')
-  t.strictDeepEqual(verifier.readCacheEntry(token), 'WHATEVER')
-  verifier.deleteCacheEntry(token)
-  t.strictDeepEqual(verifier.readCacheEntry(token), null)
+  verifier.cache.set(token, 'WHATEVER')
+  t.strictDeepEqual(verifier.cache.get(token), 'WHATEVER')
+  verifier.cache.set(token, null)
+  t.strictDeepEqual(verifier.cache.get(token), null)
 
   clock.uninstall()
 
@@ -864,7 +864,7 @@ test('caching - should correctly expire cached token using the exp claim', t => 
   t.equal(verifier.cache.size, 1)
   t.strictDeepEqual(verifier(token), { a: 1, iat: 100, exp: 200 })
   t.equal(verifier.cache.size, 1)
-  t.strictDeepEqual(verifier.cache.get(hashKey(token)), [{ a: 1, iat: 100, exp: 200 }, 0, 200000])
+  t.strictDeepEqual(verifier.cache.get(hashToken(token)), [{ a: 1, iat: 100, exp: 200 }, 0, 200000])
 
   // Now advance to expired time
   clock.tick(200000)
@@ -872,7 +872,7 @@ test('caching - should correctly expire cached token using the exp claim', t => 
   // The token should now be expired and the cache should have been updated to reflect it
   t.throws(() => verifier(token), { message: 'The token has expired at 1970-01-01T00:03:20.000Z.' })
   t.equal(verifier.cache.size, 1)
-  t.true(verifier.cache.get(hashKey(token))[0] instanceof TokenError)
+  t.true(verifier.cache.get(hashToken(token))[0] instanceof TokenError)
 
   t.throws(() => verifier(token), { message: 'The token has expired at 1970-01-01T00:03:20.000Z.' })
   t.throws(() => verifier(token), { message: 'The token has expired at 1970-01-01T00:03:20.000Z.' })
@@ -883,12 +883,12 @@ test('caching - should correctly expire cached token using the exp claim', t => 
   verifier.cache.clear()
   t.throws(() => verifier(token), { message: 'The token has expired at 1970-01-01T00:03:20.000Z.' })
   t.equal(verifier.cache.size, 1)
-  t.true(verifier.cache.get(hashKey(token))[0] instanceof TokenError)
+  t.true(verifier.cache.get(hashToken(token))[0] instanceof TokenError)
 
   const verifierWithTimestamp = createVerifier({ key: 'secret', cache: true, clockTimestamp: 100000 })
   t.strictDeepEqual(verifierWithTimestamp(token), { a: 1, iat: 100, exp: 200 })
   t.equal(verifierWithTimestamp.cache.size, 1)
-  t.strictDeepEqual(verifierWithTimestamp.cache.get(hashKey(token)), [{ a: 1, iat: 100, exp: 200 }, 0, 200000])
+  t.strictDeepEqual(verifierWithTimestamp.cache.get(hashToken(token)), [{ a: 1, iat: 100, exp: 200 }, 0, 200000])
 
   t.end()
 })
@@ -906,7 +906,7 @@ test('caching - should correctly expire cached token using the maxAge claim', t 
   t.equal(verifier.cache.size, 1)
   t.strictDeepEqual(verifier(token), { a: 1, iat: 100 })
   t.equal(verifier.cache.size, 1)
-  t.strictDeepEqual(verifier.cache.get(hashKey(token)), [{ a: 1, iat: 100 }, 0, 200000])
+  t.strictDeepEqual(verifier.cache.get(hashToken(token)), [{ a: 1, iat: 100 }, 0, 200000])
 
   // Now advance to expired time
   clock.tick(200000)
@@ -914,7 +914,7 @@ test('caching - should correctly expire cached token using the maxAge claim', t 
   // The token should now be expired and the cache should have been updated to reflect it
   t.throws(() => verifier(token), { message: 'The token has expired at 1970-01-01T00:03:20.000Z.' })
   t.equal(verifier.cache.size, 1)
-  t.true(verifier.cache.get(hashKey(token))[0] instanceof TokenError)
+  t.true(verifier.cache.get(hashToken(token))[0] instanceof TokenError)
   t.throws(() => verifier(token), { message: 'The token has expired at 1970-01-01T00:03:20.000Z.' })
   t.throws(() => verifier(token), { message: 'The token has expired at 1970-01-01T00:03:20.000Z.' })
 
@@ -934,7 +934,7 @@ test('caching - should correctly expire not yet cached token using the nbf claim
   t.throws(() => verifier(token), { message: 'The token will be active at 1970-01-01T00:05:00.000Z.' })
   t.equal(verifier.cache.size, 1)
   t.throws(() => verifier(token), { message: 'The token will be active at 1970-01-01T00:05:00.000Z.' })
-  t.true(verifier.cache.get(hashKey(token))[0] instanceof TokenError)
+  t.true(verifier.cache.get(hashToken(token))[0] instanceof TokenError)
 
   // Now advance to expired time
   clock.tick(200000)
@@ -944,7 +944,7 @@ test('caching - should correctly expire not yet cached token using the nbf claim
   t.equal(verifier.cache.size, 1)
   t.strictDeepEqual(verifier(token), { a: 1, iat: 100, nbf: 300 })
   t.equal(verifier.cache.size, 1)
-  t.strictDeepEqual(verifier.cache.get(hashKey(token)), [{ a: 1, iat: 100, nbf: 300 }, 300000, 700000])
+  t.strictDeepEqual(verifier.cache.get(hashToken(token)), [{ a: 1, iat: 100, nbf: 300 }, 300000, 900000])
 
   clock.uninstall()
   t.end()
@@ -962,7 +962,7 @@ test('caching - should be able to consider both nbf and exp field at the same ti
   t.throws(() => verifier(token), { message: 'The token will be active at 1970-01-01T00:05:00.000Z.' })
   t.equal(verifier.cache.size, 1)
   t.throws(() => verifier(token), { message: 'The token will be active at 1970-01-01T00:05:00.000Z.' })
-  t.true(verifier.cache.get(hashKey(token))[0] instanceof TokenError)
+  t.true(verifier.cache.get(hashToken(token))[0] instanceof TokenError)
 
   // Now advance to activation time
   clock.tick(200000)
@@ -972,7 +972,7 @@ test('caching - should be able to consider both nbf and exp field at the same ti
   t.equal(verifier.cache.size, 1)
   t.strictDeepEqual(verifier(token), { a: 1, iat: 100, nbf: 300, exp: 500 })
   t.equal(verifier.cache.size, 1)
-  t.strictDeepEqual(verifier.cache.get(hashKey(token)), [{ a: 1, iat: 100, nbf: 300, exp: 500 }, 300000, 500000])
+  t.strictDeepEqual(verifier.cache.get(hashToken(token)), [{ a: 1, iat: 100, nbf: 300, exp: 500 }, 300000, 500000])
 
   // Now advance again after the expiry time
   clock.tick(210000)
@@ -980,7 +980,7 @@ test('caching - should be able to consider both nbf and exp field at the same ti
   // The token should now be expired and the cache should have been updated to reflect it
   t.throws(() => verifier(token), { message: 'The token has expired at 1970-01-01T00:08:20.000Z.' })
   t.equal(verifier.cache.size, 1)
-  t.true(verifier.cache.get(hashKey(token))[0] instanceof TokenError)
+  t.true(verifier.cache.get(hashToken(token))[0] instanceof TokenError)
   t.throws(() => verifier(token), { message: 'The token has expired at 1970-01-01T00:08:20.000Z.' })
   t.throws(() => verifier(token), { message: 'The token has expired at 1970-01-01T00:08:20.000Z.' })
 
@@ -1002,14 +1002,14 @@ test('caching - should ignore the nbf and exp when asked to', t => {
   t.throws(() => verifier(token), { message: 'The token will be active at 1970-01-01T00:05:00.000Z.' })
   t.equal(verifier.cache.size, 1)
   t.throws(() => verifier(token), { message: 'The token will be active at 1970-01-01T00:05:00.000Z.' })
-  t.true(verifier.cache.get(hashKey(token))[0] instanceof TokenError)
+  t.true(verifier.cache.get(hashToken(token))[0] instanceof TokenError)
 
   // For the verifier which ignores notBefore, the token is already active
   t.strictDeepEqual(verifierNoNbf(token), { a: 1, iat: 100, nbf: 300, exp: 500 })
   t.equal(verifierNoNbf.cache.size, 1)
   t.strictDeepEqual(verifierNoNbf(token), { a: 1, iat: 100, nbf: 300, exp: 500 })
   t.equal(verifierNoNbf.cache.size, 1)
-  t.strictDeepEqual(verifierNoNbf.cache.get(hashKey(token)), [{ a: 1, iat: 100, nbf: 300, exp: 500 }, 0, 500000])
+  t.strictDeepEqual(verifierNoNbf.cache.get(hashToken(token)), [{ a: 1, iat: 100, nbf: 300, exp: 500 }, 0, 500000])
 
   // Now advance to activation time
   clock.tick(200000)
@@ -1019,7 +1019,7 @@ test('caching - should ignore the nbf and exp when asked to', t => {
   t.equal(verifier.cache.size, 1)
   t.strictDeepEqual(verifier(token), { a: 1, iat: 100, nbf: 300, exp: 500 })
   t.equal(verifier.cache.size, 1)
-  t.strictDeepEqual(verifier.cache.get(hashKey(token)), [{ a: 1, iat: 100, nbf: 300, exp: 500 }, 300000, 500000])
+  t.strictDeepEqual(verifier.cache.get(hashToken(token)), [{ a: 1, iat: 100, nbf: 300, exp: 500 }, 300000, 500000])
 
   // Now advance again after the expiry time
   clock.tick(210000)
@@ -1027,7 +1027,7 @@ test('caching - should ignore the nbf and exp when asked to', t => {
   // The token should now be expired and the cache should have been updated to reflect it
   t.throws(() => verifier(token), { message: 'The token has expired at 1970-01-01T00:08:20.000Z.' })
   t.equal(verifier.cache.size, 1)
-  t.true(verifier.cache.get(hashKey(token))[0] instanceof TokenError)
+  t.true(verifier.cache.get(hashToken(token))[0] instanceof TokenError)
   t.throws(() => verifier(token), { message: 'The token has expired at 1970-01-01T00:08:20.000Z.' })
   t.throws(() => verifier(token), { message: 'The token has expired at 1970-01-01T00:08:20.000Z.' })
 
@@ -1036,7 +1036,11 @@ test('caching - should ignore the nbf and exp when asked to', t => {
   t.equal(verifierNoExp.cache.size, 1)
   t.strictDeepEqual(verifierNoExp(token), { a: 1, iat: 100, nbf: 300, exp: 500 })
   t.equal(verifierNoExp.cache.size, 1)
-  t.strictDeepEqual(verifierNoExp.cache.get(hashKey(token)), [{ a: 1, iat: 100, nbf: 300, exp: 500 }, 300000, 700000])
+  t.strictDeepEqual(verifierNoExp.cache.get(hashToken(token)), [
+    { a: 1, iat: 100, nbf: 300, exp: 500 },
+    300000,
+    1110000
+  ])
 
   clock.uninstall()
   t.end()

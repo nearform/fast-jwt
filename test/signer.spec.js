@@ -388,7 +388,7 @@ test('options validation - algorithm', t => {
 
   t.throws(() => createSigner({ key: 'secret', algorithm: 'FOO' }), {
     message:
-      'The algorithm option must be one of the following values: RS256, RS384, RS512, ES256, ES384, ES512, PS256, PS384, PS512, HS256, HS384, HS512, none.'
+      'The algorithm option must be one of the following values: HS256, HS384, HS512, ES256, ES384, ES512, RS256, RS384, RS512, PS256, PS384, PS512, none.'
   })
 
   t.end()
