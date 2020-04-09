@@ -5,7 +5,13 @@ const {
   createVerify,
   createSign,
   timingSafeEqual,
-  constants: { RSA_PKCS1_PSS_PADDING, RSA_PSS_SALTLEN_DIGEST }
+  constants: {
+    RSA_PKCS1_PSS_PADDING,
+    RSA_PSS_SALTLEN_DIGEST,
+    RSA_PKCS1_PADDING,
+    RSA_PSS_SALTLEN_MAX_SIGN,
+    RSA_PSS_SALTLEN_AUTO
+  }
 } = require('crypto')
 const { joseToDer, derToJose } = require('ecdsa-sig-formatter')
 
@@ -76,7 +82,11 @@ function createSignature(algorithm, key, input) {
         .replace(base64UrlMatcher, base64UrlReplacer)
     }
 
-    const options = { ...validatePrivateKey(algorithm, key), padding: undefined, saltLength: undefined }
+    const options = {
+      ...validatePrivateKey(algorithm, key),
+      padding: RSA_PKCS1_PADDING,
+      saltLength: RSA_PSS_SALTLEN_MAX_SIGN
+    }
 
     if (type === 'P') {
       options.padding = RSA_PKCS1_PSS_PADDING
@@ -119,7 +129,7 @@ function verifySignature(algorithm, key, input, signature) {
       }
     }
 
-    const options = { key, padding: undefined, saltLength: undefined }
+    const options = { key, padding: RSA_PKCS1_PADDING, saltLength: RSA_PSS_SALTLEN_AUTO }
 
     validateSecretOrPublicKey(
       algorithm,
