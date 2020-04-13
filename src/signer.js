@@ -2,15 +2,35 @@
 
 const { base64UrlMatcher, base64UrlReplacer, createSignature } = require('./crypto')
 const TokenError = require('./error')
-const { hsAlgorithms, esAlgorithms, rsaAlgorithms, detectPrivateKey } = require('./keyParser')
+const { hsAlgorithms, esAlgorithms, rsaAlgorithms, edAlgorithms, detectPrivateKey } = require('./keyParser')
 const { getAsyncKey, ensurePromiseCallback, keyToBuffer } = require('./utils')
 
-const supportedAlgorithms = Array.from(new Set([...hsAlgorithms, ...esAlgorithms, ...rsaAlgorithms, 'none'])).join(', ')
+const supportedAlgorithms = Array.from(
+  new Set([...hsAlgorithms, ...esAlgorithms, ...rsaAlgorithms, ...edAlgorithms, 'none'])
+).join(', ')
+
+function ensureAlgorithm(algorithm, curve, key, header) {
+  // Force detection of EdDSA algorithms in order to get the curve
+  if (algorithm && algorithm !== 'EdDSA') {
+    return [algorithm, curve]
+  }
+
+  ;[algorithm, curve] = detectPrivateKey(key)
+  header.alg = algorithm
+
+  if (algorithm.slice(0, 2) === 'Ed') {
+    header.kty = 'OKP'
+    header.crv = curve
+  }
+
+  return [algorithm, curve]
+}
 
 function sign(
   {
     key,
     algorithm,
+    curve,
     noTimestamp,
     mutatePayload,
     clockTimestamp,
@@ -36,7 +56,19 @@ function sign(
   }
 
   // Prepare the header
-  const header = { alg: algorithm, typ: payloadType === 'object' ? 'JWT' : undefined, kid, ...additionalHeader }
+  const header = {
+    alg: algorithm,
+    typ: payloadType === 'object' ? 'JWT' : undefined,
+    kty: undefined,
+    crv: undefined,
+    kid,
+    ...additionalHeader
+  }
+
+  if (algorithm && algorithm.slice(0, 2) === 'Ed') {
+    header.kty = 'OKP'
+    header.crv = curve
+  }
 
   // Prepare the payload
   let encodedPayload = ''
@@ -89,9 +121,7 @@ function sign(
 
     let token
     try {
-      if (!algorithm) {
-        algorithm = header.alg = detectPrivateKey(currentKey)
-      }
+      ;[algorithm, curve] = ensureAlgorithm(algorithm, curve, currentKey, header)
 
       const encodedHeader = Buffer.from(JSON.stringify(header), 'utf-8')
         .toString('base64')
@@ -133,7 +163,8 @@ module.exports = function createSigner(options) {
     algorithm !== 'none' &&
     !hsAlgorithms.includes(algorithm) &&
     !esAlgorithms.includes(algorithm) &&
-    !rsaAlgorithms.includes(algorithm)
+    !rsaAlgorithms.includes(algorithm) &&
+    !edAlgorithms.includes(algorithm)
   ) {
     throw new TokenError(
       TokenError.codes.invalidOption,
@@ -142,6 +173,7 @@ module.exports = function createSigner(options) {
   }
 
   const keyType = typeof key
+  let curve = ''
 
   if (algorithm === 'none') {
     if (key) {
@@ -201,15 +233,15 @@ module.exports = function createSigner(options) {
   if (key && keyType !== 'function') {
     key = keyToBuffer(key)
 
-    if (!algorithm) {
-      algorithm = detectPrivateKey(key)
-    }
+    // Force detection of EdDSA algorithms in order to get the curve
+    ;[algorithm, curve] = ensureAlgorithm(algorithm, curve, key, {})
   }
 
   // Return the signer
   const context = {
     key,
     algorithm,
+    curve,
     noTimestamp,
     mutatePayload,
     clockTimestamp,

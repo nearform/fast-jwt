@@ -1,7 +1,9 @@
 'use strict'
 
 const { createHash } = require('crypto')
-const algorithmMatcher = /"alg"\s*:\s*"[HERP]S(384|512)"/m
+const algorithmMatcher = /"alg"\s*:\s*"[HERP]S(256|384)"/m
+const edAlgorithmMatcher = /"alg"\s*:\s*"EdDSA"/m
+const ed448CurveMatcher = /"crv"\s*:\s*"Ed448"/m
 
 function keyToBuffer(key) {
   const keyType = typeof key
@@ -55,11 +57,17 @@ function ensurePromiseCallback(callback) {
 function hashToken(token) {
   const rawHeader = token.split('.', 1)[0]
   const header = Buffer.from(rawHeader, 'base64').toString('utf-8')
-  const mo = header.match(algorithmMatcher)
+  let hasher = null
 
-  return createHash(`sha${mo ? mo[1] : '256'}`)
-    .update(token)
-    .digest('hex')
+  /* istanbul ignore next */
+  if (header.match(edAlgorithmMatcher) && header.match(ed448CurveMatcher)) {
+    hasher = createHash('shake256', { outputLength: 114 })
+  } else {
+    const mo = header.match(algorithmMatcher)
+    hasher = createHash(`sha${mo ? mo[1] : '512'}`)
+  }
+
+  return hasher.update(token).digest('hex')
 }
 
 module.exports = {

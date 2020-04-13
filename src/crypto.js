@@ -5,6 +5,8 @@ const {
   createVerify,
   createSign,
   timingSafeEqual,
+  sign: directSign,
+  verify: directVerify,
   constants: {
     RSA_PKCS1_PSS_PADDING,
     RSA_PSS_SALTLEN_DIGEST,
@@ -70,16 +72,28 @@ function base64UrlReplacer(c) {
 
 function createSignature(algorithm, key, input) {
   try {
-    const type = algorithm[0]
+    const type = algorithm.slice(0, 2)
     const alg = `SHA${algorithm.slice(2)}`
 
-    if (type === 'H') {
+    if (type === 'HS') {
       validateSecretOrPublicKey(algorithm, key, `The secret for algorithm ${algorithm} must be a string or a buffer.`)
 
       return createHmac(alg, key)
         .update(input)
         .digest('base64')
         .replace(base64UrlMatcher, base64UrlReplacer)
+    } else if (type === 'Ed') {
+      // Check if supported on Node 10
+      /* istanbul ignore next */
+      if (typeof directSign === 'function') {
+        validatePrivateKey(algorithm, key)
+
+        return directSign(undefined, Buffer.from(input, 'utf8'), key)
+          .toString('base64')
+          .replace(base64UrlMatcher, base64UrlReplacer)
+      } else {
+        throw new TokenError(TokenError.codes.signError, 'EdDSA algorithms are not supported by your Node.js version.')
+      }
     }
 
     const options = {
@@ -88,7 +102,7 @@ function createSignature(algorithm, key, input) {
       saltLength: RSA_PSS_SALTLEN_MAX_SIGN
     }
 
-    if (type === 'P') {
+    if (type === 'PS') {
       options.padding = RSA_PKCS1_PSS_PADDING
       options.saltLength = RSA_PSS_SALTLEN_DIGEST
     }
@@ -97,7 +111,7 @@ function createSignature(algorithm, key, input) {
       .update(input)
       .sign(options, 'base64')
 
-    if (type === 'E') {
+    if (type === 'ES') {
       signature = derToJose(signature, algorithm).toString('base64')
     }
 
@@ -109,12 +123,12 @@ function createSignature(algorithm, key, input) {
 
 function verifySignature(algorithm, key, input, signature) {
   try {
-    const type = algorithm[0]
+    const type = algorithm.slice(0, 2)
     const alg = `SHA${algorithm.slice(2)}`
 
     signature = Buffer.from(signature, 'base64')
 
-    if (type[0] === 'H') {
+    if (type === 'HS') {
       validateSecretOrPublicKey(algorithm, key, `The secret for algorithm ${algorithm} must be a string or a buffer.`)
 
       try {
@@ -127,6 +141,14 @@ function verifySignature(algorithm, key, input, signature) {
       } catch (e) {
         return false
       }
+    } else if (type === 'Ed') {
+      // Check if supported on Node 10
+      /* istanbul ignore next */
+      if (typeof directVerify === 'function') {
+        return directVerify(undefined, Buffer.from(input, 'utf8'), key, signature)
+      } else {
+        throw new TokenError(TokenError.codes.signError, 'EdDSA algorithms are not supported by your Node.js version.')
+      }
     }
 
     const options = { key, padding: RSA_PKCS1_PADDING, saltLength: RSA_PSS_SALTLEN_AUTO }
@@ -137,10 +159,10 @@ function verifySignature(algorithm, key, input, signature) {
       `The key for algorithm ${algorithm} must be a string, a object or a buffer containing the public key.`
     )
 
-    if (type === 'P') {
+    if (type === 'PS') {
       options.padding = RSA_PKCS1_PSS_PADDING
       options.saltLength = RSA_PSS_SALTLEN_DIGEST
-    } else if (type === 'E') {
+    } else if (type === 'ES') {
       signature = joseToDer(signature, algorithm)
     }
 

@@ -22,8 +22,8 @@ npm install fast-jwt
 
 Create a signer function by calling `createSigner` and providing one or more of the following options:
 
-- `key`: A string, buffer or object containing the secret for `HS*` algorithms or the PEM encoded public key for `RS*`, `PS*` and `ES*` algorithms. The key can also be a function accepting a Node style callback or a function returning a promise. This is the only mandatory option.
-- `algorithm`: The algorithm to use to sign the token. The default is autodetected from the key, using `RS256` for RSA private keys, `HS256` for plain secrets and the correspondent `ES` algorithm for EC private keys.
+- `key`: A string, buffer or object containing the secret for `HS*` algorithms or the PEM encoded public key for `RS*`, `PS*`, `ES*` and `EdDSA` algorithms. The key can also be a function accepting a Node style callback or a function returning a promise. This is the only mandatory option.
+- `algorithm`: The algorithm to use to sign the token. The default is autodetected from the key, using `RS256` for RSA private keys, `HS256` for plain secrets and the correspondent `ES` or `EdDSA` algorithms for EC or Ed\* private keys.
 - `mutatePayload`: If the original payload must be modified in place (via `Object.assign`) and thus will result changed to the caller funciton.
 - `expiresIn`: Time span (in milliseconds) after which the token expires, added as the `exp` claim in the payload. This will override any existing value in the claim.
 - `notBefore`: Time span (in milliseconds) before the token is active, added as the `nbf` claim in the payload. This will override any existing value in the claim.
@@ -107,7 +107,7 @@ const sections = decodeComplete(token)
 
 Create a verifier function by calling `createVerifier` and providing one or more of the following options:
 
-- `key`: A string or a buffer containing the secret for `HS*` algorithms or the PEM encoded public key for `RS*`, `PS*` and `ES*` algorithms. The key can also be a function accepting a Node style callback or a function returning a promise. This is the only mandatory option, which must NOT be provided if the token algorithm is `none`.
+- `key`: A string or a buffer containing the secret for `HS*` algorithms or the PEM encoded public key for `RS*`, `PS*`, `ES*` and `EdDSA` algorithms. The key can also be a function accepting a Node style callback or a function returning a promise. This is the only mandatory option, which must NOT be provided if the token algorithm is `none`.
 - `algorithms`: List of strings with the names of the allowed algorithms. By default, all algorithms are accepted.
 - `complete`: Return an object with the decoded header, payload, signature and input (the token part before the signature), instead of just the content of the payload. Default is `false`.
 - `json`: Always parse the payload as JSON even if the `typ` claim of the header is not `JWT`. Default is `true`.
@@ -167,21 +167,22 @@ async function test() {
 
 This is the lisf of currently supported algorithms:
 
-| Name    | Description                                              |
-| ------- | -------------------------------------------------------- |
-| `none`  | Empty algorithm - The token signature section will empty |
-| `HS256` | HMAC using SHA-256 hash algorithm                        |
-| `HS384` | HMAC using SHA-384 hash algorithm                        |
-| `HS512` | HMAC using SHA-512 hash algorithm                        |
-| `ES256` | ECDSA using P-256 curve and SHA-256 hash algorithm       |
-| `ES384` | ECDSA using P-384 curve and SHA-384 hash algorithm       |
-| `ES512` | ECDSA using P-521 curve and SHA-512 hash algorithm       |
-| `RS256` | RSASSA-PKCS1-v1_5 using SHA-256 hash algorithm           |
-| `RS384` | RSASSA-PKCS1-v1_5 using SHA-384 hash algorithm           |
-| `RS512` | RSASSA-PKCS1-v1_5 using SHA-512 hash algorithm           |
-| `PS256` | RSASSA-PSS using SHA-256 hash algorithm                  |
-| `PS384` | RSASSA-PSS using SHA-384 hash algorithm                  |
-| `PS512` | RSASSA-PSS using SHA-512 hash algorithm                  |
+| Name    | Description                                                             |
+| ------- | ----------------------------------------------------------------------- |
+| `none`  | Empty algorithm - The token signature section will empty                |
+| `HS256` | HMAC using SHA-256 hash algorithm                                       |
+| `HS384` | HMAC using SHA-384 hash algorithm                                       |
+| `HS512` | HMAC using SHA-512 hash algorithm                                       |
+| `ES256` | ECDSA using P-256 curve and SHA-256 hash algorithm                      |
+| `ES384` | ECDSA using P-384 curve and SHA-384 hash algorithm                      |
+| `ES512` | ECDSA using P-521 curve and SHA-512 hash algorithm                      |
+| `RS256` | RSASSA-PKCS1-v1_5 using SHA-256 hash algorithm                          |
+| `RS384` | RSASSA-PKCS1-v1_5 using SHA-384 hash algorithm                          |
+| `RS512` | RSASSA-PKCS1-v1_5 using SHA-512 hash algorithm                          |
+| `PS256` | RSASSA-PSS using SHA-256 hash algorithm                                 |
+| `PS384` | RSASSA-PSS using SHA-384 hash algorithm                                 |
+| `PS512` | RSASSA-PSS using SHA-512 hash algorithm                                 |
+| `EdDSA` | EdDSA tokens using Ed25519 or Ed448 keys, only supported on Node.js 12+ |
 
 ## Caching
 
