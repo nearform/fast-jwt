@@ -1,11 +1,16 @@
 'use strict'
 
+const { sign: directSign } = require('crypto')
 const { readFileSync } = require('fs')
 const { resolve } = require('path')
 const { test } = require('tap')
 
 const { createSigner, createVerifier } = require('../src')
 const { sign: jsonwebtokenSign, verify: jsonwebtokenVerify } = require('jsonwebtoken')
+const {
+  JWT: { sign: joseSign, verify: joseVerify },
+  JWK: { asKey }
+} = require('jose')
 
 const privateKeys = {
   HS: 'secretsecretsecret',
@@ -13,7 +18,9 @@ const privateKeys = {
   ES384: readFileSync(resolve(__dirname, '../benchmarks/keys/es-384-private.key')),
   ES512: readFileSync(resolve(__dirname, '../benchmarks/keys/es-512-private.key')),
   RS: readFileSync(resolve(__dirname, '../benchmarks/keys/rs-512-private.key')),
-  PS: readFileSync(resolve(__dirname, '../benchmarks/keys/ps-512-private.key'))
+  PS: readFileSync(resolve(__dirname, '../benchmarks/keys/ps-512-private.key')),
+  Ed25519: readFileSync(resolve(__dirname, '../benchmarks/keys/ed-25519-private.key')),
+  Ed448: readFileSync(resolve(__dirname, '../benchmarks/keys/ed-448-private.key'))
 }
 
 const publicKeys = {
@@ -22,16 +29,18 @@ const publicKeys = {
   ES384: readFileSync(resolve(__dirname, '../benchmarks/keys/es-384-public.key')),
   ES512: readFileSync(resolve(__dirname, '../benchmarks/keys/es-512-public.key')),
   RS: readFileSync(resolve(__dirname, '../benchmarks/keys/rs-512-public.key')),
-  PS: readFileSync(resolve(__dirname, '../benchmarks/keys/ps-512-public.key'))
+  PS: readFileSync(resolve(__dirname, '../benchmarks/keys/ps-512-public.key')),
+  Ed25519: readFileSync(resolve(__dirname, '../benchmarks/keys/ed-25519-public.key')),
+  Ed448: readFileSync(resolve(__dirname, '../benchmarks/keys/ed-448-public.key'))
 }
 
-for (const type of ['ES']) {
-  for (const bits of ['256']) {
+for (const type of ['HS', 'ES', 'RS', 'PS']) {
+  for (const bits of ['256', '384', '512']) {
     const algorithm = `${type}${bits}`
     const privateKey = privateKeys[type === 'ES' ? algorithm : type]
     const publicKey = publicKeys[type === 'ES' ? algorithm : type]
 
-    test(`fastjwt should correcty verify tokens created by jsonwebtoken - ${algorithm}`, t => {
+    test(`fast-jwt should correcty verify tokens created by jsonwebtoken - ${algorithm}`, t => {
       const verify = createVerifier({ algorithm, key: publicKey.toString() })
       const token = jsonwebtokenSign({ a: 1, b: 2, c: 3 }, privateKey.toString(), { algorithm, noTimestamp: true })
 
@@ -40,11 +49,37 @@ for (const type of ['ES']) {
       t.end()
     })
 
-    test('jsonwebtoken should correcty verify tokens created by fast-jwt', t => {
+    test(`jsonwebtoken should correcty verify tokens created by fast-jwt - ${algorithm}`, t => {
       const signer = createSigner({ algorithm, key: privateKey, noTimestamp: true })
       const token = signer({ a: 1, b: 2, c: 3 })
 
       t.strictDeepEqual(jsonwebtokenVerify(token, publicKey, { algorithm }), { a: 1, b: 2, c: 3 })
+      t.end()
+    })
+  }
+}
+
+if (typeof directSign === 'function') {
+  for (const curve of ['Ed25519', 'Ed448']) {
+    test(`fast-jwt should correcty verify tokens created by jose - EdDSA with ${curve}`, t => {
+      const verify = createVerifier({ key: publicKeys[curve].toString() })
+      const token = joseSign({ a: 1, b: 2, c: 3 }, asKey(privateKeys[curve]), {
+        iat: false,
+        header: {
+          typ: 'JWT'
+        }
+      })
+
+      t.strictDeepEqual(verify(token), { a: 1, b: 2, c: 3 })
+
+      t.end()
+    })
+
+    test(`jose should correcty verify tokens created by fast-jwt - EdDSA with ${curve}`, t => {
+      const signer = createSigner({ key: privateKeys[curve], noTimestamp: true })
+      const token = signer({ a: 1, b: 2, c: 3 })
+
+      t.strictDeepEqual(joseVerify(token, asKey(publicKeys[curve])), { a: 1, b: 2, c: 3 })
       t.end()
     })
   }

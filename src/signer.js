@@ -15,8 +15,9 @@ function ensureAlgorithm(algorithm, curve, key, header) {
     return [algorithm, curve]
   }
 
-  ;[algorithm, curve] = detectPrivateKey(key)
-  header.alg = algorithm
+  const [newAlgorithm, newCurve] = detectPrivateKey(key)
+  header.alg = algorithm = algorithm || newAlgorithm
+  curve = curve || newCurve
 
   if (algorithm.slice(0, 2) === 'Ed') {
     header.kty = 'OKP'

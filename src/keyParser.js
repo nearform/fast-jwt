@@ -70,10 +70,10 @@ function validatePrivateKey(key) {
   if (typeof key === 'object' && !(key instanceof Buffer)) {
     if (
       (typeof key.key !== 'string' && !(key.key instanceof Buffer)) ||
-      (typeof key.passphrase !== 'string' && !(key.passphrase instanceof Buffer))
+      (key.passphrase && typeof key.passphrase !== 'string' && !(key.passphrase instanceof Buffer))
     ) {
       throw new TokenError(TokenError.codes.invalidKey, 'Unsupported PEM key.')
-    } else if (key.passphrase.length) {
+    } else if (key.passphrase && key.passphrase.length) {
       throw new TokenError(
         TokenError.codes.invalidKey,
         'Encrypted PEM keys are not supported when autodetecting the algorithm.'

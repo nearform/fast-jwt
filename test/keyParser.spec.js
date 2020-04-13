@@ -17,7 +17,9 @@ const privateKeys = {
   ES384: readFileSync(resolve(__dirname, '../benchmarks/keys/es-384-private.key')),
   ES512: readFileSync(resolve(__dirname, '../benchmarks/keys/es-512-private.key')),
   RS: readFileSync(resolve(__dirname, '../benchmarks/keys/rs-512-private.key')),
-  PS: readFileSync(resolve(__dirname, '../benchmarks/keys/ps-512-private.key'))
+  PS: readFileSync(resolve(__dirname, '../benchmarks/keys/ps-512-private.key')),
+  Ed25519: readFileSync(resolve(__dirname, '../benchmarks/keys/ed-25519-private.key')),
+  Ed448: readFileSync(resolve(__dirname, '../benchmarks/keys/ed-448-private.key'))
 }
 
 const publicKeys = {
@@ -26,7 +28,9 @@ const publicKeys = {
   ES384: readFileSync(resolve(__dirname, '../benchmarks/keys/es-384-public.key')),
   ES512: readFileSync(resolve(__dirname, '../benchmarks/keys/es-512-public.key')),
   RS: readFileSync(resolve(__dirname, '../benchmarks/keys/rs-512-public.key')),
-  PS: readFileSync(resolve(__dirname, '../benchmarks/keys/ps-512-public.key'))
+  PS: readFileSync(resolve(__dirname, '../benchmarks/keys/ps-512-public.key')),
+  Ed25519: readFileSync(resolve(__dirname, '../benchmarks/keys/ed-25519-public.key')),
+  Ed448: readFileSync(resolve(__dirname, '../benchmarks/keys/ed-448-public.key'))
 }
 
 const detectedAlgorithms = {
@@ -84,7 +88,7 @@ for (const type of ['HS', 'ES', 'RS', 'PS']) {
     const privateKey = privateKeys[type === 'ES' ? algorithm : type]
 
     test(`detectPrivateKey - ${type} keys should be recognized as ${detectedAlgorithm}`, t => {
-      t.equal(detectPrivateKey(privateKey), detectedAlgorithm)
+      t.equal(detectPrivateKey(privateKey)[0], detectedAlgorithm)
 
       t.end()
     })
@@ -95,8 +99,18 @@ for (const type of ['HS', 'ES', 'RS', 'PS']) {
   }
 }
 
+for (const type of ['Ed25519', 'Ed448']) {
+  const privateKey = privateKeys[type]
+
+  test(`detectPrivateKey - ${type} keys should be recognized as EdDSA`, t => {
+    t.strictDeepEqual(detectPrivateKey(privateKey), ['EdDSA', type])
+
+    t.end()
+  })
+}
+
 test('detectPrivateKey - should support PEM passed as object', t => {
-  t.equal(detectPrivateKey({ key: privateKeys.RS, passphrase: '' }), 'RS256')
+  t.equal(detectPrivateKey({ key: privateKeys.RS, passphrase: '' })[0], 'RS256')
 
   t.end()
 })
@@ -185,6 +199,16 @@ for (const type of ['HS', 'ES', 'RS', 'PS']) {
       break
     }
   }
+}
+
+for (const type of ['Ed25519', 'Ed448']) {
+  const publicKey = publicKeys[type]
+
+  test(`detectPublicKeySupportedAlgorithms - ${type} keys should be recognized as EdDSA`, t => {
+    t.strictDeepEqual(detectPublicKeySupportedAlgorithms(publicKey), 'EdDSA')
+
+    t.end()
+  })
 }
 
 test('detectPublicKeySupportedAlgorithms - should support PEM passed as object', t => {

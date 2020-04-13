@@ -145,6 +145,12 @@ function verifySignature(algorithm, key, input, signature) {
       // Check if supported on Node 10
       /* istanbul ignore next */
       if (typeof directVerify === 'function') {
+        validateSecretOrPublicKey(
+          algorithm,
+          key,
+          `The key for algorithm ${algorithm} must be a string, a object or a buffer containing the public key.`
+        )
+
         return directVerify(undefined, Buffer.from(input, 'utf8'), key, signature)
       } else {
         throw new TokenError(TokenError.codes.signError, 'EdDSA algorithms are not supported by your Node.js version.')

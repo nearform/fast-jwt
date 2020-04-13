@@ -1,18 +1,15 @@
 'use strict'
 
 const fastify = require('fastify')()
-const { readFileSync } = require('fs')
-const { resolve } = require('path')
 
 const { createSigner, createVerifier } = require('../src')
-const privateKey = readFileSync(resolve(__dirname, './keys/rs-512-private.key'))
-const publicKey = readFileSync(resolve(__dirname, './keys/rs-512-public.key'))
+const key = 'secretsecretsecret'
 
 const { sign: signerJwt, verify: verifierJwt } = require('jsonwebtoken')
-const signerFast = createSigner({ algorithm: 'RS256', key: async () => privateKey, cache: true })
-const verifierFast = createVerifier({ key: async () => publicKey, cache: true })
+const signerFast = createSigner({ key })
+const verifierFast = createVerifier({ key, cache: true })
 
-fastify.post('/sign-jwt', {
+const signRoute = {
   schema: {
     querystring: {
       type: 'object',
@@ -36,73 +33,64 @@ fastify.post('/sign-jwt', {
         additionalProperties: false
       }
     }
-  },
-  async handler(request, reply) {
-    return { token: signerJwt(request.query, privateKey, { algorithm: 'RS256' }) }
   }
-})
+}
 
-fastify.post('/sign-fast', {
+const authRoute = {
   schema: {
+    querystring: {
+      type: 'object',
+      properties: {
+        token: {
+          type: 'string'
+        }
+      },
+      required: ['token'],
+      additionalProperties: false
+    },
     response: {
       200: {
         type: 'object',
         properties: {
-          token: {
-            type: 'string'
+          payload: {
+            type: 'object',
+            additionalProperties: true
           }
         },
-        required: ['token'],
+        required: ['payload'],
         additionalProperties: false
       }
     }
-  },
+  }
+}
+
+fastify.post('/sign-jwt', {
+  ...signRoute,
+  async handler(request, reply) {
+    return { token: signerJwt(request.query, key, { algorithm: 'HS256' }) }
+  }
+})
+
+fastify.post('/sign-fast', {
+  ...signRoute,
   async handler(request, reply) {
     return { token: await signerFast(request.query) }
   }
 })
 
 fastify.get('/auth-jwt', {
-  schema: {
-    response: {
-      200: {
-        type: 'object',
-        properties: {
-          payload: {
-            type: 'object',
-            additionalProperties: true
-          }
-        },
-        required: ['payload'],
-        additionalProperties: false
-      }
-    }
-  },
+  ...authRoute,
   async handler(request, reply) {
     return {
-      payload: verifierJwt(request.headers.authorization.replace(/^Bearer\s/, ''), publicKey, { algorithm: 'RS256' })
+      payload: verifierJwt(request.query.token, key, { algorithm: 'HS256' })
     }
   }
 })
 
 fastify.get('/auth-fast', {
-  schema: {
-    response: {
-      200: {
-        type: 'object',
-        properties: {
-          payload: {
-            type: 'object',
-            additionalProperties: true
-          }
-        },
-        required: ['payload'],
-        additionalProperties: false
-      }
-    }
-  },
+  ...authRoute,
   async handler(request, reply) {
-    return { payload: await verifierFast(request.headers.authorization.replace(/^Bearer\s/, '')) }
+    return { payload: await verifierFast(request.query.token) }
   }
 })
 
