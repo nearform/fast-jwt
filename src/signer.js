@@ -11,7 +11,7 @@ const supportedAlgorithms = Array.from(
 
 function ensureAlgorithm(algorithm, curve, key, header) {
   // Force detection of EdDSA algorithms in order to get the curve
-  if (algorithm && algorithm !== 'EdDSA') {
+  if (algorithm && (curve || algorithm !== 'EdDSA')) {
     return [algorithm, curve]
   }
 
@@ -81,7 +81,7 @@ function sign(
     const finalPayload = {
       ...payload,
       ...fixedPayload,
-      iat: noTimestamp ? undefined : iat / 1000,
+      iat: noTimestamp ? undefined : Math.floor(iat / 1000),
       exp: expiresIn ? Math.floor((iat + expiresIn) / 1000) : undefined,
       nbf: notBefore ? Math.floor((iat + notBefore) / 1000) : undefined
     }

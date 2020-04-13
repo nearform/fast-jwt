@@ -4,6 +4,10 @@ const cronometro = require('cronometro')
 const { mkdir, writeFile } = require('fs').promises
 const { resolve } = require('path')
 const { sign: jsonwebtokenSign, decode: jsonwebtokenDecode, verify: jsonwebtokenVerify } = require('jsonwebtoken')
+const {
+  JWT: { sign: joseSign, verify: joseVerify },
+  JWK: { asKey }
+} = require('jose')
 
 const { createSigner, createDecoder, createVerifier } = require('../src')
 
@@ -32,7 +36,7 @@ function log(message) {
   output.push(message)
 }
 
-async function compareSigning(payload, algorithm, privateKey, publicKey) {
+async function compareSigningJWT(payload, algorithm, privateKey, publicKey) {
   const fastjwtSign = createSigner({ algorithm, key: privateKey, noTimestamp: true })
   const fastjwtSignAsync = createSigner({ algorithm, key: async () => privateKey, noTimestamp: true })
   const fastjwtVerify = createVerifier({ key: publicKey })
@@ -43,11 +47,11 @@ async function compareSigning(payload, algorithm, privateKey, publicKey) {
 
     log('-------')
     log(`Generated ${algorithm} tokens (equal=${jsonwebtokenGenerated === fastjwtGenerated}):`)
-    log(`       jsonwebtoken: ${JSON.stringify(jsonwebtokenSign(payload, privateKey))}`)
-    log(`            fastjwt: ${JSON.stringify(fastjwtSign(payload))}`)
+    log(`  jsonwebtoken: ${JSON.stringify(jsonwebtokenSign(payload, privateKey))}`)
+    log(`       fastjwt: ${JSON.stringify(fastjwtSign(payload))}`)
     log('Generated tokens verification:')
-    log(`       fastjwt: ${JSON.stringify(fastjwtVerify(fastjwtGenerated))}`)
     log(`  jsonwebtoken: ${JSON.stringify(jsonwebtokenVerify(jsonwebtokenGenerated, publicKey))}`)
+    log(`       fastjwt: ${JSON.stringify(fastjwtVerify(fastjwtGenerated))}`)
     log('-------')
   }
 
@@ -70,6 +74,44 @@ async function compareSigning(payload, algorithm, privateKey, publicKey) {
   )
 }
 
+async function compareSigningJose(payload, algorithm, privateKey, publicKey) {
+  const fastjwtSign = createSigner({ algorithm, key: privateKey, noTimestamp: true })
+  const fastjwtVerify = createVerifier({ key: publicKey })
+  const josePrivateKey = asKey(privateKey)
+  const joseOptions = {
+    iat: false,
+    header: {
+      typ: 'JWT'
+    }
+  }
+
+  if ((process.env.NODE_DEBUG || '').includes('fast-jwt')) {
+    const fastjwtGenerated = fastjwtSign(payload)
+    const joseGenerated = joseSign(payload, josePrivateKey, joseOptions)
+
+    log('-------')
+    log(`Generated ${algorithm} tokens (equal=${joseGenerated === fastjwtGenerated}):`)
+    log(`     jose: ${JSON.stringify(joseSign(payload, josePrivateKey, joseOptions))}`)
+    log(`  fastjwt: ${JSON.stringify(fastjwtSign(payload))}`)
+    log('Generated tokens verification:')
+    log(`     jose: ${JSON.stringify(joseVerify(joseGenerated, asKey(publicKey)))}`)
+    log(`  fastjwt: ${JSON.stringify(fastjwtVerify(fastjwtGenerated))}`)
+    log('-------')
+  }
+
+  return cronometro(
+    {
+      [`${algorithm} - sign - fast-jwt`]: function() {
+        fastjwtSign(payload)
+      },
+      [`${algorithm} - sign - jose`]: function() {
+        joseSign(payload, josePrivateKey, joseOptions)
+      }
+    },
+    { print: { compare: true, compareMode: 'base' } }
+  )
+}
+
 function compareDecoding(token, algorithm) {
   const fastjwtDecoder = createDecoder()
   const fastjwtCompleteDecoder = createDecoder({ complete: true })
@@ -77,8 +119,8 @@ function compareDecoding(token, algorithm) {
   if ((process.env.NODE_DEBUG || '').includes('fast-jwt')) {
     log('-------')
     log(`Decoded ${algorithm} tokens:`)
-    log(`       jsonwebtoken: ${JSON.stringify(jsonwebtokenDecode(token, { complete: true }))}`)
-    log(`            fastjwt: ${JSON.stringify(fastjwtCompleteDecoder(token, { complete: true }))}`)
+    log(`  jsonwebtoken: ${JSON.stringify(jsonwebtokenDecode(token, { complete: true }))}`)
+    log(`       fastjwt: ${JSON.stringify(fastjwtCompleteDecoder(token, { complete: true }))}`)
     log('-------')
   }
 
@@ -101,7 +143,7 @@ function compareDecoding(token, algorithm) {
   )
 }
 
-function compareVerifying(token, algorithm, publicKey) {
+function compareVerifyingJWT(token, algorithm, publicKey) {
   const fastjwtVerify = createVerifier({ key: publicKey })
   const fastjwtVerifyAsync = createVerifier({ key: async () => publicKey })
   const fastjwtCachedVerify = createVerifier({ key: publicKey, cache: true })
@@ -110,10 +152,10 @@ function compareVerifying(token, algorithm, publicKey) {
   if ((process.env.NODE_DEBUG || '').includes('fast-jwt')) {
     log('-------')
     log(`Decoded ${algorithm} tokens:`)
-    log(`      jsonwebtoken: ${JSON.stringify(jsonwebtokenVerify(token, publicKey))}`)
-    log(`           fastjwt: ${JSON.stringify(fastjwtVerify(token))}`)
-    log(`fastjwt+cache-miss: ${JSON.stringify(fastjwtCachedVerify(token))}`)
-    log(` fastjwt+cache-hit: ${JSON.stringify(fastjwtCachedVerify(token))}`)
+    log(`        jsonwebtoken: ${JSON.stringify(jsonwebtokenVerify(token, publicKey))}`)
+    log(`             fastjwt: ${JSON.stringify(fastjwtVerify(token))}`)
+    log(`  fastjwt+cache-miss: ${JSON.stringify(fastjwtCachedVerify(token))}`)
+    log(`   fastjwt+cache-hit: ${JSON.stringify(fastjwtCachedVerify(token))}`)
     log('-------')
   }
 
@@ -142,4 +184,41 @@ function compareVerifying(token, algorithm, publicKey) {
   )
 }
 
-module.exports = { compareSigning, compareDecoding, compareVerifying, saveLogs }
+function compareVerifyingJose(token, algorithm, publicKey) {
+  const fastjwtVerify = createVerifier({ key: publicKey })
+  const fastjwtCachedVerify = createVerifier({ key: publicKey, cache: true })
+
+  if ((process.env.NODE_DEBUG || '').includes('fast-jwt')) {
+    log('-------')
+    log(`Decoded ${algorithm} tokens:`)
+    log(`      jsonwebtoken: ${JSON.stringify(joseVerify(token, asKey(publicKey)))}`)
+    log(`           fastjwt: ${JSON.stringify(fastjwtVerify(token))}`)
+    log(`fastjwt+cache-miss: ${JSON.stringify(fastjwtCachedVerify(token))}`)
+    log(` fastjwt+cache-hit: ${JSON.stringify(fastjwtCachedVerify(token))}`)
+    log('-------')
+  }
+
+  return cronometro(
+    {
+      [`${algorithm} - verify - fast-jwt`]: function() {
+        fastjwtVerify(token)
+      },
+      [`${algorithm} - verify - fast-jwt (with cache)`]: function() {
+        fastjwtCachedVerify(token)
+      },
+      [`${algorithm} - verify - jose`]: function() {
+        joseVerify(token, asKey(publicKey))
+      }
+    },
+    { print: { compare: true, compareMode: 'base' } }
+  )
+}
+
+module.exports = {
+  compareSigningJose,
+  compareSigningJWT,
+  compareDecoding,
+  compareVerifyingJose,
+  compareVerifyingJWT,
+  saveLogs
+}
