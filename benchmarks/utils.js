@@ -187,11 +187,12 @@ function compareVerifyingJWT(token, algorithm, publicKey) {
 function compareVerifyingJose(token, algorithm, publicKey) {
   const fastjwtVerify = createVerifier({ key: publicKey })
   const fastjwtCachedVerify = createVerifier({ key: publicKey, cache: true })
+  const josePublicKey = asKey(publicKey)
 
   if ((process.env.NODE_DEBUG || '').includes('fast-jwt')) {
     log('-------')
     log(`Decoded ${algorithm} tokens:`)
-    log(`      jsonwebtoken: ${JSON.stringify(joseVerify(token, asKey(publicKey)))}`)
+    log(`      jsonwebtoken: ${JSON.stringify(joseVerify(token, josePublicKey))}`)
     log(`           fastjwt: ${JSON.stringify(fastjwtVerify(token))}`)
     log(`fastjwt+cache-miss: ${JSON.stringify(fastjwtCachedVerify(token))}`)
     log(` fastjwt+cache-hit: ${JSON.stringify(fastjwtCachedVerify(token))}`)
@@ -207,7 +208,7 @@ function compareVerifyingJose(token, algorithm, publicKey) {
         fastjwtCachedVerify(token)
       },
       [`${algorithm} - verify - jose`]: function() {
-        joseVerify(token, asKey(publicKey))
+        joseVerify(token, josePublicKey)
       }
     },
     { print: { compare: true, compareMode: 'base' } }
