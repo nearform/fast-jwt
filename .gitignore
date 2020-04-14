@@ -1,6 +1,7 @@
 package-lock.json
 yarn.lock
 
+.clinic
 .nyc_output
 benchmarks/logs
 coverage/

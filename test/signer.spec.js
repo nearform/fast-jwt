@@ -1,5 +1,6 @@
 'use strict'
 
+const { sign: directSign } = require('crypto')
 const { readFileSync } = require('fs')
 const { resolve } = require('path')
 const { test } = require('tap')
@@ -12,7 +13,9 @@ const privateKeys = {
   ES384: readFileSync(resolve(__dirname, '../benchmarks/keys/es-384-private.key')),
   ES512: readFileSync(resolve(__dirname, '../benchmarks/keys/es-512-private.key')),
   RS: readFileSync(resolve(__dirname, '../benchmarks/keys/rs-512-private.key')),
-  PS: readFileSync(resolve(__dirname, '../benchmarks/keys/ps-512-private.key'))
+  PS: readFileSync(resolve(__dirname, '../benchmarks/keys/ps-512-private.key')),
+  Ed25519: readFileSync(resolve(__dirname, '../benchmarks/keys/ed-25519-private.key')),
+  Ed448: readFileSync(resolve(__dirname, '../benchmarks/keys/ed-448-private.key'))
 }
 
 const publicKeys = {
@@ -21,7 +24,9 @@ const publicKeys = {
   ES384: readFileSync(resolve(__dirname, '../benchmarks/keys/es-384-public.key')),
   ES512: readFileSync(resolve(__dirname, '../benchmarks/keys/es-512-public.key')),
   RS: readFileSync(resolve(__dirname, '../benchmarks/keys/rs-512-public.key')),
-  PS: readFileSync(resolve(__dirname, '../benchmarks/keys/ps-512-public.key'))
+  PS: readFileSync(resolve(__dirname, '../benchmarks/keys/ps-512-public.key')),
+  Ed25519: readFileSync(resolve(__dirname, '../benchmarks/keys/ed-25519-public.key')),
+  Ed448: readFileSync(resolve(__dirname, '../benchmarks/keys/ed-448-public.key'))
 }
 
 function sign(payload, options, callback) {
@@ -46,6 +51,20 @@ test('it correctly returns a token - sync', t => {
     sign({ a: 1 }, { noTimestamp: true, algorithm: 'none', key: null }),
     'eyJhbGciOiJub25lIiwidHlwIjoiSldUIn0.eyJhIjoxfQ.'
   )
+
+  if (typeof directSign === 'function') {
+    t.equal(
+      sign({ a: 1 }, { noTimestamp: true, key: privateKeys.Ed25519 }),
+      'eyJhbGciOiJFZERTQSIsInR5cCI6IkpXVCJ9.eyJhIjoxfQ.pIRjmLR-JW4sTCslD24h5fs0sTUpGYBG7zh4Z_UyEZ_u29NojdH2dSNKQZwwgjl1WvfYNtBCCF_EnYTazAXmDQ'
+    )
+  } else {
+    t.throws(() => sign({ a: 1 }, { noTimestamp: true, key: privateKeys.Ed25519 }), {
+      message: 'Cannot create the signature.',
+      originalError: {
+        message: 'EdDSA algorithms are not supported by your Node.js version.'
+      }
+    })
+  }
 
   t.end()
 })
@@ -80,12 +99,14 @@ test('it correctly returns a token - callback - key as promise', t => {
 })
 
 test('it correctly autodetects the algorithm depending on the secret provided', t => {
-  const hsVerifier = createVerifier({ complete: true, key: publicKeys.HS, algorithm: 'HS256' })
-  const rsVerifier = createVerifier({ complete: true, key: publicKeys.RS, algorithm: 'RS256' })
-  const psVerifier = createVerifier({ complete: true, key: publicKeys.PS, algorithm: 'PS256' })
-  const es256Verifier = createVerifier({ complete: true, key: publicKeys.ES256, algorithm: 'ES256' })
-  const es384Verifier = createVerifier({ complete: true, key: publicKeys.ES384, algorithm: 'ES384' })
-  const es512Verifier = createVerifier({ complete: true, key: publicKeys.ES512, algorithm: 'ES512' })
+  const hsVerifier = createVerifier({ complete: true, key: publicKeys.HS })
+  const rsVerifier = createVerifier({ complete: true, key: publicKeys.RS })
+  const psVerifier = createVerifier({ complete: true, key: publicKeys.PS })
+  const es256Verifier = createVerifier({ complete: true, key: publicKeys.ES256 })
+  const es384Verifier = createVerifier({ complete: true, key: publicKeys.ES384 })
+  const es512Verifier = createVerifier({ complete: true, key: publicKeys.ES512 })
+  const es25519Verifier = createVerifier({ complete: true, key: publicKeys.Ed25519 })
+  const es448Verifier = createVerifier({ complete: true, key: publicKeys.Ed448 })
 
   let token = createSigner({ key: privateKeys.HS })({ a: 1 })
   let verification = hsVerifier(token)
@@ -110,6 +131,16 @@ test('it correctly autodetects the algorithm depending on the secret provided', 
   token = createSigner({ key: privateKeys.ES512 })({ a: 1 })
   verification = es512Verifier(token)
   t.is(verification.header.alg, 'ES512')
+
+  if (typeof directSign === 'function') {
+    token = createSigner({ key: privateKeys.Ed25519 })({ a: 1 })
+    verification = es25519Verifier(token)
+    t.is(verification.header.alg, 'EdDSA')
+
+    token = createSigner({ key: privateKeys.Ed448 })({ a: 1 })
+    verification = es448Verifier(token)
+    t.is(verification.header.alg, 'EdDSA')
+  }
 
   t.end()
 })
@@ -388,7 +419,7 @@ test('options validation - algorithm', t => {
 
   t.throws(() => createSigner({ key: 'secret', algorithm: 'FOO' }), {
     message:
-      'The algorithm option must be one of the following values: HS256, HS384, HS512, ES256, ES384, ES512, RS256, RS384, RS512, PS256, PS384, PS512, none.'
+      'The algorithm option must be one of the following values: HS256, HS384, HS512, ES256, ES384, ES512, RS256, RS384, RS512, PS256, PS384, PS512, EdDSA, none.'
   })
 
   t.end()

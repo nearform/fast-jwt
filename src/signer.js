@@ -2,10 +2,12 @@
 
 const { base64UrlMatcher, base64UrlReplacer, createSignature } = require('./crypto')
 const TokenError = require('./error')
-const { hsAlgorithms, esAlgorithms, rsaAlgorithms, detectPrivateKey } = require('./keyParser')
+const { hsAlgorithms, esAlgorithms, rsaAlgorithms, edAlgorithms, detectPrivateKey } = require('./keyParser')
 const { getAsyncKey, ensurePromiseCallback, keyToBuffer } = require('./utils')
 
-const supportedAlgorithms = Array.from(new Set([...hsAlgorithms, ...esAlgorithms, ...rsaAlgorithms, 'none'])).join(', ')
+const supportedAlgorithms = Array.from(
+  new Set([...hsAlgorithms, ...esAlgorithms, ...rsaAlgorithms, ...edAlgorithms, 'none'])
+).join(', ')
 
 function sign(
   {
@@ -36,7 +38,12 @@ function sign(
   }
 
   // Prepare the header
-  const header = { alg: algorithm, typ: payloadType === 'object' ? 'JWT' : undefined, kid, ...additionalHeader }
+  const header = {
+    alg: algorithm,
+    typ: payloadType === 'object' ? 'JWT' : undefined,
+    kid,
+    ...additionalHeader
+  }
 
   // Prepare the payload
   let encodedPayload = ''
@@ -48,7 +55,7 @@ function sign(
     const finalPayload = {
       ...payload,
       ...fixedPayload,
-      iat: noTimestamp ? undefined : iat / 1000,
+      iat: noTimestamp ? undefined : Math.floor(iat / 1000),
       exp: expiresIn ? Math.floor((iat + expiresIn) / 1000) : undefined,
       nbf: notBefore ? Math.floor((iat + notBefore) / 1000) : undefined
     }
@@ -90,7 +97,7 @@ function sign(
     let token
     try {
       if (!algorithm) {
-        algorithm = header.alg = detectPrivateKey(currentKey)
+        header.alg = algorithm = detectPrivateKey(currentKey)
       }
 
       const encodedHeader = Buffer.from(JSON.stringify(header), 'utf-8')
@@ -133,7 +140,8 @@ module.exports = function createSigner(options) {
     algorithm !== 'none' &&
     !hsAlgorithms.includes(algorithm) &&
     !esAlgorithms.includes(algorithm) &&
-    !rsaAlgorithms.includes(algorithm)
+    !rsaAlgorithms.includes(algorithm) &&
+    !edAlgorithms.includes(algorithm)
   ) {
     throw new TokenError(
       TokenError.codes.invalidOption,

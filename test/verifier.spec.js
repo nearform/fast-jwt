@@ -1,5 +1,6 @@
 'use strict'
 
+const { createHash, verify: directVerify } = require('crypto')
 const { readFileSync } = require('fs')
 const { resolve } = require('path')
 const { test } = require('tap')
@@ -14,7 +15,9 @@ const privateKeys = {
   ES384: readFileSync(resolve(__dirname, '../benchmarks/keys/es-384-private.key')),
   ES512: readFileSync(resolve(__dirname, '../benchmarks/keys/es-512-private.key')),
   RS: readFileSync(resolve(__dirname, '../benchmarks/keys/rs-512-private.key')),
-  PS: readFileSync(resolve(__dirname, '../benchmarks/keys/ps-512-private.key'))
+  PS: readFileSync(resolve(__dirname, '../benchmarks/keys/ps-512-private.key')),
+  Ed25519: readFileSync(resolve(__dirname, '../benchmarks/keys/ed-25519-private.key')),
+  Ed448: readFileSync(resolve(__dirname, '../benchmarks/keys/ed-448-private.key'))
 }
 
 const publicKeys = {
@@ -23,7 +26,9 @@ const publicKeys = {
   ES384: readFileSync(resolve(__dirname, '../benchmarks/keys/es-384-public.key')),
   ES512: readFileSync(resolve(__dirname, '../benchmarks/keys/es-512-public.key')),
   RS: readFileSync(resolve(__dirname, '../benchmarks/keys/rs-512-public.key')),
-  PS: readFileSync(resolve(__dirname, '../benchmarks/keys/ps-512-public.key'))
+  PS: readFileSync(resolve(__dirname, '../benchmarks/keys/ps-512-public.key')),
+  Ed25519: readFileSync(resolve(__dirname, '../benchmarks/keys/ed-25519-public.key')),
+  Ed448: readFileSync(resolve(__dirname, '../benchmarks/keys/ed-448-public.key'))
 }
 
 function verify(token, options, callback) {
@@ -75,6 +80,30 @@ test('it correctly verifies a token - sync', t => {
     }),
     '123'
   )
+
+  if (typeof directVerify === 'function') {
+    t.strictDeepEqual(
+      verify(
+        'eyJhbGciOiJFZERTQSIsInR5cCI6IkpXVCIsImt0eSI6Ik9LUCIsImNydiI6IkVkMjU1MTkifQ.eyJhIjoxfQ.n4isU7JqaKRVOyx2ni7b_iaAzB75pAUCW6CetcoClhtJ5yDM7YkNMbKqmDUhTKMpupAcztIjX8m4mZwpA33HAA',
+        { key: publicKeys.Ed25519 }
+      ),
+      { a: 1 }
+    )
+  } else {
+    t.throws(
+      () =>
+        verify(
+          'eyJhbGciOiJFZERTQSIsInR5cCI6IkpXVCIsImt0eSI6Ik9LUCIsImNydiI6IkVkMjU1MTkifQ.eyJhIjoxfQ.n4isU7JqaKRVOyx2ni7b_iaAzB75pAUCW6CetcoClhtJ5yDM7YkNMbKqmDUhTKMpupAcztIjX8m4mZwpA33HAA',
+          { key: publicKeys.Ed25519 }
+        ),
+      {
+        message: 'Cannot verify the signature.',
+        originalError: {
+          message: 'EdDSA algorithms are not supported by your Node.js version.'
+        }
+      }
+    )
+  }
 
   t.end()
 })
@@ -819,13 +848,54 @@ for (const type of ['HS', 'ES', 'RS', 'PS']) {
       const verifier = createVerifier({ algorithm, key: publicKey, cache: true })
       const token = signer({ a: 1 })
 
+      const hash = createHash(`sha${bits}`)
+        .update(token)
+        .digest('hex')
+
       t.strictDeepEqual(verifier(token), { a: 1 })
       t.equal(verifier.cache.size, 1)
-      t.equal(Array.from(verifier.cache.keys())[0], hashToken(token, `sha${bits}`))
+      t.equal(Array.from(verifier.cache.keys())[0], hash)
 
       t.end()
     })
   }
+}
+
+if (typeof directVerify === 'function') {
+  test('caching - should use the right hash method for storing values - EdDSA with Ed25519', t => {
+    const signer = createSigner({ algorithm: 'EdDSA', key: privateKeys.Ed25519, noTimestamp: 1 })
+    const verifier = createVerifier({ key: publicKeys.Ed25519, cache: true })
+    const token = signer({ a: 1 })
+    const hash = createHash('sha512')
+      .update(token)
+      .digest('hex')
+
+    t.strictDeepEqual(verifier(token), { a: 1 })
+    t.equal(verifier.cache.size, 1)
+    t.equal(Array.from(verifier.cache.keys())[0], hash)
+
+    t.end()
+  })
+
+  test('caching - should use the right hash method for storing values - EdDSA with Ed448', t => {
+    const signer = createSigner({
+      algorithm: 'EdDSA',
+      key: privateKeys.Ed448,
+      noTimestamp: 1,
+      header: { crv: 'Ed448' }
+    })
+    const verifier = createVerifier({ key: publicKeys.Ed448, cache: true })
+    const token = signer({ a: 1 })
+    const hash = createHash('shake256', { outputLength: 114 })
+      .update(token)
+      .digest('hex')
+
+    t.strictDeepEqual(verifier(token), { a: 1 })
+    t.equal(verifier.cache.size, 1)
+    t.equal(Array.from(verifier.cache.keys())[0], hash)
+
+    t.end()
+  })
 }
 
 test('caching - should be able to manipulate cache directy', t => {

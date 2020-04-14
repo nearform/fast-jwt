@@ -11,6 +11,7 @@ const publicKeyPemMatcher = '-----BEGIN PUBLIC KEY-----'
 const hsAlgorithms = ['HS256', 'HS384', 'HS512']
 const esAlgorithms = ['ES256', 'ES384', 'ES512']
 const rsaAlgorithms = ['RS256', 'RS384', 'RS512', 'PS256', 'PS384', 'PS512']
+const edAlgorithms = ['EdDSA']
 
 const ecCurves = {
   '1.2.840.10045.3.1.7': { bits: '256', names: ['P-256', 'prime256v1'] },
@@ -69,10 +70,10 @@ function validatePrivateKey(key) {
   if (typeof key === 'object' && !(key instanceof Buffer)) {
     if (
       (typeof key.key !== 'string' && !(key.key instanceof Buffer)) ||
-      (typeof key.passphrase !== 'string' && !(key.passphrase instanceof Buffer))
+      (key.passphrase && typeof key.passphrase !== 'string' && !(key.passphrase instanceof Buffer))
     ) {
       throw new TokenError(TokenError.codes.invalidKey, 'Unsupported PEM key.')
-    } else if (key.passphrase.length) {
+    } else if (key.passphrase && key.passphrase.length) {
       throw new TokenError(
         TokenError.codes.invalidKey,
         'Encrypted PEM keys are not supported when autodetecting the algorithm.'
@@ -119,6 +120,9 @@ function detectPrivateKeyAlgoritm(key, pemData) {
       switch (oid) {
         case '1.2.840.113549.1.1.1': // RSA
           return 'RS256'
+        case '1.3.101.112': // Ed25519
+        case '1.3.101.113': // Ed448
+          return 'EdDSA'
         case '1.2.840.10045.2.1': // EC
           curveId = keyData.algorithm.parameters.join('.')
           break
@@ -145,6 +149,10 @@ function detectPublicKeyAlgoritms(key) {
   switch (oid) {
     case '1.2.840.113549.1.1.1': // RSA
       return rsaAlgorithms
+    case '1.3.101.112': // Ed25519
+      return 'EdDSA'
+    case '1.3.101.113': // Ed448
+      return 'EdDSA'
     case '1.2.840.10045.2.1': // EC
       curveId = keyData.algorithm.parameters.join('.')
       break
@@ -221,6 +229,7 @@ module.exports = {
   hsAlgorithms,
   rsaAlgorithms,
   esAlgorithms,
+  edAlgorithms,
   detectPrivateKey,
   detectPublicKeySupportedAlgorithms
 }

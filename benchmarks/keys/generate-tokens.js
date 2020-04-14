@@ -11,7 +11,8 @@ const privateKeys = {
   ES384: readFileSync(resolve(__dirname, './es-384-private.key')),
   ES512: readFileSync(resolve(__dirname, './es-512-private.key')),
   RS: readFileSync(resolve(__dirname, './rs-512-private.key')),
-  PS: readFileSync(resolve(__dirname, './ps-512-private.key'))
+  PS: readFileSync(resolve(__dirname, './ps-512-private.key')),
+  EdDSA: readFileSync(resolve(__dirname, './ed-25519-private.key'))
 }
 
 for (const type of ['HS', 'ES', 'RS', 'PS']) {
@@ -24,3 +25,7 @@ for (const type of ['HS', 'ES', 'RS', 'PS']) {
     console.log(`${sign({ a: 1, b: 2, c: 3 })}\n`)
   }
 }
+
+const sign = createSigner({ algorithm: 'EdDSA', key: privateKeys.EdDSA, kid: '123' })
+console.log('------- EdDSA -------')
+console.log(`${sign({ a: 1, b: 2, c: 3 })}\n`)

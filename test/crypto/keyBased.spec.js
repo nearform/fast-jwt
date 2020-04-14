@@ -1,5 +1,6 @@
 'use strict'
 
+const { sign: directSign } = require('crypto')
 const { test } = require('tap')
 const { readFileSync } = require('fs')
 const { resolve } = require('path')
@@ -14,7 +15,9 @@ const privateKeys = {
   ES384: readFileSync(resolve(__dirname, '../../benchmarks/keys/es-384-private.key')),
   ES512: readFileSync(resolve(__dirname, '../../benchmarks/keys/es-512-private.key')),
   RS: readFileSync(resolve(__dirname, '../../benchmarks/keys/rs-512-private.key')),
-  PS: readFileSync(resolve(__dirname, '../../benchmarks/keys/ps-512-private.key'))
+  PS: readFileSync(resolve(__dirname, '../../benchmarks/keys/ps-512-private.key')),
+  Ed25519: readFileSync(resolve(__dirname, '../../benchmarks/keys/ed-25519-private.key')),
+  Ed448: readFileSync(resolve(__dirname, '../../benchmarks/keys/ed-448-private.key'))
 }
 
 const publicKeys = {
@@ -23,7 +26,9 @@ const publicKeys = {
   ES384: readFileSync(resolve(__dirname, '../../benchmarks/keys/es-384-public.key')),
   ES512: readFileSync(resolve(__dirname, '../../benchmarks/keys/es-512-public.key')),
   RS: readFileSync(resolve(__dirname, '../../benchmarks/keys/rs-512-public.key')),
-  PS: readFileSync(resolve(__dirname, '../../benchmarks/keys/ps-512-public.key'))
+  PS: readFileSync(resolve(__dirname, '../../benchmarks/keys/ps-512-public.key')),
+  Ed25519: readFileSync(resolve(__dirname, '../../benchmarks/keys/ed-25519-public.key')),
+  Ed448: readFileSync(resolve(__dirname, '../../benchmarks/keys/ed-448-public.key'))
 }
 
 for (const type of ['ES', 'RS', 'PS']) {
@@ -38,7 +43,7 @@ for (const type of ['ES', 'RS', 'PS']) {
 
       t.equal(verified.payload, 'PAYLOAD')
       t.true(verified.iat >= start)
-      t.true(verified.iat < Date.now() / 1000)
+      t.true(verified.iat <= Date.now() / 1000)
 
       t.end()
     })
@@ -51,7 +56,7 @@ for (const type of ['ES', 'RS', 'PS']) {
 
       t.equal(verified.payload, 'PAYLOAD')
       t.true(verified.iat >= start)
-      t.true(verified.iat < Date.now() / 1000)
+      t.true(verified.iat <= Date.now() / 1000)
 
       t.end()
     })
@@ -68,7 +73,7 @@ for (const type of ['ES', 'RS', 'PS']) {
 
         t.equal(verified.payload, 'PAYLOAD')
         t.true(verified.iat >= start)
-        t.true(verified.iat < Date.now() / 1000)
+        t.true(verified.iat <= Date.now() / 1000)
 
         t.end()
       })
@@ -118,6 +123,103 @@ for (const type of ['ES', 'RS', 'PS']) {
         message: 'Cannot verify the signature.',
         originalError: {
           message: `The key for algorithm ${algorithm} must be a string, a object or a buffer containing the public key.`
+        }
+      })
+    })
+  }
+}
+
+if (typeof directSign === 'function') {
+  for (const type of ['Ed25519', 'Ed448']) {
+    const privateKey = privateKeys[type]
+    const publicKey = publicKeys[type]
+
+    test(`EdDSA with ${type} based tokens round trip with buffer keys`, t => {
+      const token = createSigner({ algorithm: 'EdDSA', key: privateKey })({ payload: 'PAYLOAD' })
+      const verified = createVerifier({ algorithms: ['EdDSA'], key: publicKey })(token)
+
+      t.equal(verified.payload, 'PAYLOAD')
+      t.true(verified.iat >= start)
+      t.true(verified.iat <= Date.now() / 1000)
+
+      t.end()
+    })
+
+    test(`EdDSA with ${type} based tokens round trip with string keys`, t => {
+      const token = createSigner({ algorithm: 'EdDSA', key: privateKey.toString('utf8') })({
+        payload: 'PAYLOAD'
+      })
+      const verified = createVerifier({ algorithms: ['EdDSA'], key: publicKey.toString('utf8') })(token)
+
+      t.equal(verified.payload, 'PAYLOAD')
+      t.true(verified.iat >= start)
+      t.true(verified.iat <= Date.now() / 1000)
+
+      t.end()
+    })
+
+    test(`EdDSA with ${type} based tokens round trip with object private keys`, t => {
+      const token = createSigner({
+        algorithm: 'EdDSA',
+        key: { key: privateKey.toString('utf8') }
+      })({
+        payload: 'PAYLOAD'
+      })
+      const verified = createVerifier({ algorithms: ['EdDSA'], key: publicKey.toString('utf8') })(token)
+
+      t.equal(verified.payload, 'PAYLOAD')
+      t.true(verified.iat >= start)
+      t.true(verified.iat <= Date.now() / 1000)
+
+      t.end()
+    })
+
+    test(`EdDSA with ${type} based tokens should validate the private key`, async t => {
+      await t.rejects(
+        createSigner({ algorithm: 'EdDSA', key: async () => 123 })({ payload: 'PAYLOAD' }),
+        {
+          message: 'Cannot create the signature.',
+          originalError: {
+            message: 'The key for algorithm EdDSA must be a string, a object or a buffer containing the private key.'
+          }
+        },
+        null
+      )
+
+      await t.rejects(
+        createSigner({ algorithm: 'EdDSA', key: async () => ({ key: 123, passphrase: 123 }) })({
+          payload: 'PAYLOAD'
+        }),
+        {
+          message: 'Cannot create the signature.',
+          originalError: {
+            message:
+              'The key object for algorithm EdDSA must have the key property as string or buffer containing the private key.'
+          }
+        }
+      )
+
+      await t.rejects(
+        createSigner({ algorithm: 'EdDSA', key: async () => ({ key: '123', passphrase: 123 }) })({
+          payload: 'PAYLOAD'
+        }),
+        {
+          message: 'Cannot create the signature.',
+          originalError: {
+            message:
+              'The key object for algorithm EdDSA must have the passphrase property as string or buffer containing the private key.'
+          }
+        }
+      )
+    })
+
+    test(`EdDSA with ${type} based tokens should validate the public key`, async t => {
+      const token = createSigner({ algorithm: 'EdDSA', key: privateKey })({ payload: 'PAYLOAD' })
+
+      await t.rejects(createVerifier({ algorithms: ['EdDSA'], key: async () => 123 })(token), {
+        message: 'Cannot verify the signature.',
+        originalError: {
+          message: 'The key for algorithm EdDSA must be a string, a object or a buffer containing the public key.'
         }
       })
     })
