@@ -9,29 +9,10 @@ const supportedAlgorithms = Array.from(
   new Set([...hsAlgorithms, ...esAlgorithms, ...rsaAlgorithms, ...edAlgorithms, 'none'])
 ).join(', ')
 
-function ensureAlgorithm(algorithm, curve, key, header) {
-  // Force detection of EdDSA algorithms in order to get the curve
-  if (algorithm && (curve || algorithm !== 'EdDSA')) {
-    return [algorithm, curve]
-  }
-
-  const [newAlgorithm, newCurve] = detectPrivateKey(key)
-  header.alg = algorithm = algorithm || newAlgorithm
-  curve = curve || newCurve
-
-  if (algorithm.slice(0, 2) === 'Ed') {
-    header.kty = 'OKP'
-    header.crv = curve
-  }
-
-  return [algorithm, curve]
-}
-
 function sign(
   {
     key,
     algorithm,
-    curve,
     noTimestamp,
     mutatePayload,
     clockTimestamp,
@@ -60,15 +41,8 @@ function sign(
   const header = {
     alg: algorithm,
     typ: payloadType === 'object' ? 'JWT' : undefined,
-    kty: undefined,
-    crv: undefined,
     kid,
     ...additionalHeader
-  }
-
-  if (algorithm && algorithm.slice(0, 2) === 'Ed') {
-    header.kty = 'OKP'
-    header.crv = curve
   }
 
   // Prepare the payload
@@ -122,7 +96,9 @@ function sign(
 
     let token
     try {
-      ;[algorithm, curve] = ensureAlgorithm(algorithm, curve, currentKey, header)
+      if (!algorithm) {
+        header.alg = algorithm = detectPrivateKey(currentKey)
+      }
 
       const encodedHeader = Buffer.from(JSON.stringify(header), 'utf-8')
         .toString('base64')
@@ -174,7 +150,6 @@ module.exports = function createSigner(options) {
   }
 
   const keyType = typeof key
-  let curve = ''
 
   if (algorithm === 'none') {
     if (key) {
@@ -234,15 +209,15 @@ module.exports = function createSigner(options) {
   if (key && keyType !== 'function') {
     key = keyToBuffer(key)
 
-    // Force detection of EdDSA algorithms in order to get the curve
-    ;[algorithm, curve] = ensureAlgorithm(algorithm, curve, key, {})
+    if (!algorithm) {
+      algorithm = detectPrivateKey(key)
+    }
   }
 
   // Return the signer
   const context = {
     key,
     algorithm,
-    curve,
     noTimestamp,
     mutatePayload,
     clockTimestamp,

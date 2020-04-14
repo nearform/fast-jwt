@@ -88,7 +88,7 @@ for (const type of ['HS', 'ES', 'RS', 'PS']) {
     const privateKey = privateKeys[type === 'ES' ? algorithm : type]
 
     test(`detectPrivateKey - ${type} keys should be recognized as ${detectedAlgorithm}`, t => {
-      t.equal(detectPrivateKey(privateKey)[0], detectedAlgorithm)
+      t.equal(detectPrivateKey(privateKey), detectedAlgorithm)
 
       t.end()
     })
@@ -103,14 +103,14 @@ for (const type of ['Ed25519', 'Ed448']) {
   const privateKey = privateKeys[type]
 
   test(`detectPrivateKey - ${type} keys should be recognized as EdDSA`, t => {
-    t.strictDeepEqual(detectPrivateKey(privateKey), ['EdDSA', type])
+    t.strictDeepEqual(detectPrivateKey(privateKey), 'EdDSA')
 
     t.end()
   })
 }
 
 test('detectPrivateKey - should support PEM passed as object', t => {
-  t.equal(detectPrivateKey({ key: privateKeys.RS, passphrase: '' })[0], 'RS256')
+  t.equal(detectPrivateKey({ key: privateKeys.RS, passphrase: '' }), 'RS256')
 
   t.end()
 })

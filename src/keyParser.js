@@ -107,7 +107,7 @@ function detectPrivateKeyAlgoritm(key, pemData) {
 
   switch (pemData[1]) {
     case 'RSA': // pkcs1 format - Can only be a RSA key
-      return ['RS256']
+      return 'RS256'
     case 'EC': // sec1 format - Can only be a EC key
       keyData = ECPrivateKey.decode(key, 'pem', { label: 'EC PRIVATE KEY' })
       curveId = keyData.parameters.value.join('.')
@@ -119,11 +119,10 @@ function detectPrivateKeyAlgoritm(key, pemData) {
 
       switch (oid) {
         case '1.2.840.113549.1.1.1': // RSA
-          return ['RS256']
+          return 'RS256'
         case '1.3.101.112': // Ed25519
-          return ['EdDSA', 'Ed25519']
         case '1.3.101.113': // Ed448
-          return ['EdDSA', 'Ed448']
+          return 'EdDSA'
         case '1.2.840.10045.2.1': // EC
           curveId = keyData.algorithm.parameters.join('.')
           break
@@ -138,7 +137,7 @@ function detectPrivateKeyAlgoritm(key, pemData) {
     throw new TokenError(TokenError.codes.invalidKey, `Unsupported EC private key with curve ${curveId}.`)
   }
 
-  return [`ES${curve.bits}`, curve.names[0]]
+  return `ES${curve.bits}`
 }
 
 function detectPublicKeyAlgoritms(key) {
@@ -189,7 +188,7 @@ function detectPrivateKey(key) {
     }
 
     const pemData = key.match(privateKeyPemMatcher)
-    return cacheSet(privateKeysCache, key, pemData ? detectPrivateKeyAlgoritm(key, pemData) : ['HS256'])
+    return cacheSet(privateKeysCache, key, pemData ? detectPrivateKeyAlgoritm(key, pemData) : 'HS256')
   } catch (e) {
     throw cacheSet(privateKeysCache, key, null, TokenError.wrap(e, TokenError.codes.invalidKey, 'Unsupported PEM key.'))
   }

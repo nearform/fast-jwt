@@ -191,7 +191,11 @@ if (typeof directSign === 'function') {
           payload: 'PAYLOAD'
         }),
         {
-          message: 'Unsupported PEM key'
+          message: 'Cannot create the signature.',
+          originalError: {
+            message:
+              'The key object for algorithm EdDSA must have the key property as string or buffer containing the private key.'
+          }
         }
       )
 
@@ -200,7 +204,11 @@ if (typeof directSign === 'function') {
           payload: 'PAYLOAD'
         }),
         {
-          message: 'Unsupported PEM key'
+          message: 'Cannot create the signature.',
+          originalError: {
+            message:
+              'The key object for algorithm EdDSA must have the passphrase property as string or buffer containing the private key.'
+          }
         }
       )
     })

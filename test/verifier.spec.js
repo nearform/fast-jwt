@@ -878,7 +878,12 @@ if (typeof directVerify === 'function') {
   })
 
   test('caching - should use the right hash method for storing values - EdDSA with Ed448', t => {
-    const signer = createSigner({ algorithm: 'EdDSA', key: privateKeys.Ed448, noTimestamp: 1 })
+    const signer = createSigner({
+      algorithm: 'EdDSA',
+      key: privateKeys.Ed448,
+      noTimestamp: 1,
+      header: { crv: 'Ed448' }
+    })
     const verifier = createVerifier({ key: publicKeys.Ed448, cache: true })
     const token = signer({ a: 1 })
     const hash = createHash('shake256', { outputLength: 114 })

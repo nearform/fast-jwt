@@ -55,7 +55,7 @@ test('it correctly returns a token - sync', t => {
   if (typeof directSign === 'function') {
     t.equal(
       sign({ a: 1 }, { noTimestamp: true, key: privateKeys.Ed25519 }),
-      'eyJhbGciOiJFZERTQSIsInR5cCI6IkpXVCIsImt0eSI6Ik9LUCIsImNydiI6IkVkMjU1MTkifQ.eyJhIjoxfQ.n4isU7JqaKRVOyx2ni7b_iaAzB75pAUCW6CetcoClhtJ5yDM7YkNMbKqmDUhTKMpupAcztIjX8m4mZwpA33HAA'
+      'eyJhbGciOiJFZERTQSIsInR5cCI6IkpXVCJ9.eyJhIjoxfQ.pIRjmLR-JW4sTCslD24h5fs0sTUpGYBG7zh4Z_UyEZ_u29NojdH2dSNKQZwwgjl1WvfYNtBCCF_EnYTazAXmDQ'
     )
   } else {
     t.throws(() => sign({ a: 1 }, { noTimestamp: true, key: privateKeys.Ed25519 }), {
