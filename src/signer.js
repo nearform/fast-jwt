@@ -1,13 +1,56 @@
 'use strict'
 
-const { base64UrlMatcher, base64UrlReplacer, createSignature } = require('./crypto')
+const {
+  base64UrlMatcher,
+  base64UrlReplacer,
+  useNewCrypto,
+  hsAlgorithms,
+  esAlgorithms,
+  rsaAlgorithms,
+  edAlgorithms,
+  detectPrivateKeyAlgorithm,
+  createSignature
+} = require('./crypto')
 const TokenError = require('./error')
-const { hsAlgorithms, esAlgorithms, rsaAlgorithms, edAlgorithms, detectPrivateKey } = require('./keyParser')
-const { getAsyncKey, ensurePromiseCallback, keyToBuffer } = require('./utils')
+const { getAsyncKey, ensurePromiseCallback } = require('./utils')
+const { createPrivateKey, createSecretKey } = require('crypto')
 
 const supportedAlgorithms = Array.from(
   new Set([...hsAlgorithms, ...esAlgorithms, ...rsaAlgorithms, ...edAlgorithms, 'none'])
 ).join(', ')
+
+function checkIsCompatibleAlgorithm(expected, actual) {
+  const expectedType = expected.slice(0, 2)
+  const actualType = actual.slice(0, 2)
+
+  let valid = true // We accept everything for HS
+
+  if (expectedType === 'RS' || expectedType === 'PS') {
+    // RS and PS use same keys
+    valid = actualType === 'RS'
+  } else if (expectedType === 'ES' || expectedType === 'Ed') {
+    // ES and Ed must match
+    valid = expectedType === actualType
+  }
+
+  if (!valid) {
+    throw new TokenError(TokenError.codes.invalidKey, `Invalid private key provided for algorithm ${expected}.`)
+  }
+}
+
+function prepareKeyOrSecret(key, algorithm) {
+  if (typeof key === 'string') {
+    key = Buffer.from(key, 'utf-8')
+  }
+
+  // Only on Node 12 - Create a key object
+  /* istanbul ignore next */
+  if (useNewCrypto) {
+    key = algorithm[0] === 'H' ? createSecretKey(key) : createPrivateKey(key)
+  }
+
+  return key
+}
 
 function sign(
   {
@@ -92,13 +135,29 @@ function sign(
       return callback(error)
     }
 
-    currentKey = keyToBuffer(currentKey)
+    if (typeof currentKey === 'string') {
+      currentKey = Buffer.from(currentKey, 'utf-8')
+    } else if (!(currentKey instanceof Buffer)) {
+      return callback(
+        new TokenError(
+          TokenError.codes.keyFetchingError,
+          'The key returned from the callback must be a string or a buffer containing a secret or a private key.'
+        )
+      )
+    }
 
     let token
     try {
-      if (!algorithm) {
-        header.alg = algorithm = detectPrivateKey(currentKey)
+      // Detect the private key - If the algorithm was known, just verify they match, otherwise assign it
+      const availableAlgorithm = detectPrivateKeyAlgorithm(currentKey)
+
+      if (algorithm) {
+        checkIsCompatibleAlgorithm(algorithm, availableAlgorithm)
+      } else {
+        header.alg = algorithm = availableAlgorithm
       }
+
+      currentKey = prepareKeyOrSecret(currentKey, algorithm)
 
       const encodedHeader = Buffer.from(JSON.stringify(header), 'utf-8')
         .toString('base64')
@@ -158,11 +217,25 @@ module.exports = function createSigner(options) {
         'The key option must not be provided when the algorithm option is "none".'
       )
     }
-  } else if (!key || (keyType !== 'string' && keyType !== 'object' && keyType !== 'function')) {
+  } else if (!key || (keyType !== 'string' && !(key instanceof Buffer) && keyType !== 'function')) {
     throw new TokenError(
       TokenError.codes.invalidOption,
-      'The key option must be a string, buffer, object or callback containing a secret or a private key.'
+      'The key option must be a string, a buffer or a function returning the algorithm secret or private key.'
     )
+  }
+
+  // Convert the key to a string when not a function, in order to be able to detect
+  if (key && keyType !== 'function') {
+    // Detect the private key - If the algorithm was known, just verify they match, otherwise assign it
+    const availableAlgorithm = detectPrivateKeyAlgorithm(key)
+
+    if (algorithm) {
+      checkIsCompatibleAlgorithm(algorithm, availableAlgorithm)
+    } else {
+      algorithm = availableAlgorithm
+    }
+
+    key = prepareKeyOrSecret(key, algorithm)
   }
 
   if (expiresIn && (typeof expiresIn !== 'number' || expiresIn < 0)) {
@@ -203,15 +276,6 @@ module.exports = function createSigner(options) {
 
   if (additionalHeader && typeof additionalHeader !== 'object') {
     throw new TokenError(TokenError.codes.invalidOption, 'The header option must be a object.')
-  }
-
-  // Convert the key to a buffer when not a function - If static also detect the algorithm here
-  if (key && keyType !== 'function') {
-    key = keyToBuffer(key)
-
-    if (!algorithm) {
-      algorithm = detectPrivateKey(key)
-    }
   }
 
   // Return the signer

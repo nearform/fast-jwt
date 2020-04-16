@@ -5,18 +5,6 @@ const algorithmMatcher = /"alg"\s*:\s*"[HERP]S(256|384)"/m
 const edAlgorithmMatcher = /"alg"\s*:\s*"EdDSA"/m
 const ed448CurveMatcher = /"crv"\s*:\s*"Ed448"/m
 
-function keyToBuffer(key) {
-  const keyType = typeof key
-
-  if (keyType === 'object' && typeof key.key === 'string') {
-    key.key = Buffer.from(key.key, 'utf-8')
-  } else if (keyType === 'string') {
-    key = Buffer.from(key, 'utf-8')
-  }
-
-  return key
-}
-
 function getAsyncKey(handler, header, callback) {
   const result = handler(header, callback)
 
@@ -71,7 +59,6 @@ function hashToken(token) {
 }
 
 module.exports = {
-  keyToBuffer,
   getAsyncKey,
   ensurePromiseCallback,
   hashToken
