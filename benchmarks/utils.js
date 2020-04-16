@@ -5,7 +5,7 @@ const { mkdir, writeFile } = require('fs').promises
 const { resolve } = require('path')
 const { sign: jsonwebtokenSign, decode: jsonwebtokenDecode, verify: jsonwebtokenVerify } = require('jsonwebtoken')
 const {
-  JWT: { sign: joseSign, verify: joseVerify },
+  JWT: { sign: joseSign, verify: joseVerify, decode: joseDecode },
   JWK: { asKey }
 } = require('jose')
 
@@ -36,49 +36,54 @@ function log(message) {
   output.push(message)
 }
 
-async function compareSigningJWT(payload, algorithm, privateKey, publicKey) {
-  const fastjwtSign = createSigner({ algorithm, key: privateKey, noTimestamp: true })
-  const fastjwtSignAsync = createSigner({ algorithm, key: async () => privateKey, noTimestamp: true })
-  const fastjwtVerify = createVerifier({ key: publicKey })
+function compareDecoding(token, algorithm) {
+  const fastjwtDecoder = createDecoder()
+  const fastjwtCompleteDecoder = createDecoder({ complete: true })
 
   if ((process.env.NODE_DEBUG || '').includes('fast-jwt')) {
-    const fastjwtGenerated = fastjwtSign(payload)
-    const jsonwebtokenGenerated = jsonwebtokenSign(payload, privateKey, { algorithm, noTimestamp: true })
-
     log('-------')
-    log(`Generated ${algorithm} tokens (equal=${jsonwebtokenGenerated === fastjwtGenerated}):`)
-    log(`  jsonwebtoken: ${JSON.stringify(jsonwebtokenSign(payload, privateKey))}`)
-    log(`       fastjwt: ${JSON.stringify(fastjwtSign(payload))}`)
-    log('Generated tokens verification:')
-    log(`  jsonwebtoken: ${JSON.stringify(jsonwebtokenVerify(jsonwebtokenGenerated, publicKey))}`)
-    log(`       fastjwt: ${JSON.stringify(fastjwtVerify(fastjwtGenerated))}`)
+    log(`Decoded ${algorithm} tokens:`)
+    log(`  jsonwebtoken: ${JSON.stringify(jsonwebtokenDecode(token, { complete: true }))}`)
+    log(`          jose: ${JSON.stringify(joseDecode(token, { complete: true }))}`)
+    log(`       fastjwt: ${JSON.stringify(fastjwtCompleteDecoder(token, { complete: true }))}`)
     log('-------')
   }
 
   return cronometro(
     {
-      [`${algorithm} - sign - fast-jwt (sync)`]: function() {
-        fastjwtSign(payload)
+      [`${algorithm} - fast-jwt`]: function() {
+        fastjwtDecoder(token)
       },
-      [`${algorithm} - sign - fast-jwt (async)`]: function(done) {
-        fastjwtSignAsync(payload, done)
+      [`${algorithm} - fast-jwt (complete)`]: function() {
+        fastjwtCompleteDecoder(token)
       },
-      [`${algorithm} - sign - jsonwebtoken (sync)`]: function() {
-        jsonwebtokenSign(payload, privateKey, { algorithm, noTimestamp: true })
+      [`${algorithm} - jsonwebtoken`]: function() {
+        jsonwebtokenDecode(token)
       },
-      [`${algorithm} - sign - jsonwebtoken (async)`]: function(done) {
-        jsonwebtokenSign(payload, privateKey, { algorithm, noTimestamp: true }, done)
+      [`${algorithm} - jsonwebtoken - complete`]: function() {
+        jsonwebtokenDecode(token, { complete: true })
+      },
+      [`${algorithm} - jose`]: function() {
+        joseDecode(token)
+      },
+      [`${algorithm} - jose - complete`]: function() {
+        joseDecode(token, { complete: true })
       }
     },
     { print: { compare: true, compareMode: 'base' } }
   )
 }
 
-async function compareSigningJose(payload, algorithm, privateKey, publicKey) {
+async function compareSigning(payload, algorithm, privateKey, publicKey) {
+  const isEdDSA = algorithm.slice(0, 2) === 'Ed'
+
   const fastjwtSign = createSigner({ algorithm, key: privateKey, noTimestamp: true })
+  const fastjwtSignAsync = createSigner({ algorithm, key: async () => privateKey, noTimestamp: true })
   const fastjwtVerify = createVerifier({ key: publicKey })
+
   const josePrivateKey = asKey(privateKey)
   const joseOptions = {
+    algorithm,
     iat: false,
     header: {
       typ: 'JWT'
@@ -88,138 +93,111 @@ async function compareSigningJose(payload, algorithm, privateKey, publicKey) {
   if ((process.env.NODE_DEBUG || '').includes('fast-jwt')) {
     const fastjwtGenerated = fastjwtSign(payload)
     const joseGenerated = joseSign(payload, josePrivateKey, joseOptions)
+    const jsonwebtokenGenerated = isEdDSA
+      ? null
+      : jsonwebtokenSign(payload, privateKey, { algorithm, noTimestamp: true })
 
     log('-------')
-    log(`Generated ${algorithm} tokens (equal=${joseGenerated === fastjwtGenerated}):`)
-    log(`     jose: ${JSON.stringify(joseSign(payload, josePrivateKey, joseOptions))}`)
-    log(`  fastjwt: ${JSON.stringify(fastjwtSign(payload))}`)
+    log(`Generated ${algorithm} tokens:`)
+    if (!isEdDSA) {
+      log(`  jsonwebtoken: ${JSON.stringify(jsonwebtokenGenerated)}`)
+    }
+    log(`          jose: ${JSON.stringify(joseGenerated)}`)
+    log(`       fastjwt: ${JSON.stringify(fastjwtSign(payload))}`)
     log('Generated tokens verification:')
-    log(`     jose: ${JSON.stringify(joseVerify(joseGenerated, asKey(publicKey)))}`)
-    log(`  fastjwt: ${JSON.stringify(fastjwtVerify(fastjwtGenerated))}`)
+    if (!isEdDSA) {
+      log(`  jsonwebtoken: ${JSON.stringify(jsonwebtokenVerify(jsonwebtokenGenerated, publicKey))}`)
+    }
+    log(`          jose: ${JSON.stringify(joseVerify(joseGenerated, asKey(publicKey)))}`)
+    log(`       fastjwt: ${JSON.stringify(fastjwtVerify(fastjwtGenerated))}`)
     log('-------')
   }
 
-  return cronometro(
-    {
-      [`${algorithm} - sign - fast-jwt`]: function() {
-        fastjwtSign(payload)
-      },
-      [`${algorithm} - sign - jose`]: function() {
-        joseSign(payload, josePrivateKey, joseOptions)
-      }
-    },
-    { print: { compare: true, compareMode: 'base' } }
-  )
-}
-
-function compareDecoding(token, algorithm) {
-  const fastjwtDecoder = createDecoder()
-  const fastjwtCompleteDecoder = createDecoder({ complete: true })
-
-  if ((process.env.NODE_DEBUG || '').includes('fast-jwt')) {
-    log('-------')
-    log(`Decoded ${algorithm} tokens:`)
-    log(`  jsonwebtoken: ${JSON.stringify(jsonwebtokenDecode(token, { complete: true }))}`)
-    log(`       fastjwt: ${JSON.stringify(fastjwtCompleteDecoder(token, { complete: true }))}`)
-    log('-------')
+  const tests = {
+    [`${algorithm} - jose (sync)`]: function() {
+      joseSign(payload, josePrivateKey, joseOptions)
+    }
   }
 
-  return cronometro(
-    {
-      [`${algorithm} - decode - fast-jwt`]: function() {
-        fastjwtDecoder(token)
+  if (!isEdDSA) {
+    Object.assign(tests, {
+      [`${algorithm} - jsonwebtoken (sync)`]: function() {
+        jsonwebtokenSign(payload, privateKey, { algorithm, noTimestamp: true })
       },
-      [`${algorithm} - decode - fast-jwt (complete)`]: function() {
-        fastjwtCompleteDecoder(token)
-      },
-      [`${algorithm} - decode - jsonwebtoken`]: function() {
-        jsonwebtokenDecode(token)
-      },
-      [`${algorithm} - decode - jsonwebtoken - complete`]: function() {
-        jsonwebtokenDecode(token, { complete: true })
+      [`${algorithm} - jsonwebtoken (async)`]: function(done) {
+        jsonwebtokenSign(payload, privateKey, { algorithm, noTimestamp: true }, done)
       }
+    })
+  }
+
+  Object.assign(tests, {
+    [`${algorithm} - fast-jwt (sync)`]: function() {
+      fastjwtSign(payload)
     },
-    { print: { compare: true, compareMode: 'base' } }
-  )
+    [`${algorithm} - fast-jwt (async)`]: function(done) {
+      fastjwtSignAsync(payload, done)
+    }
+  })
+
+  return cronometro(tests, { print: { compare: true, compareMode: 'base' } })
 }
 
-function compareVerifyingJWT(token, algorithm, publicKey) {
+function compareVerifying(token, algorithm, publicKey) {
+  const isEdDSA = algorithm.slice(0, 2) === 'Ed'
+
   const fastjwtVerify = createVerifier({ key: publicKey })
   const fastjwtVerifyAsync = createVerifier({ key: async () => publicKey })
   const fastjwtCachedVerify = createVerifier({ key: publicKey, cache: true })
   const fastjwtCachedVerifyAsync = createVerifier({ key: async () => publicKey, cache: true })
 
+  const josePublicKey = asKey(publicKey)
+
   if ((process.env.NODE_DEBUG || '').includes('fast-jwt')) {
     log('-------')
-    log(`Decoded ${algorithm} tokens:`)
-    log(`        jsonwebtoken: ${JSON.stringify(jsonwebtokenVerify(token, publicKey))}`)
+    log(`Verified ${algorithm} tokens:`)
+    if (!isEdDSA) {
+      log(`        jsonwebtoken: ${JSON.stringify(jsonwebtokenVerify(token, publicKey))}`)
+    }
+    log(`                jose: ${JSON.stringify(joseVerify(token, josePublicKey))}`)
     log(`             fastjwt: ${JSON.stringify(fastjwtVerify(token))}`)
     log(`  fastjwt+cache-miss: ${JSON.stringify(fastjwtCachedVerify(token))}`)
     log(`   fastjwt+cache-hit: ${JSON.stringify(fastjwtCachedVerify(token))}`)
     log('-------')
   }
 
-  return cronometro(
-    {
-      [`${algorithm} - verify - fast-jwt (sync)`]: function() {
-        fastjwtVerify(token)
-      },
-      [`${algorithm} - verify - fast-jwt (async)`]: function(done) {
-        fastjwtVerifyAsync(token, done)
-      },
-      [`${algorithm} - verify - fast-jwt (sync with cache)`]: function() {
-        fastjwtCachedVerify(token)
-      },
-      [`${algorithm} - verify - fast-jwt (async with cache)`]: function(done) {
-        fastjwtCachedVerifyAsync(token, done)
-      },
-      [`${algorithm} - verify - jsonwebtoken (sync)`]: function() {
-        jsonwebtokenVerify(token, publicKey)
-      },
-      [`${algorithm} - verify - jsonwebtoken (async)`]: function(done) {
-        jsonwebtokenVerify(token, publicKey, done)
-      }
+  const tests = {
+    [`${algorithm} - fast-jwt (sync)`]: function() {
+      fastjwtVerify(token)
     },
-    { print: { compare: true, compareMode: 'base' } }
-  )
-}
-
-function compareVerifyingJose(token, algorithm, publicKey) {
-  const fastjwtVerify = createVerifier({ key: publicKey })
-  const fastjwtCachedVerify = createVerifier({ key: publicKey, cache: true })
-  const josePublicKey = asKey(publicKey)
-
-  if ((process.env.NODE_DEBUG || '').includes('fast-jwt')) {
-    log('-------')
-    log(`Decoded ${algorithm} tokens:`)
-    log(`      jsonwebtoken: ${JSON.stringify(joseVerify(token, josePublicKey))}`)
-    log(`           fastjwt: ${JSON.stringify(fastjwtVerify(token))}`)
-    log(`fastjwt+cache-miss: ${JSON.stringify(fastjwtCachedVerify(token))}`)
-    log(` fastjwt+cache-hit: ${JSON.stringify(fastjwtCachedVerify(token))}`)
-    log('-------')
+    [`${algorithm} - fast-jwt (async)`]: function(done) {
+      fastjwtVerifyAsync(token, done)
+    },
+    [`${algorithm} - fast-jwt (sync with cache)`]: function() {
+      fastjwtCachedVerify(token)
+    },
+    [`${algorithm} - fast-jwt (async with cache)`]: function(done) {
+      fastjwtCachedVerifyAsync(token, done)
+    },
+    [`${algorithm} - jose (sync)`]: function() {
+      joseVerify(token, josePublicKey)
+    }
   }
 
-  return cronometro(
-    {
-      [`${algorithm} - verify - fast-jwt`]: function() {
-        fastjwtVerify(token)
-      },
-      [`${algorithm} - verify - fast-jwt (with cache)`]: function() {
-        fastjwtCachedVerify(token)
-      },
-      [`${algorithm} - verify - jose`]: function() {
-        joseVerify(token, josePublicKey)
-      }
-    },
-    { print: { compare: true, compareMode: 'base' } }
-  )
+  if (!isEdDSA) {
+    tests[`${algorithm} - jsonwebtoken (sync)`] = function() {
+      jsonwebtokenVerify(token, publicKey)
+    }
+    tests[`${algorithm} - jsonwebtoken (async)`] = function(done) {
+      jsonwebtokenVerify(token, publicKey, done)
+    }
+  }
+
+  return cronometro(tests, { print: { compare: true, compareMode: 'base' } })
 }
 
 module.exports = {
-  compareSigningJose,
-  compareSigningJWT,
   compareDecoding,
-  compareVerifyingJose,
-  compareVerifyingJWT,
+  compareSigning,
+  compareVerifying,
   saveLogs
 }

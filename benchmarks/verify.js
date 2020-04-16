@@ -3,7 +3,7 @@
 const { readFileSync } = require('fs')
 const { resolve } = require('path')
 
-const { compareVerifyingJose, compareVerifyingJWT, saveLogs } = require('./utils')
+const { compareVerifying, saveLogs } = require('./utils')
 
 const hsToken =
   'eyJhbGciOiJIUzUxMiIsInR5cCI6IkpXVCJ9.eyJhIjoxLCJiIjoyLCJjIjozLCJpYXQiOjE1Nzk1MjEyMTJ9.mIcxteEVjbh2MnKQ3EQlojZojGSyA_guqRBYHQURcfnCSSBTT2OShF8lo9_ogjAv-5oECgmCur_cDWB7x3X53g'
@@ -21,11 +21,11 @@ const edToken =
   'eyJhbGciOiJFZERTQSIsInR5cCI6IkpXVCIsImt0eSI6Ik9LUCIsImNydiI6IkVkMjU1MTkiLCJraWQiOiIxMjMifQ.eyJhIjoxLCJiIjoyLCJjIjozLCJpYXQiOjE1ODY3ODQ3ODF9.PDIxWOWhAHr-7Zy7UC8W4pRuk7dMYTD8xy0DR0N102P0pXK6U4r6THHe66muTdSM3qiDHZnync1WQp-10QFLCQ'
 
 async function runSuites() {
-  await compareVerifyingJWT(hsToken, 'HS512', 'secretsecretsecret')
-  await compareVerifyingJWT(esToken, 'ES512', readFileSync(resolve(__dirname, './keys/es-512-public.key')))
-  await compareVerifyingJWT(rsToken, 'RS512', readFileSync(resolve(__dirname, './keys/rs-512-public.key')))
-  await compareVerifyingJWT(psToken, 'PS512', readFileSync(resolve(__dirname, './keys/ps-512-public.key')))
-  await compareVerifyingJose(edToken, 'EdDSA', readFileSync(resolve(__dirname, './keys/ed-25519-public.key')))
+  await compareVerifying(hsToken, 'HS512', 'secretsecretsecret')
+  await compareVerifying(esToken, 'ES512', readFileSync(resolve(__dirname, './keys/es-512-public.key')))
+  await compareVerifying(rsToken, 'RS512', readFileSync(resolve(__dirname, './keys/rs-512-public.key')))
+  await compareVerifying(psToken, 'PS512', readFileSync(resolve(__dirname, './keys/ps-512-public.key')))
+  await compareVerifying(edToken, 'EdDSA', readFileSync(resolve(__dirname, './keys/ed-25519-public.key')))
 
   await saveLogs('verify')
 }
