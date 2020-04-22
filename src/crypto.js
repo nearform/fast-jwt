@@ -1,12 +1,11 @@
 'use strict'
 
+const asn = require('asn1.js')
 const {
   createHmac,
   createVerify,
   createSign,
   timingSafeEqual,
-  sign: directSign,
-  verify: directVerify,
   constants: {
     RSA_PKCS1_PSS_PADDING,
     RSA_PSS_SALTLEN_DIGEST,
@@ -15,108 +14,281 @@ const {
     RSA_PSS_SALTLEN_AUTO
   }
 } = require('crypto')
+let { sign: directSign, verify: directVerify } = require('crypto')
 const { joseToDer, derToJose } = require('ecdsa-sig-formatter')
+const Cache = require('mnemonist/lru-cache')
+const TokenError = require('./error')
+
+const useNewCrypto = typeof directSign === 'function'
 
 const base64UrlMatcher = /[=+/]/g
 const encoderMap = { '=': '', '+': '-', '/': '_' }
 
-const TokenError = require('./error')
+const privateKeyPemMatcher = /^-----BEGIN(?: (RSA|EC))? PRIVATE KEY-----/
+const publicKeyPemMatcher = '-----BEGIN PUBLIC KEY-----'
+const privateKeysCache = new Cache(1000)
+const publicKeysCache = new Cache(1000)
 
-/*
-  Note that when using all these verifiers, all the keys have already been converted
-  to buffers (including {key, passphrase} case).
-  The error messages mention strings just for developer sake.
-*/
-function validateSecretOrPublicKey(algorithm, key, message) {
-  if (key instanceof Buffer || typeof key === 'string') {
-    return
-  }
-
-  throw new TokenError(TokenError.codes.invalidKey, message)
+const hsAlgorithms = ['HS256', 'HS384', 'HS512']
+const esAlgorithms = ['ES256', 'ES384', 'ES512']
+const rsaAlgorithms = ['RS256', 'RS384', 'RS512', 'PS256', 'PS384', 'PS512']
+const edAlgorithms = ['EdDSA']
+const ecCurves = {
+  '1.2.840.10045.3.1.7': { bits: '256', names: ['P-256', 'prime256v1'] },
+  '1.3.132.0.10': { bits: '256', names: ['secp256k1'] },
+  '1.3.132.0.34': { bits: '384', names: ['P-384', 'secp384r1'] },
+  '1.3.132.0.35': { bits: '512', names: ['P-521', 'secp521r1'] }
 }
 
-function validatePrivateKey(algorithm, key) {
-  const keyType = typeof key
+/* istanbul ignore next */
+if (!useNewCrypto) {
+  directSign = function(alg, data, options) {
+    if (typeof alg === 'undefined') {
+      throw new TokenError(TokenError.codes.signError, 'EdDSA algorithms are not supported by your Node.js version.')
+    }
 
-  if (key instanceof Buffer || keyType === 'string') {
-    return { key }
+    return createSign(alg)
+      .update(data)
+      .sign(options)
   }
-
-  if (keyType !== 'object') {
-    throw new TokenError(
-      TokenError.codes.invalidKey,
-      `The key for algorithm ${algorithm} must be a string, a object or a buffer containing the private key.`
-    )
-  }
-
-  if (typeof key.key !== 'string' && !(key.key instanceof Buffer)) {
-    throw new TokenError(
-      TokenError.codes.invalidKey,
-      `The key object for algorithm ${algorithm} must have the key property as string or buffer containing the private key.`
-    )
-  }
-
-  if (key.passphrase && typeof key.passphrase !== 'string' && !(key.passphrase instanceof Buffer)) {
-    throw new TokenError(
-      TokenError.codes.invalidKey,
-      `The key object for algorithm ${algorithm} must have the passphrase property as string or buffer containing the private key.`
-    )
-  }
-
-  return key
 }
+
+const PrivateKey = asn.define('PrivateKey', function() {
+  this.seq().obj(
+    this.key('version').int(),
+    this.key('algorithm')
+      .seq()
+      .obj(
+        this.key('algorithm').objid(),
+        this.key('parameters')
+          .optional()
+          .objid()
+      )
+  )
+})
+
+const PublicKey = asn.define('PublicKey', function() {
+  this.seq().obj(
+    this.key('algorithm')
+      .seq()
+      .obj(
+        this.key('algorithm').objid(),
+        this.key('parameters')
+          .optional()
+          .objid()
+      )
+  )
+})
+
+const ECPrivateKey = asn.define('ECPrivateKey', function() {
+  this.seq().obj(
+    this.key('version').int(),
+    this.key('privateKey').octstr(),
+    this.key('parameters')
+      .explicit(0)
+      .optional()
+      .choice({ namedCurve: this.objid() })
+  )
+})
 
 function base64UrlReplacer(c) {
   return encoderMap[c]
 }
 
+function cacheSet(cache, key, value, error) {
+  cache.set(key, [value, error])
+  return value || error
+}
+
+function performDetectPrivateKeyAlgoritm(key) {
+  if (key.includes(publicKeyPemMatcher)) {
+    throw new TokenError(TokenError.codes.invalidKey, 'Public keys are not supported for signing.')
+  }
+
+  const pemData = key.trim().match(privateKeyPemMatcher)
+
+  if (!pemData) {
+    return 'HS256'
+  }
+
+  let keyData
+  let oid
+  let curveId
+
+  switch (pemData[1]) {
+    case 'RSA': // pkcs1 format - Can only be a RSA key
+      return 'RS256'
+    case 'EC': // sec1 format - Can only be a EC key
+      keyData = ECPrivateKey.decode(key, 'pem', { label: 'EC PRIVATE KEY' })
+      curveId = keyData.parameters.value.join('.')
+      break
+    default:
+      // pkcs8
+      keyData = PrivateKey.decode(key, 'pem', { label: 'PRIVATE KEY' })
+      oid = keyData.algorithm.algorithm.join('.')
+
+      switch (oid) {
+        case '1.2.840.113549.1.1.1': // RSA
+          return 'RS256'
+        case '1.2.840.10045.2.1': // EC
+          curveId = keyData.algorithm.parameters.join('.')
+          break
+        case '1.3.101.112': // Ed25519
+        case '1.3.101.113': // Ed448
+          return 'EdDSA'
+        default:
+          throw new TokenError(TokenError.codes.invalidKey, `Unsupported PEM PCKS8 private key with OID ${oid}.`)
+      }
+  }
+
+  const curve = ecCurves[curveId]
+
+  if (!curve) {
+    throw new TokenError(TokenError.codes.invalidKey, `Unsupported EC private key with curve ${curveId}.`)
+  }
+
+  return `ES${curve.bits}`
+}
+
+function performDetectPublicKeyAlgorithms(key) {
+  if (key.match(privateKeyPemMatcher)) {
+    throw new TokenError(TokenError.codes.invalidKey, 'Private keys are not supported for verifying.')
+  } else if (!key.includes(publicKeyPemMatcher)) {
+    // Not a PEM, assume a plain secret
+    return hsAlgorithms
+  }
+
+  // We only support a single format for public keys. Legacy "BEGIN RSA PUBLIC KEY" are not supported
+  const keyData = PublicKey.decode(key, 'pem', { label: 'PUBLIC KEY' })
+  const oid = keyData.algorithm.algorithm.join('.')
+  let curveId
+
+  switch (oid) {
+    case '1.2.840.113549.1.1.1': // RSA
+      return rsaAlgorithms
+    case '1.2.840.10045.2.1': // EC
+      curveId = keyData.algorithm.parameters.join('.')
+      break
+    case '1.3.101.112': // Ed25519
+    case '1.3.101.113': // Ed448
+      return ['EdDSA']
+    default:
+      throw new TokenError(TokenError.codes.invalidKey, `Unsupported PEM PCKS8 public key with OID ${oid}.`)
+  }
+
+  const curve = ecCurves[curveId]
+
+  if (!curve) {
+    throw new TokenError(TokenError.codes.invalidKey, `Unsupported EC public key with curve ${curveId}.`)
+  }
+
+  return [`ES${curve.bits}`]
+}
+
+function detectPrivateKeyAlgorithm(key) {
+  if (key instanceof Buffer) {
+    key = key.toString('utf-8')
+  } else if (typeof key !== 'string') {
+    throw new TokenError(TokenError.codes.invalidKey, 'The private key must be a string or a buffer.')
+  }
+
+  // Check cache first
+  const [cached, error] = privateKeysCache.get(key) || []
+
+  if (cached) {
+    return cached
+  } else if (error) {
+    throw error
+  }
+
+  // Try detecting
+  try {
+    return cacheSet(privateKeysCache, key, performDetectPrivateKeyAlgoritm(key))
+  } catch (e) {
+    throw cacheSet(
+      privateKeysCache,
+      key,
+      null,
+      TokenError.wrap(e, TokenError.codes.invalidKey, 'Unsupported PEM private key.')
+    )
+  }
+}
+
+function detectPublicKeyAlgorithms(key) {
+  if (!key) {
+    return 'none'
+  }
+
+  // Check cache first
+  const [cached, error] = publicKeysCache.get(key) || []
+
+  if (cached) {
+    return cached
+  } else if (error) {
+    throw error
+  }
+
+  // Try detecting
+  try {
+    if (key instanceof Buffer) {
+      key = key.toString('utf-8')
+    } else if (typeof key !== 'string') {
+      throw new TokenError(TokenError.codes.invalidKey, 'The public key must be a string or a buffer.')
+    }
+
+    return cacheSet(publicKeysCache, key, performDetectPublicKeyAlgorithms(key))
+  } catch (e) {
+    throw cacheSet(
+      publicKeysCache,
+      key,
+      null,
+      TokenError.wrap(e, TokenError.codes.invalidKey, 'Unsupported PEM public key.')
+    )
+  }
+}
+
 function createSignature(algorithm, key, input) {
   try {
     const type = algorithm.slice(0, 2)
-    const alg = `SHA${algorithm.slice(2)}`
+    const alg = `sha${algorithm.slice(2)}`
 
-    if (type === 'HS') {
-      validateSecretOrPublicKey(algorithm, key, `The secret for algorithm ${algorithm} must be a string or a buffer.`)
+    let raw
+    let options
 
-      return createHmac(alg, key)
-        .update(input)
-        .digest('base64')
-        .replace(base64UrlMatcher, base64UrlReplacer)
-    } else if (type === 'Ed') {
-      // Check if supported on Node 10
-      /* istanbul ignore next */
-      if (typeof directSign === 'function') {
-        validatePrivateKey(algorithm, key)
+    switch (type) {
+      case 'HS':
+        raw = createHmac(alg, key)
+          .update(input)
+          .digest('base64')
+        break
+      case 'ES':
+        raw = derToJose(directSign(alg, Buffer.from(input, 'utf-8'), key), algorithm).toString('base64')
+        break
+      case 'RS':
+      case 'PS':
+        options = {
+          key,
+          padding: RSA_PKCS1_PADDING,
+          saltLength: RSA_PSS_SALTLEN_MAX_SIGN
+        }
 
-        return directSign(undefined, Buffer.from(input, 'utf8'), key)
+        if (type === 'PS') {
+          options.padding = RSA_PKCS1_PSS_PADDING
+          options.saltLength = RSA_PSS_SALTLEN_DIGEST
+        }
+
+        raw = createSign(alg)
+          .update(input)
+          .sign(options)
           .toString('base64')
-          .replace(base64UrlMatcher, base64UrlReplacer)
-      } else {
-        throw new TokenError(TokenError.codes.signError, 'EdDSA algorithms are not supported by your Node.js version.')
-      }
+        break
+      case 'Ed':
+        raw = directSign(undefined, Buffer.from(input, 'utf-8'), key).toString('base64')
     }
 
-    const options = {
-      ...validatePrivateKey(algorithm, key),
-      padding: RSA_PKCS1_PADDING,
-      saltLength: RSA_PSS_SALTLEN_MAX_SIGN
-    }
-
-    if (type === 'PS') {
-      options.padding = RSA_PKCS1_PSS_PADDING
-      options.saltLength = RSA_PSS_SALTLEN_DIGEST
-    }
-
-    let signature = createSign('RSA-' + alg)
-      .update(input)
-      .sign(options, 'base64')
-
-    if (type === 'ES') {
-      signature = derToJose(signature, algorithm).toString('base64')
-    }
-
-    return signature.replace(base64UrlMatcher, base64UrlReplacer)
+    return raw.replace(base64UrlMatcher, base64UrlReplacer)
   } catch (e) {
+    /* istanbul ignore next */
     throw new TokenError(TokenError.codes.signError, 'Cannot create the signature.', { originalError: e })
   }
 }
@@ -129,8 +301,6 @@ function verifySignature(algorithm, key, input, signature) {
     signature = Buffer.from(signature, 'base64')
 
     if (type === 'HS') {
-      validateSecretOrPublicKey(algorithm, key, `The secret for algorithm ${algorithm} must be a string or a buffer.`)
-
       try {
         return timingSafeEqual(
           createHmac(alg, key)
@@ -145,25 +315,13 @@ function verifySignature(algorithm, key, input, signature) {
       // Check if supported on Node 10
       /* istanbul ignore next */
       if (typeof directVerify === 'function') {
-        validateSecretOrPublicKey(
-          algorithm,
-          key,
-          `The key for algorithm ${algorithm} must be a string, a object or a buffer containing the public key.`
-        )
-
-        return directVerify(undefined, Buffer.from(input, 'utf8'), key, signature)
+        return directVerify(undefined, Buffer.from(input, 'utf-8'), key, signature)
       } else {
         throw new TokenError(TokenError.codes.signError, 'EdDSA algorithms are not supported by your Node.js version.')
       }
     }
 
     const options = { key, padding: RSA_PKCS1_PADDING, saltLength: RSA_PSS_SALTLEN_AUTO }
-
-    validateSecretOrPublicKey(
-      algorithm,
-      key,
-      `The key for algorithm ${algorithm} must be a string, a object or a buffer containing the public key.`
-    )
 
     if (type === 'PS') {
       options.padding = RSA_PKCS1_PSS_PADDING
@@ -176,13 +334,21 @@ function verifySignature(algorithm, key, input, signature) {
       .update(input)
       .verify(options, signature)
   } catch (e) {
+    /* istanbul ignore next */
     throw new TokenError(TokenError.codes.verifyError, 'Cannot verify the signature.', { originalError: e })
   }
 }
 
 module.exports = {
+  useNewCrypto,
   base64UrlMatcher,
   base64UrlReplacer,
+  hsAlgorithms,
+  rsaAlgorithms,
+  esAlgorithms,
+  edAlgorithms,
+  detectPrivateKeyAlgorithm,
+  detectPublicKeyAlgorithms,
   createSignature,
   verifySignature
 }

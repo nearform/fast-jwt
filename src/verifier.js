@@ -1,14 +1,50 @@
 'use strict'
 
+const { createPublicKey, createSecretKey } = require('crypto')
 const Cache = require('mnemonist/lru-cache')
 
-const { verifySignature } = require('./crypto')
+const { useNewCrypto, hsAlgorithms, verifySignature, detectPublicKeyAlgorithms } = require('./crypto')
 const createDecoder = require('./decoder')
 const TokenError = require('./error')
-const { detectPublicKeySupportedAlgorithms } = require('./keyParser')
-const { keyToBuffer, getAsyncKey, ensurePromiseCallback, hashToken } = require('./utils')
+const { getAsyncKey, ensurePromiseCallback, hashToken } = require('./utils')
 
 const defaultCacheSize = 1000
+
+function checkAreCompatibleAlgorithms(expected, actual) {
+  const expectedType = expected[0].slice(0, 2)
+  const actualType = actual[0].slice(0, 2)
+
+  let valid = true // We accept everything for HS
+
+  if (expectedType === 'RS' || expectedType === 'PS') {
+    // RS and PS use same keys
+    valid = actualType === 'RS'
+  } else if (expectedType === 'ES' || expectedType === 'Ed') {
+    // ES and Ed only can have a single value
+    valid = expectedType === actualType
+  }
+
+  if (!valid) {
+    throw new TokenError(
+      TokenError.codes.invalidKey,
+      `Invalid public key provided for algorithms ${expected.join(', ')}.`
+    )
+  }
+}
+
+function prepareKeyOrSecret(key, isSecret) {
+  if (typeof key === 'string') {
+    key = Buffer.from(key, 'utf-8')
+  }
+
+  // Only on Node 12 - Create a key object
+  /* istanbul ignore next */
+  if (useNewCrypto) {
+    key = isSecret ? createSecretKey(key) : createPublicKey(key)
+  }
+
+  return key
+}
 
 function ensureStringClaimMatcher(raw) {
   if (!Array.isArray(raw)) {
@@ -76,7 +112,7 @@ function handleCachedResult(cached, callback, promise) {
 
 function validateAlgorithmAndSignature(input, header, signature, key, allowedAlgorithms) {
   // According to the signature and key, check with algorithms are supported
-  const algorithms = allowedAlgorithms.length ? allowedAlgorithms : detectPublicKeySupportedAlgorithms(key)
+  const algorithms = allowedAlgorithms.length ? allowedAlgorithms : detectPublicKeyAlgorithms(key)
 
   // Verify the token is allowed
   if (!algorithms.includes(header.alg)) {
@@ -124,6 +160,7 @@ function verifyToken(
   { validators, allowedAlgorithms, clockTimestamp, clockTolerance }
 ) {
   // Verify the key
+  /* istanbul ignore next */
   const hasKey = key instanceof Buffer ? key.length : !!key
 
   if (hasKey && !signature) {
@@ -247,8 +284,33 @@ function verify(
       )
     }
 
+    if (typeof currentKey === 'string') {
+      currentKey = Buffer.from(currentKey, 'utf-8')
+    } else if (!(currentKey instanceof Buffer)) {
+      return callback(
+        cacheSet(
+          cacheContext,
+          new TokenError(
+            TokenError.codes.keyFetchingError,
+            'The key returned from the callback must be a string or a buffer containing a secret or a public key.'
+          )
+        )
+      )
+    }
+
     try {
-      verifyToken(keyToBuffer(currentKey), decoded, validationContext)
+      // Detect the private key - If the algorithms were known, just verify they match, otherwise assign them
+      const availableAlgorithms = detectPublicKeyAlgorithms(currentKey)
+
+      if (validationContext.allowedAlgorithms.length) {
+        checkAreCompatibleAlgorithms(allowedAlgorithms, availableAlgorithms)
+      } else {
+        validationContext.allowedAlgorithms = availableAlgorithms
+      }
+
+      currentKey = prepareKeyOrSecret(currentKey, availableAlgorithms[0] === hsAlgorithms[0])
+
+      verifyToken(currentKey, decoded, validationContext)
     } catch (e) {
       return callback(cacheSet(cacheContext, e))
     }
@@ -280,6 +342,10 @@ module.exports = function createVerifier(options) {
   } = { cacheTTL: 600000, ...options }
 
   // Validate options
+  if (!Array.isArray(allowedAlgorithms)) {
+    allowedAlgorithms = []
+  }
+
   const keyType = typeof key
   if (keyType !== 'string' && keyType !== 'object' && keyType !== 'function') {
     throw new TokenError(
@@ -288,9 +354,17 @@ module.exports = function createVerifier(options) {
     )
   }
 
-  // Convert the key to a buffer
   if (key && keyType !== 'function') {
-    key = keyToBuffer(key)
+    // Detect the private key - If the algorithms were known, just verify they match, otherwise assign them
+    const availableAlgorithms = detectPublicKeyAlgorithms(key)
+
+    if (allowedAlgorithms.length) {
+      checkAreCompatibleAlgorithms(allowedAlgorithms, availableAlgorithms)
+    } else {
+      allowedAlgorithms = availableAlgorithms
+    }
+
+    key = prepareKeyOrSecret(key, availableAlgorithms[0] === hsAlgorithms[0])
   }
 
   if (clockTimestamp && (typeof clockTimestamp !== 'number' || clockTimestamp < 0)) {
@@ -305,10 +379,6 @@ module.exports = function createVerifier(options) {
 
   if (cacheTTL && (typeof cacheTTL !== 'number' || cacheTTL < 0)) {
     throw new TokenError(TokenError.codes.invalidOption, 'The cacheTTL option must be a positive number.')
-  }
-
-  if (!Array.isArray(allowedAlgorithms)) {
-    allowedAlgorithms = []
   }
 
   // Add validators

@@ -1,16 +1,16 @@
 'use strict'
 
-const { sign: directSign } = require('crypto')
 const { readFileSync } = require('fs')
-const { resolve } = require('path')
-const { test } = require('tap')
-
-const { createSigner, createVerifier } = require('../src')
 const { sign: jsonwebtokenSign, verify: jsonwebtokenVerify } = require('jsonwebtoken')
 const {
   JWT: { sign: joseSign, verify: joseVerify },
   JWK: { asKey }
 } = require('jose')
+const { resolve } = require('path')
+const { test } = require('tap')
+
+const { createSigner, createVerifier } = require('../src')
+const { useNewCrypto } = require('../src/crypto')
 
 const privateKeys = {
   HS: 'secretsecretsecret',
@@ -59,7 +59,7 @@ for (const type of ['HS', 'ES', 'RS', 'PS']) {
   }
 }
 
-if (typeof directSign === 'function') {
+if (useNewCrypto) {
   for (const curve of ['Ed25519', 'Ed448']) {
     test(`fast-jwt should correcty verify tokens created by jose - EdDSA with ${curve}`, t => {
       const verify = createVerifier({ key: publicKeys[curve].toString() })

@@ -1,12 +1,12 @@
 'use strict'
 
-const { sign: directSign } = require('crypto')
 const { test } = require('tap')
 const {
   JWK: { asKey }
 } = require('jose')
 
-const { createVerifier, createSigner } = require('../../src')
+const { createVerifier, createSigner } = require('../src')
+const { useNewCrypto } = require('../src/crypto')
 
 const payload =
   "It’s a dangerous business, Frodo, going out your door. You step onto the road, and if you don't keep your feet, there’s no knowing where you might be swept off to."
@@ -145,7 +145,7 @@ test('ES512', t => {
   t.end()
 })
 
-if (typeof directSign === 'function') {
+if (useNewCrypto) {
   // All the keys here are extracted from https://tools.ietf.org/html/rfc8037
   const ed25519PublicKey = asKey({
     kty: 'OKP',

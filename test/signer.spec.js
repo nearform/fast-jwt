@@ -1,11 +1,11 @@
 'use strict'
 
-const { sign: directSign } = require('crypto')
 const { readFileSync } = require('fs')
 const { resolve } = require('path')
 const { test } = require('tap')
 
 const { createSigner, createVerifier, TokenError } = require('../src')
+const { useNewCrypto } = require('../src/crypto')
 
 const privateKeys = {
   HS: 'secretsecretsecret',
@@ -40,6 +40,11 @@ test('it correctly returns a token - sync', t => {
     'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxfQ.57TF7smP9XDhIexBqPC-F1toZReYZLWb_YRU5tv0sxM'
   )
 
+  t.equal(
+    sign({ a: 1 }, { key: undefined, algorithm: 'none', noTimestamp: true }),
+    'eyJhbGciOiJub25lIiwidHlwIjoiSldUIn0.eyJhIjoxfQ.'
+  )
+
   t.equal(sign('123', { noTimestamp: true }), 'eyJhbGciOiJIUzI1NiJ9.MTIz.UqiZ2LDYZqYB3xJgkHaihGQnJ_WPTz3hERDpA7bWYjA')
 
   t.equal(
@@ -52,7 +57,7 @@ test('it correctly returns a token - sync', t => {
     'eyJhbGciOiJub25lIiwidHlwIjoiSldUIn0.eyJhIjoxfQ.'
   )
 
-  if (typeof directSign === 'function') {
+  if (useNewCrypto) {
     t.equal(
       sign({ a: 1 }, { noTimestamp: true, key: privateKeys.Ed25519 }),
       'eyJhbGciOiJFZERTQSIsInR5cCI6IkpXVCJ9.eyJhIjoxfQ.pIRjmLR-JW4sTCslD24h5fs0sTUpGYBG7zh4Z_UyEZ_u29NojdH2dSNKQZwwgjl1WvfYNtBCCF_EnYTazAXmDQ'
@@ -91,7 +96,7 @@ test('it correctly returns a token - async - static key', async t => {
 })
 
 test('it correctly returns a token - callback - key as promise', t => {
-  sign({ a: 1 }, { key: async () => 'secret', noTimestamp: true }, (error, token) => {
+  sign({ a: 1 }, { key: async () => Buffer.from('secret', 'utf-8'), noTimestamp: true }, (error, token) => {
     t.type(error, 'null')
     t.equal(token, 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxfQ.57TF7smP9XDhIexBqPC-F1toZReYZLWb_YRU5tv0sxM')
     t.end()
@@ -132,7 +137,7 @@ test('it correctly autodetects the algorithm depending on the secret provided', 
   verification = es512Verifier(token)
   t.is(verification.header.alg, 'ES512')
 
-  if (typeof directSign === 'function') {
+  if (useNewCrypto) {
     token = createSigner({ key: privateKeys.Ed25519 })({ a: 1 })
     verification = es25519Verifier(token)
     t.is(verification.header.alg, 'EdDSA')
@@ -368,6 +373,27 @@ test('it correctly handle errors - callback', t => {
   )
 })
 
+test('it correctly validates the key received from the callback', t => {
+  sign(
+    { a: 1 },
+    {
+      key: (header, callback) => {
+        callback(null, 123)
+      },
+      noTimestamp: true
+    },
+    (error, token) => {
+      t.true(error instanceof TokenError)
+      t.equal(
+        error.message,
+        'The key returned from the callback must be a string or a buffer containing a secret or a private key.'
+      )
+
+      t.end()
+    }
+  )
+})
+
 test('it correctly handle errors - evented callback', t => {
   sign(
     { a: 1 },
@@ -380,7 +406,7 @@ test('it correctly handle errors - evented callback', t => {
     },
     (error, token) => {
       t.true(error instanceof TokenError)
-      t.equal(error.message, 'Cannot create the signature.')
+      t.equal(error.message, 'Invalid private key provided for algorithm RS256.')
 
       t.end()
     }
@@ -427,7 +453,7 @@ test('options validation - algorithm', t => {
 
 test('options validation - key', t => {
   t.throws(() => createSigner({ key: 123 }), {
-    message: 'The key option must be a string, buffer, object or callback containing a secret or a private key.'
+    message: 'The key option must be a string, a buffer or a function returning the algorithm secret or private key.'
   })
 
   t.throws(() => createSigner({ algorithm: 'none', key: 123 }), {

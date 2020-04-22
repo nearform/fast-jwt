@@ -1,25 +1,19 @@
 'use strict'
 
-const { readFileSync } = require('fs')
-const { resolve } = require('path')
-
-const { compareSigningJose, compareSigningJWT, saveLogs } = require('./utils')
-
-const esPrivateKey = readFileSync(resolve(__dirname, './keys/es-512-private.key'))
-const rsPrivateKey = readFileSync(resolve(__dirname, './keys/rs-512-private.key'))
-const psPrivateKey = readFileSync(resolve(__dirname, './keys/ps-512-private.key'))
-const edPrivateKey = readFileSync(resolve(__dirname, './keys/ed-25519-private.key'))
-const esPublicKey = readFileSync(resolve(__dirname, './keys/es-512-public.key'))
-const rsPublicKey = readFileSync(resolve(__dirname, './keys/rs-512-public.key'))
-const psPublicKey = readFileSync(resolve(__dirname, './keys/ps-512-public.key'))
-const edPublicKey = readFileSync(resolve(__dirname, './keys/ed-25519-public.key'))
+const { isMainThread } = require('worker_threads')
+const { privateKeys, publicKeys, compareSigning, saveLogs } = require('./utils')
 
 async function runSuites() {
-  await compareSigningJWT({ a: 1, b: 2, c: 3 }, 'HS512', 'secretsecretsecret', 'secretsecretsecret')
-  await compareSigningJWT({ a: 1, b: 2, c: 3 }, 'ES512', esPrivateKey, esPublicKey)
-  await compareSigningJWT({ a: 1, b: 2, c: 3 }, 'RS512', rsPrivateKey, rsPublicKey)
-  await compareSigningJWT({ a: 1, b: 2, c: 3 }, 'PS512', psPrivateKey, psPublicKey)
-  await compareSigningJose({ a: 1, b: 2, c: 3 }, 'EdDSA', edPrivateKey, edPublicKey)
+  if (!isMainThread) {
+    const algorightm = process.env.CURRENT_ALGORITHM
+    compareSigning({ a: 1, b: 2, c: 3 }, algorightm, privateKeys[algorightm], publicKeys[algorightm])
+    return
+  } else {
+    for (const algorightm of ['HS512', 'ES512', 'RS512', 'PS512', 'EdDSA']) {
+      process.env.CURRENT_ALGORITHM = algorightm
+      await compareSigning({ a: 1, b: 2, c: 3 }, algorightm, privateKeys[algorightm], publicKeys[algorightm])
+    }
+  }
 
   await saveLogs('sign')
 }

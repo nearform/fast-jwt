@@ -1,12 +1,13 @@
 'use strict'
 
-const { createHash, verify: directVerify } = require('crypto')
+const { createHash } = require('crypto')
 const { readFileSync } = require('fs')
 const { resolve } = require('path')
 const { test } = require('tap')
 const { install: fakeTime } = require('lolex')
 
 const { createSigner, createVerifier, TokenError } = require('../src')
+const { useNewCrypto } = require('../src/crypto')
 const { hashToken } = require('../src/utils')
 
 const privateKeys = {
@@ -81,7 +82,7 @@ test('it correctly verifies a token - sync', t => {
     '123'
   )
 
-  if (typeof directVerify === 'function') {
+  if (useNewCrypto) {
     t.strictDeepEqual(
       verify(
         'eyJhbGciOiJFZERTQSIsInR5cCI6IkpXVCIsImt0eSI6Ik9LUCIsImNydiI6IkVkMjU1MTkifQ.eyJhIjoxfQ.n4isU7JqaKRVOyx2ni7b_iaAzB75pAUCW6CetcoClhtJ5yDM7YkNMbKqmDUhTKMpupAcztIjX8m4mZwpA33HAA',
@@ -119,6 +120,7 @@ test('it correctly verifies a token - async - key with callback', async t => {
 
   t.strictDeepEqual(
     await verify('eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxfQ.57TF7smP9XDhIexBqPC-F1toZReYZLWb_YRU5tv0sxM', {
+      algorithms: ['HS256'],
       key: (_h, callback) => setTimeout(() => callback(null, 'secret'), 10),
       noTimestamp: true,
       complete: true
@@ -134,7 +136,7 @@ test('it correctly verifies a token - async - key with callback', async t => {
 test('it correctly verifies a token - async - key as promise', async t => {
   t.strictDeepEqual(
     await verify('eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxfQ.57TF7smP9XDhIexBqPC-F1toZReYZLWb_YRU5tv0sxM', {
-      key: async () => 'secret',
+      key: async () => Buffer.from('secret', 'utf-8'),
       noTimestamp: true
     }),
     { a: 1 }
@@ -153,7 +155,7 @@ test('it correctly verifies a token - async - static key', async t => {
 test('it correctly verifies a token - callback - key as promise', t => {
   verify(
     'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxfQ.57TF7smP9XDhIexBqPC-F1toZReYZLWb_YRU5tv0sxM',
-    { key: async () => 'secret', noTimestamp: true },
+    { key: async () => Buffer.from('secret', 'utf-8'), noTimestamp: true },
     (error, payload) => {
       t.type(error, 'null')
       t.strictDeepEqual(payload, { a: 1 })
@@ -246,11 +248,11 @@ test('it correctly handle errors - evented callback', t => {
 })
 
 test('it handles decoding errors', async t => {
-  t.throws(() => verify('TOKEN', { algorithms: ['RS256'], key: 'secret' }), {
+  t.throws(() => verify('TOKEN', { algorithms: ['HS256'], key: 'secret' }), {
     message: 'The token is malformed.'
   })
 
-  await t.rejects(async () => verify('TOKEN', { algorithms: ['RS256'], key: () => 'secret' }), {
+  await t.rejects(async () => verify('TOKEN', { algorithms: ['HS256'], key: () => 'secret' }), {
     message: 'The token is malformed.'
   })
 })
@@ -260,10 +262,24 @@ test('it validates if the token is using an allowed algorithm - sync ', t => {
     () => {
       return verify(
         'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxLCJpYXQiOjAsIm5iZiI6MjAwMDAwMDAwMH0.PlCCCgSnL38HaOY1-bkWnz-LX9WW2b772Zs3oxQJIv4',
-        { algorithms: ['RS256'] }
+        { algorithms: ['RS256', 'PS256'], key: publicKeys.RS }
       )
     },
     { message: 'The token algorithm is invalid.' }
+  )
+
+  t.end()
+})
+
+test('it validates if the public is consistent with the allowed algorithms - sync ', t => {
+  t.throws(
+    () => {
+      return verify(
+        'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxLCJpYXQiOjAsIm5iZiI6MjAwMDAwMDAwMH0.PlCCCgSnL38HaOY1-bkWnz-LX9WW2b772Zs3oxQJIv4',
+        { algorithms: ['ES256'], key: publicKeys.RS }
+      )
+    },
+    { message: 'Invalid public key provided for algorithms ES256.' }
   )
 
   t.end()
@@ -861,7 +877,7 @@ for (const type of ['HS', 'ES', 'RS', 'PS']) {
   }
 }
 
-if (typeof directVerify === 'function') {
+if (useNewCrypto) {
   test('caching - should use the right hash method for storing values - EdDSA with Ed25519', t => {
     const signer = createSigner({ algorithm: 'EdDSA', key: privateKeys.Ed25519, noTimestamp: 1 })
     const verifier = createVerifier({ key: publicKeys.Ed25519, cache: true })
