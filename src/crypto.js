@@ -193,12 +193,12 @@ function detectPrivateKeyAlgorithm(key) {
   }
 
   // Check cache first
-  const cached = privateKeysCache.get(key) || []
+  const [cached, error] = privateKeysCache.get(key) || []
 
-  if (cached[0]) {
-    return cached[0]
-  } else if (cached[1]) {
-    throw cached[1]
+  if (cached) {
+    return cached
+  } else if (error) {
+    throw error
   }
 
   // Try detecting
@@ -220,12 +220,12 @@ function detectPublicKeyAlgorithms(key) {
   }
 
   // Check cache first
-  const cached = publicKeysCache.get(key) || []
+  const [cached, error] = publicKeysCache.get(key) || []
 
-  if (cached[0]) {
-    return cached[0]
-  } else if (cached[1]) {
-    throw cached[1]
+  if (cached) {
+    return cached
+  } else if (error) {
+    throw error
   }
 
   // Try detecting
