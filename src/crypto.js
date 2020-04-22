@@ -35,7 +35,7 @@ const rsaAlgorithms = ['RS256', 'RS384', 'RS512', 'PS256', 'PS384', 'PS512']
 const edAlgorithms = ['EdDSA']
 const ecCurves = {
   '1.2.840.10045.3.1.7': { bits: '256', names: ['P-256', 'prime256v1'] },
-  '1.3.132.0.10': { bits: '256', names: ['P-256', 'secp256k1'] },
+  '1.3.132.0.10': { bits: '256', names: ['secp256k1'] },
   '1.3.132.0.34': { bits: '384', names: ['P-384', 'secp384r1'] },
   '1.3.132.0.35': { bits: '512', names: ['P-521', 'secp521r1'] }
 }
