@@ -8,6 +8,8 @@
 
 Fast JSON Web Token implementation
 
+> This module is experimental. There might be bugs or security vulnerabilities.
+
 ## Installation
 
 Just run:
