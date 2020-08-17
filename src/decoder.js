@@ -53,7 +53,7 @@ function decode({ json, complete }, token) {
 }
 
 module.exports = function createDecoder(options = {}) {
-  const json = options.json === false ? false : true
+  const json = !(options.json === false)
   const complete = options.complete || false
 
   return decode.bind(null, { json, complete })
