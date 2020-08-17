@@ -55,16 +55,16 @@
     "cronometro": "^0.4.0",
     "eslint": "^7.3.1",
     "eslint-config-standard": "^14.1.0",
-    "eslint-plugin-import": "^2.20.0",
+    "eslint-plugin-import": "^2.22.0",
     "eslint-plugin-node": "^11.0.0",
     "eslint-plugin-promise": "^4.2.1",
     "eslint-plugin-standard": "^4.0.1",
     "fastify": "^3.0.3",
-    "jose": "^1.25.0",
+    "jose": "^1.28.0",
     "jsonwebtoken": "^8.5.1",
     "lolex": "^6.0.0",
     "prettier": "^2.0.5",
-    "tap": "^14.10.6"
+    "tap": "^14.10.8"
   },
   "engines": {
     "node": ">= 10.12.0"

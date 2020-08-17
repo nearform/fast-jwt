@@ -171,10 +171,6 @@ function verifyToken(
 
   validateAlgorithmAndSignature(input, header, signature, key, allowedAlgorithms)
 
-  if (typeof payload === 'string') {
-    return
-  }
-
   // Verify the payload
   const now = (clockTimestamp || Date.now()) + clockTolerance
 

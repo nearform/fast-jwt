@@ -23,6 +23,7 @@ TokenError.codes = {
   invalidClaimValue: 'FAST_JWT_INVALID_CLAIM_VALUE',
   invalidKey: 'FAST_JWT_INVALID_KEY',
   invalidSignature: 'FAST_JWT_INVALID_SIGNATURE',
+  invalidPayload: 'FAST_JWT_INVALID_PAYLOAD',
   malformed: 'FAST_JWT_MALFORMED',
   inactive: 'FAST_JWT_INACTIVE',
   expired: 'FAST_JWT_EXPIRED',

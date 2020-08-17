@@ -67,3 +67,22 @@ test('invalid payload', t => {
 
   t.end()
 })
+
+// https://tools.ietf.org/html/rfc7519#section-7.2
+//
+// 10.  Verify that the resulting octet sequence is a UTF-8-encoded
+//      representation of a completely valid JSON object conforming to
+//      RFC 7159 [RFC7159]; let the JWT Claims Set be this JSON object.
+test('payload must be a JSON object', t => {
+  // string
+  t.throws(() => defaultDecoder('eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.MTIz.5frDWv6bqXyHPXl3oZYOTnALMCGwfEYjQZbke2iyR3Y'), {
+    message: 'The payload must be an object'
+  })
+
+  // null
+  t.throws(() => defaultDecoder('eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.bnVsbA.Y-B_ctjXNWaZlNk8kqfSZ06B8GSZvPAfhMz-pQ2prfo'), {
+    message: 'The payload must be an object'
+  })
+
+  t.end()
+})

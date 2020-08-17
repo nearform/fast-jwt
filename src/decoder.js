@@ -28,6 +28,15 @@ function decode({ json, complete }, token) {
     // Parse payload if needed
     if (json === true || header.typ === 'JWT') {
       payload = JSON.parse(payload)
+
+      // https://tools.ietf.org/html/rfc7519#section-7.2
+      //
+      // 10.  Verify that the resulting octet sequence is a UTF-8-encoded
+      //      representation of a completely valid JSON object conforming to
+      //      RFC 7159 [RFC7159]; let the JWT Claims Set be this JSON object.
+      if (!payload || typeof payload !== 'object') {
+        throw new TokenError(TokenError.codes.invalidPayload, 'The payload must be an object', { payload })
+      }
     }
 
     // Return whatever was requested
@@ -43,8 +52,9 @@ function decode({ json, complete }, token) {
   }
 }
 
-module.exports = function createDecoder(options) {
-  const { json, complete } = { json: true, ...options }
+module.exports = function createDecoder(options = {}) {
+  const json = !(options.json === false)
+  const complete = options.complete || false
 
   return decode.bind(null, { json, complete })
 }
