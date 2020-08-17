@@ -8,8 +8,9 @@ const {
 const { createVerifier, createSigner } = require('../src')
 const { useNewCrypto } = require('../src/crypto')
 
-const payload =
-  "It’s a dangerous business, Frodo, going out your door. You step onto the road, and if you don't keep your feet, there’s no knowing where you might be swept off to."
+const payload = {
+  text: "It’s a dangerous business, Frodo, going out your door. You step onto the road, and if you don't keep your feet, there’s no knowing where you might be swept off to."
+}
 
 // All the keys here are extracted from https://tools.ietf.org/html/rfc7520
 const symmetricKey = asKey({
@@ -71,19 +72,20 @@ const ecPrivateKey = asKey({
 
 test('HS256', t => {
   const expectedToken =
-    'eyJhbGciOiJIUzI1NiIsImtpZCI6IjAxOGMwYWU1LTRkOWItNDcxYi1iZmQ2LWVlZjMxNGJjNzAzNyJ9.SXTigJlzIGEgZGFuZ2Vyb3VzIGJ1c2luZXNzLCBGcm9kbywgZ29pbmcgb3V0IHlvdXIgZG9vci4gWW91IHN0ZXAgb250byB0aGUgcm9hZCwgYW5kIGlmIHlvdSBkb24ndCBrZWVwIHlvdXIgZmVldCwgdGhlcmXigJlzIG5vIGtub3dpbmcgd2hlcmUgeW91IG1pZ2h0IGJlIHN3ZXB0IG9mZiB0by4.s0h6KThzkfBBBkLspW1h84VsJZFTsPPqMDA7g1Md7p0'
+    'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCIsImtpZCI6IjAxOGMwYWU1LTRkOWItNDcxYi1iZmQ2LWVlZjMxNGJjNzAzNyJ9.eyJ0ZXh0IjoiSXTigJlzIGEgZGFuZ2Vyb3VzIGJ1c2luZXNzLCBGcm9kbywgZ29pbmcgb3V0IHlvdXIgZG9vci4gWW91IHN0ZXAgb250byB0aGUgcm9hZCwgYW5kIGlmIHlvdSBkb24ndCBrZWVwIHlvdXIgZmVldCwgdGhlcmXigJlzIG5vIGtub3dpbmcgd2hlcmUgeW91IG1pZ2h0IGJlIHN3ZXB0IG9mZiB0by4ifQ.1rxc48IZZfiOQFzXieSY08XI5bimhiyCPWTjCzZ3G2Y'
 
   const key = Buffer.from(symmetricKey.k, 'base64')
 
   const token = createSigner({
     algorithm: 'HS256',
     key,
-    kid: '018c0ae5-4d9b-471b-bfd6-eef314bc7037'
+    kid: '018c0ae5-4d9b-471b-bfd6-eef314bc7037',
+    noTimestamp: true
   })(payload)
 
   const verified = createVerifier({ key })(token)
 
-  t.equal(verified, payload)
+  t.deepEqual(verified, payload)
   t.equal(token, expectedToken)
 
   t.end()
@@ -91,17 +93,18 @@ test('HS256', t => {
 
 test('RS256', t => {
   const expectedToken =
-    'eyJhbGciOiJSUzI1NiIsImtpZCI6ImJpbGJvLmJhZ2dpbnNAaG9iYml0b24uZXhhbXBsZSJ9.SXTigJlzIGEgZGFuZ2Vyb3VzIGJ1c2luZXNzLCBGcm9kbywgZ29pbmcgb3V0IHlvdXIgZG9vci4gWW91IHN0ZXAgb250byB0aGUgcm9hZCwgYW5kIGlmIHlvdSBkb24ndCBrZWVwIHlvdXIgZmVldCwgdGhlcmXigJlzIG5vIGtub3dpbmcgd2hlcmUgeW91IG1pZ2h0IGJlIHN3ZXB0IG9mZiB0by4.MRjdkly7_-oTPTS3AXP41iQIGKa80A0ZmTuV5MEaHoxnW2e5CZ5NlKtainoFmKZopdHM1O2U4mwzJdQx996ivp83xuglII7PNDi84wnB-BDkoBwA78185hX-Es4JIwmDLJK3lfWRa-XtL0RnltuYv746iYTh_qHRD68BNt1uSNCrUCTJDt5aAE6x8wW1Kt9eRo4QPocSadnHXFxnt8Is9UzpERV0ePPQdLuW3IS_de3xyIrDaLGdjluPxUAhb6L2aXic1U12podGU0KLUQSE_oI-ZnmKJ3F4uOZDnd6QZWJushZ41Axf_fcIe8u9ipH84ogoree7vjbU5y18kDquDg'
+    'eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCIsImtpZCI6ImJpbGJvLmJhZ2dpbnNAaG9iYml0b24uZXhhbXBsZSJ9.eyJ0ZXh0IjoiSXTigJlzIGEgZGFuZ2Vyb3VzIGJ1c2luZXNzLCBGcm9kbywgZ29pbmcgb3V0IHlvdXIgZG9vci4gWW91IHN0ZXAgb250byB0aGUgcm9hZCwgYW5kIGlmIHlvdSBkb24ndCBrZWVwIHlvdXIgZmVldCwgdGhlcmXigJlzIG5vIGtub3dpbmcgd2hlcmUgeW91IG1pZ2h0IGJlIHN3ZXB0IG9mZiB0by4ifQ.IVYRXcdRwWOx1Gvz3iag8td3cIf4EdeIjrDM79vDwZwEBhipoeJz1JKW22Ag7BUE_Wsl-ONufHwbAP4Sr0dJUAJL9ZsAoH1UIkR5Xm4kpk-8gSAR4LB3RhHAfvbgDC-V2E91szKRHNKbvGtQLInCO7MADg9GMold_U74jDSYZE9nZVwkN5CebYeFUEsiLwq2_bKB3fCHJGh2fDzTXpkc2pm_h_oLxYuig8SB5dvPRg_j5I5y3DDyxvYluB3oMi4QUYYvNG5AnNufkPrlnjCw6QhHM1Ct3ocz1pOXmH3JCr3twXF0GUfY3H4MJTbBtmmxRmyErLEKcpRXHFWjT3DKGA'
 
   const token = createSigner({
     algorithm: 'RS256',
     key: rsaPrivateKey,
-    kid: 'bilbo.baggins@hobbiton.example'
+    kid: 'bilbo.baggins@hobbiton.example',
+    noTimestamp: true
   })(payload)
 
   const verified = createVerifier({ key: rsaPublicKey })(token)
 
-  t.equal(verified, payload)
+  t.deepEqual(verified, payload)
   t.equal(token, expectedToken)
 
   t.end()
@@ -109,17 +112,18 @@ test('RS256', t => {
 
 test('PS384', t => {
   const expectedToken =
-    'eyJhbGciOiJQUzM4NCIsImtpZCI6ImJpbGJvLmJhZ2dpbnNAaG9iYml0b24uZXhhbXBsZSJ9.SXTigJlzIGEgZGFuZ2Vyb3VzIGJ1c2luZXNzLCBGcm9kbywgZ29pbmcgb3V0IHlvdXIgZG9vci4gWW91IHN0ZXAgb250byB0aGUgcm9hZCwgYW5kIGlmIHlvdSBkb24ndCBrZWVwIHlvdXIgZmVldCwgdGhlcmXigJlzIG5vIGtub3dpbmcgd2hlcmUgeW91IG1pZ2h0IGJlIHN3ZXB0IG9mZiB0by4.cu22eBqkYDKgIlTpzDXGvaFfz6WGoz7fUDcfT0kkOy42miAh2qyBzk1xEsnk2IpN6-tPid6VrklHkqsGqDqHCdP6O8TTB5dDDItllVo6_1OLPpcbUrhiUSMxbbXUvdvWXzg-UD8biiReQFlfz28zGWVsdiNAUf8ZnyPEgVFn442ZdNqiVJRmBqrYRXe8P_ijQ7p8Vdz0TTrxUeT3lm8d9shnr2lfJT8ImUjvAA2Xez2Mlp8cBE5awDzT0qI0n6uiP1aCN_2_jLAeQTlqRHtfa64QQSUmFAAjVKPbByi7xho0uTOcbH510a6GYmJUAfmWjwZ6oD4ifKo8DYM-X72Eaw'
+    'eyJhbGciOiJQUzM4NCIsInR5cCI6IkpXVCIsImtpZCI6ImJpbGJvLmJhZ2dpbnNAaG9iYml0b24uZXhhbXBsZSJ9.eyJ0ZXh0IjoiSXTigJlzIGEgZGFuZ2Vyb3VzIGJ1c2luZXNzLCBGcm9kbywgZ29pbmcgb3V0IHlvdXIgZG9vci4gWW91IHN0ZXAgb250byB0aGUgcm9hZCwgYW5kIGlmIHlvdSBkb24ndCBrZWVwIHlvdXIgZmVldCwgdGhlcmXigJlzIG5vIGtub3dpbmcgd2hlcmUgeW91IG1pZ2h0IGJlIHN3ZXB0IG9mZiB0by4ifQ.dM4A9qfogzmTfIB0-dbUcXUD9TfGC4wa6cft9wzuUmYBQEKpeAMOmtn3nTXAp3jFuhGCzmCHT2_y0-HKO2R55oewCiIAyPVHIffVK_Vga0eezX_wglVY1dtYvBaCpA6zYA3nJwmDsnK_Ivb-B5tuQYHuZUkL6A-SoLT2TfKic7yuLUs-Z5i58_f0ExwSwEPiMdbPXrg8azaAtiy5caNi76Vd_ROqNuhuFlgDAsACJPtJOpwmcgQ_er865QIkdvfV_UfOrcGPavjdKtj-h4UkikeX5YHsVYKoNJCo5hEAAgGcJKjGS4Bthm67y4Z_DfTxzxRfkFE7Sj15gSAZcSEONw'
 
   const token = createSigner({
     algorithm: 'PS384',
     key: rsaPrivateKey,
-    kid: 'bilbo.baggins@hobbiton.example'
+    kid: 'bilbo.baggins@hobbiton.example',
+    noTimestamp: true
   })(payload)
 
   const verified = createVerifier({ key: rsaPublicKey })(token)
 
-  t.equal(verified, payload)
+  t.deepEqual(verified, payload)
   // Since PS algorithm uses random data, we cannot match the signature
   t.equal(token.replace(/\..+/, ''), expectedToken.replace(/\..+/, ''))
 
@@ -128,17 +132,18 @@ test('PS384', t => {
 
 test('ES512', t => {
   const expectedToken =
-    'eyJhbGciOiJFUzUxMiIsImtpZCI6ImJpbGJvLmJhZ2dpbnNAaG9iYml0b24uZXhhbXBsZSJ9.SXTigJlzIGEgZGFuZ2Vyb3VzIGJ1c2luZXNzLCBGcm9kbywgZ29pbmcgb3V0IHlvdXIgZG9vci4gWW91IHN0ZXAgb250byB0aGUgcm9hZCwgYW5kIGlmIHlvdSBkb24ndCBrZWVwIHlvdXIgZmVldCwgdGhlcmXigJlzIG5vIGtub3dpbmcgd2hlcmUgeW91IG1pZ2h0IGJlIHN3ZXB0IG9mZiB0by4.AE_R_YZCChjn4791jSQCrdPZCNYqHXCTZH0-JZGYNlaAjP2kqaluUIIUnC9qvbu9Plon7KRTzoNEuT4Va2cmL1eJAQy3mtPBu_u_sDDyYjnAMDxXPn7XrT0lw-kvAD890jl8e2puQens_IEKBpHABlsbEPX6sFY8OcGDqoRuBomu9xQ2'
+    'eyJhbGciOiJFUzUxMiIsInR5cCI6IkpXVCIsImtpZCI6ImJpbGJvLmJhZ2dpbnNAaG9iYml0b24uZXhhbXBsZSJ9.eyJ0ZXh0IjoiSXTigJlzIGEgZGFuZ2Vyb3VzIGJ1c2luZXNzLCBGcm9kbywgZ29pbmcgb3V0IHlvdXIgZG9vci4gWW91IHN0ZXAgb250byB0aGUgcm9hZCwgYW5kIGlmIHlvdSBkb24ndCBrZWVwIHlvdXIgZmVldCwgdGhlcmXigJlzIG5vIGtub3dpbmcgd2hlcmUgeW91IG1pZ2h0IGJlIHN3ZXB0IG9mZiB0by4ifQ.AKrrbzQgTVYtM9iJGq2mzAAwAD0tK0sU2Oa3FqelV7Zc_VeC1VgApx9vkeZGen36CEcAvPpIAtcVZeWqp0nEB4JfAMsFhZI8QSuHnY152Abxi6WxaOXH22wYsYPYF_H4J41JG10C2X3ORHDsPrvIO8yfXdJ4AyNLOg6s0Suqq8YQP_8q'
 
   const token = createSigner({
     algorithm: 'ES512',
     key: ecPrivateKey,
-    kid: 'bilbo.baggins@hobbiton.example'
+    kid: 'bilbo.baggins@hobbiton.example',
+    noTimestamp: true
   })(payload)
 
   const verified = createVerifier({ key: ecPublicKey })(token)
 
-  t.equal(verified, payload)
+  t.deepEqual(verified, payload)
   // Since ES algorithm uses random data, we cannot match the signature
   t.equal(token.replace(/\..+/, ''), expectedToken.replace(/\..+/, ''))
 
@@ -162,13 +167,13 @@ if (useNewCrypto) {
 
   test('EdDSA - Ed25519', t => {
     const expectedToken =
-      'eyJhbGciOiJFZERTQSJ9.RXhhbXBsZSBvZiBFZDI1NTE5IHNpZ25pbmc.hgyY0il_MGCjP0JzlnLWG1PPOt7-09PGcvMg3AIbQR6dWbhijcNR4ki4iylGjg5BhVsPt9g7sVvpAr_MuM0KAg'
+      'eyJhbGciOiJFZERTQSIsInR5cCI6IkpXVCJ9.eyJ0ZXh0IjoiSXTigJlzIGEgZGFuZ2Vyb3VzIGJ1c2luZXNzLCBGcm9kbywgZ29pbmcgb3V0IHlvdXIgZG9vci4gWW91IHN0ZXAgb250byB0aGUgcm9hZCwgYW5kIGlmIHlvdSBkb24ndCBrZWVwIHlvdXIgZmVldCwgdGhlcmXigJlzIG5vIGtub3dpbmcgd2hlcmUgeW91IG1pZ2h0IGJlIHN3ZXB0IG9mZiB0by4ifQ.s6A86zrJs551R4UxXwJsfRCGswdTJYFeNWjHUkZvragJ7hN43T5UetbpG4S6L2G7wOq5N_JJKrkbs0q0Gd-EAQ'
 
-    const token = createSigner({ algorithm: 'EdDSA', key: ed25519PrivateKey })('Example of Ed25519 signing')
+    const token = createSigner({ algorithm: 'EdDSA', key: ed25519PrivateKey, noTimestamp: true })(payload)
 
     const verified = createVerifier({ key: ed25519PublicKey })(token)
 
-    t.equal(verified, 'Example of Ed25519 signing')
+    t.deepEqual(verified, payload)
     t.equal(token, expectedToken)
 
     t.end()
