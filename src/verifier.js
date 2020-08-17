@@ -171,6 +171,8 @@ function verifyToken(
 
   validateAlgorithmAndSignature(input, header, signature, key, allowedAlgorithms)
 
+  // If payload is a string, it cannot contain any claims.
+  // So we skip them.
   if (typeof payload === 'string') {
     return
   }
