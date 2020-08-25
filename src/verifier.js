@@ -321,7 +321,6 @@ module.exports = function createVerifier(options) {
   let {
     key,
     algorithms: allowedAlgorithms,
-    json,
     complete,
     cache: cacheSize,
     cacheTTL,
@@ -424,7 +423,7 @@ module.exports = function createVerifier(options) {
     maxAge,
     isAsync: keyType === 'function',
     validators,
-    decode: createDecoder({ json, complete: true }),
+    decode: createDecoder({ complete: true }),
     cache: createCache(cacheSize)
   }
 
