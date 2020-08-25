@@ -5,7 +5,7 @@ const { test } = require('tap')
 const { createDecoder } = require('../src')
 
 const defaultDecoder = createDecoder()
-const rawDecoder = createDecoder({ json: false })
+// const rawDecoder = createDecoder({ json: false })
 const completeDecoder = createDecoder({ complete: true })
 
 const token =
@@ -30,9 +30,6 @@ test('should return a valid token', t => {
     input: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6Ik9LIiwiaWF0Ijo5ODc2NTQzMjEwfQ'
   })
 
-  t.strictDeepEqual(defaultDecoder(nonJwtToken), { sub: '1234567890', name: 'OK', iat: 9876543210 })
-  t.strictDeepEqual(rawDecoder(nonJwtToken), '{"sub":"1234567890","name":"OK","iat":9876543210}')
-
   t.end()
 })
 
@@ -56,6 +53,8 @@ test('invalid header', t => {
   t.throws(() => defaultDecoder('a.b.c'), { message: 'The token header is not a valid base64url serialized JSON.' })
 
   t.throws(() => defaultDecoder('Zm9v.b.c'), { message: 'The token header is not a valid base64url serialized JSON.' })
+
+  t.throws(() => defaultDecoder(nonJwtToken), { message: 'The type must be JWT.' })
 
   t.end()
 })
