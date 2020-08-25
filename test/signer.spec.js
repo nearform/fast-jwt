@@ -45,13 +45,6 @@ test('it correctly returns a token - sync', t => {
     'eyJhbGciOiJub25lIiwidHlwIjoiSldUIn0.eyJhIjoxfQ.'
   )
 
-  t.equal(sign('123', { noTimestamp: true }), 'eyJhbGciOiJIUzI1NiJ9.MTIz.UqiZ2LDYZqYB3xJgkHaihGQnJ_WPTz3hERDpA7bWYjA')
-
-  t.equal(
-    sign(Buffer.from('123', 'utf-8'), { noTimestamp: true }),
-    'eyJhbGciOiJIUzI1NiJ9.MTIz.UqiZ2LDYZqYB3xJgkHaihGQnJ_WPTz3hERDpA7bWYjA'
-  )
-
   t.equal(
     sign({ a: 1 }, { noTimestamp: true, algorithm: 'none', key: null }),
     'eyJhbGciOiJub25lIiwidHlwIjoiSldUIn0.eyJhIjoxfQ.'
@@ -190,8 +183,6 @@ test('it adds a exp claim, overriding the payload one, only if the payload is a 
     'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxLCJpYXQiOjEwMCwiZXhwIjoxMDF9.ULKqTsvUYm7iNOKA6bP5NXsa1A8vofgPIGiC182Vf_Q'
   )
 
-  t.equal(sign('123', { expiresIn: 1000 }), 'eyJhbGciOiJIUzI1NiJ9.MTIz.UqiZ2LDYZqYB3xJgkHaihGQnJ_WPTz3hERDpA7bWYjA')
-
   t.end()
 })
 
@@ -206,8 +197,6 @@ test('it adds a nbf claim, overriding the payload one, only if the payload is a 
     'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxLCJpYXQiOjEwMCwibmJmIjoxMDF9.WhZeNowse7q1s5FSlcMcs_4KcxXpSdQ4yqv0xrGB3sU'
   )
 
-  t.equal(sign('123', { notBefore: 1000 }), 'eyJhbGciOiJIUzI1NiJ9.MTIz.UqiZ2LDYZqYB3xJgkHaihGQnJ_WPTz3hERDpA7bWYjA')
-
   t.end()
 })
 
@@ -221,8 +210,6 @@ test('it adds a jti claim, overriding the payload one, only if the payload is a 
     sign({ a: 1, jti: 'original' }, { jti: 'JTI', noTimestamp: true }),
     'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxLCJqdGkiOiJKVEkifQ.Ew1eS3Pn9R0hqV0JCA5AECTSvaEm9glggxWlmq0cYl4'
   )
-
-  t.equal(sign('123', { jti: 'JTI' }), 'eyJhbGciOiJIUzI1NiJ9.MTIz.UqiZ2LDYZqYB3xJgkHaihGQnJ_WPTz3hERDpA7bWYjA')
 
   t.end()
 })
@@ -243,8 +230,6 @@ test('it adds a aud claim, overriding the payload one, only if the payload is a 
     'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxLCJhdWQiOlsiQVVEMSIsIkFVRDIiXX0.zRcmqvl1hRzaWa8qX_ge7mHeJNSH-Th-TLu0-62jFxc'
   )
 
-  t.equal(sign('123', { aud: 'AUD1' }), 'eyJhbGciOiJIUzI1NiJ9.MTIz.UqiZ2LDYZqYB3xJgkHaihGQnJ_WPTz3hERDpA7bWYjA')
-
   t.end()
 })
 
@@ -258,8 +243,6 @@ test('it adds a iss claim, overriding the payload one, only if the payload is a 
     sign({ a: 1, iss: 'original' }, { iss: 'ISS', noTimestamp: true }),
     'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxLCJpc3MiOiJJU1MifQ.YLEisGRTlJL9Y7KLHbIahXr1Zqu0of5w1mJf4aGphTE'
   )
-
-  t.equal(sign('123', { iss: 'ISS' }), 'eyJhbGciOiJIUzI1NiJ9.MTIz.UqiZ2LDYZqYB3xJgkHaihGQnJ_WPTz3hERDpA7bWYjA')
 
   t.end()
 })
@@ -275,8 +258,6 @@ test('it adds a sub claim, overriding the payload one, only if the payload is a 
     'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxLCJzdWIiOiJTVUIifQ.wweP9vNGt77bBGwZ_PLXfPxy2qcx2mnjUa0AWVA5bEM'
   )
 
-  t.equal(sign('123', { sub: 'SUB' }), 'eyJhbGciOiJIUzI1NiJ9.MTIz.UqiZ2LDYZqYB3xJgkHaihGQnJ_WPTz3hERDpA7bWYjA')
-
   t.end()
 })
 
@@ -290,8 +271,6 @@ test('it adds a nonce claim, overriding the payload one, only if the payload is 
     sign({ a: 1, nonce: 'original' }, { nonce: 'NONCE', noTimestamp: true }),
     'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxLCJub25jZSI6Ik5PTkNFIn0.NvCriFYuVDq0fTSf5t_92EwbxnwgjZVMBEMfW-RVl_k'
   )
-
-  t.equal(sign('123', { nonce: 'NONCE' }), 'eyJhbGciOiJIUzI1NiJ9.MTIz.UqiZ2LDYZqYB3xJgkHaihGQnJ_WPTz3hERDpA7bWYjA')
 
   t.end()
 })
@@ -414,8 +393,8 @@ test('it correctly handle errors - evented callback', t => {
 })
 
 test('returns a promise according to key option', t => {
-  const s1 = createSigner({ key: 'secret' })('PAYLOAD')
-  const s2 = createSigner({ key: async () => 'secret' })('PAYLOAD')
+  const s1 = createSigner({ key: 'secret' })({ a: 'PAYLOAD' })
+  const s2 = createSigner({ key: async () => 'secret' })({ a: 'PAYLOAD' })
 
   t.true(typeof s1.then === 'undefined')
   t.true(typeof s2.then === 'function')
