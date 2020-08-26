@@ -207,6 +207,12 @@ for (const type of ['Ed25519', 'Ed448']) {
   })
 }
 
+test('detectPublicKeyAlgorithms - empty key should return "none"', t => {
+  t.equals(detectPublicKeyAlgorithms(), 'none')
+
+  t.end()
+})
+
 test('detectPublicKeyAlgorithms - malformed or key objects must be rejected', t => {
   t.throws(() => detectPublicKeyAlgorithms({}), {
     message: 'The public key must be a string or a buffer.'

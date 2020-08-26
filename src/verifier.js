@@ -112,7 +112,7 @@ function handleCachedResult(cached, callback, promise) {
 
 function validateAlgorithmAndSignature(input, header, signature, key, allowedAlgorithms) {
   // According to the signature and key, check with algorithms are supported
-  const algorithms = allowedAlgorithms.length ? allowedAlgorithms : detectPublicKeyAlgorithms(key)
+  const algorithms = allowedAlgorithms
 
   // Verify the token is allowed
   if (!algorithms.includes(header.alg)) {
