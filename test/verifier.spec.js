@@ -56,7 +56,7 @@ test('it correctly verifies a token - sync', t => {
   t.throws(() => {
     verify('eyJhbGciOiJIUzI1NiJ9.MTIz.UqiZ2LDYZqYB3xJgkHaihGQnJ_WPTz3hERDpA7bWYjA', { noTimestamp: true })
   }, {
-    code: 'FAST_JWT_INVALID_PAYLOAD'
+    code: 'FAST_JWT_INVALID_TYPE'
   })
 
   t.strictDeepEqual(

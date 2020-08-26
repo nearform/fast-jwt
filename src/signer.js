@@ -71,19 +71,15 @@ function sign(
 ) {
   const [callback, promise] = isAsync ? ensurePromiseCallback(cb) : []
 
-  // Validate header and payload
-  let payloadType = typeof payload
-  if (payload instanceof Buffer) {
-    payload = payload.toString('utf-8')
-    payloadType = 'string'
-  } else if (payloadType !== 'string' && payloadType !== 'object') {
+  // Validate payload
+  if (typeof payload !== 'object') {
     throw new TokenError(TokenError.codes.invalidType, 'The payload must be a object, a string or a buffer.')
   }
 
   // Prepare the header
   const header = {
     alg: algorithm,
-    typ: payloadType === 'object' ? 'JWT' : undefined,
+    typ: 'JWT',
     kid,
     ...additionalHeader
   }
@@ -91,30 +87,24 @@ function sign(
   // Prepare the payload
   let encodedPayload = ''
 
-  // All the claims are added only if the payload is not a string
-  if (payloadType !== 'string') {
-    const iat = payload.iat * 1000 || clockTimestamp || Date.now()
+  // Add claims
+  const iat = payload.iat * 1000 || clockTimestamp || Date.now()
 
-    const finalPayload = {
-      ...payload,
-      ...fixedPayload,
-      iat: noTimestamp ? undefined : Math.floor(iat / 1000),
-      exp: expiresIn ? Math.floor((iat + expiresIn) / 1000) : undefined,
-      nbf: notBefore ? Math.floor((iat + notBefore) / 1000) : undefined
-    }
-
-    if (mutatePayload) {
-      Object.assign(payload, finalPayload)
-    }
-
-    encodedPayload = Buffer.from(JSON.stringify(finalPayload), 'utf-8')
-      .toString('base64')
-      .replace(base64UrlMatcher, base64UrlReplacer)
-  } else {
-    encodedPayload = Buffer.from(payload, 'utf-8')
-      .toString('base64')
-      .replace(base64UrlMatcher, base64UrlReplacer)
+  const finalPayload = {
+    ...payload,
+    ...fixedPayload,
+    iat: noTimestamp ? undefined : Math.floor(iat / 1000),
+    exp: expiresIn ? Math.floor((iat + expiresIn) / 1000) : undefined,
+    nbf: notBefore ? Math.floor((iat + notBefore) / 1000) : undefined
   }
+
+  if (mutatePayload) {
+    Object.assign(payload, finalPayload)
+  }
+
+  encodedPayload = Buffer.from(JSON.stringify(finalPayload), 'utf-8')
+    .toString('base64')
+    .replace(base64UrlMatcher, base64UrlReplacer)
 
   // We have the key
   if (!callback) {

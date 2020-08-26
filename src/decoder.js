@@ -2,7 +2,7 @@
 
 const TokenError = require('./error')
 
-function decode({ json, complete }, token) {
+function decode({ complete }, token) {
   // Make sure the token is a string or a Buffer - Other cases make no sense to even try to validate
   if (token instanceof Buffer) {
     token = token.toString('utf-8')
@@ -22,21 +22,21 @@ function decode({ json, complete }, token) {
   let validHeader = false
   try {
     const header = JSON.parse(Buffer.from(token.slice(0, firstSeparator), 'base64').toString('utf-8'))
+    if (header.typ !== 'JWT') {
+      throw new TokenError(TokenError.codes.invalidType, 'The type must be JWT.', { header })
+    }
     validHeader = true
+
+    // Parse payload
     let payload = Buffer.from(token.slice(firstSeparator + 1, lastSeparator), 'base64').toString('utf-8')
-
-    // Parse payload if needed
-    if (json === true || header.typ === 'JWT') {
-      payload = JSON.parse(payload)
-
-      // https://tools.ietf.org/html/rfc7519#section-7.2
-      //
-      // 10.  Verify that the resulting octet sequence is a UTF-8-encoded
-      //      representation of a completely valid JSON object conforming to
-      //      RFC 7159 [RFC7159]; let the JWT Claims Set be this JSON object.
-      if (!payload || typeof payload !== 'object') {
-        throw new TokenError(TokenError.codes.invalidPayload, 'The payload must be an object', { payload })
-      }
+    payload = JSON.parse(payload)
+    // https://tools.ietf.org/html/rfc7519#section-7.2
+    //
+    // 10.  Verify that the resulting octet sequence is a UTF-8-encoded
+    //      representation of a completely valid JSON object conforming to
+    //      RFC 7159 [RFC7159]; let the JWT Claims Set be this JSON object.
+    if (!payload || typeof payload !== 'object') {
+      throw new TokenError(TokenError.codes.invalidPayload, 'The payload must be an object', { payload })
     }
 
     // Return whatever was requested
@@ -53,8 +53,7 @@ function decode({ json, complete }, token) {
 }
 
 module.exports = function createDecoder(options = {}) {
-  const json = !(options.json === false)
   const complete = options.complete || false
 
-  return decode.bind(null, { json, complete })
+  return decode.bind(null, { complete })
 }
