@@ -64,7 +64,7 @@ signWithCallback({a: 1, b: 2, c: 3}, (err, token) => {
 
 // Promise style - Note that the key function style and the signer function style are unrelated
 async function test() {
-  const signWithPromise = createSigner({ async key(): => 'secret' })
+  const signWithPromise = createSigner({ key: async () => 'secret' })
 
   const token = await signWithPromise({a: 1, b: 2, c: 3})
   // => eyJhbGciOiJIUzUxMiIsInR5cCI6IkpXVCJ9.eyJhIjoxLCJiIjoyLCJjIjozLCJpYXQiOjE1Nzk1MjEyMTJ9.mIcxteEVjbh2MnKQ3EQlojZojGSyA_guqRBYHQURcfnCSSBTT2OShF8lo9_ogjAv-5oECgmCur_cDWB7x3X53g
@@ -156,7 +156,7 @@ verifyWithCallback(token, (err, sections) => {
 
 // Promise style - Note that the key function style and the verifier function style are unrelated
 async function test() {
-  const verifyWithPromise = createVerifier({ async key(): => 'secret' })
+  const verifyWithPromise = createVerifier({ key: async () => 'secret' })
 
   const payload = await verifyWithPromise(token)
   // => { a: 1, b: 2, c: 3, iat: 1579521212 }
