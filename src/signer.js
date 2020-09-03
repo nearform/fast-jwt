@@ -280,13 +280,13 @@ module.exports = function createSigner(options) {
     kid,
     isAsync: keyType === 'function',
     additionalHeader,
-    fixedPayload: {
+    fixedPayload: JSON.parse(JSON.stringify({
       jti,
       aud,
       iss,
       sub,
       nonce
-    }
+    }))
   }
 
   return sign.bind(null, context)
