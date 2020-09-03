@@ -163,6 +163,15 @@ test('it respect the payload iat, if one is set', t => {
   t.end()
 })
 
+test('it respect the payload sub, if one is set', t => {
+  t.equal(
+    sign({ a: 1, sub: 'SUB' }, { noTimestamp: true }),
+    'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxLCJzdWIiOiJTVUIifQ.wweP9vNGt77bBGwZ_PLXfPxy2qcx2mnjUa0AWVA5bEM'
+  )
+
+  t.end()
+})
+
 test('it uses the clockTimestamp option, if one is set', t => {
   t.equal(
     sign({ a: 1 }, { clockTimestamp: 123000 }),
