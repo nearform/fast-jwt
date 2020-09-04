@@ -76,6 +76,7 @@ async function test() {
 Create a decoder function by calling `createDecoder` and providing one or more of the following options:
 
 - `complete`: Return an object with the decoded header, payload, signature and input (the token part before the signature), instead of just the content of the payload. Default is `false`.
+- `skipTypCheck`: When validating the decoded header, setting this option skips the check of the `typ` property. This would be neccesary for AWS Cognito tokens, that do not send `typ` as part of the header. Default is `false`.
 
 The decoder is a function which accepts a token (as Buffer or string) and returns the payload or the sections of the token.
 
