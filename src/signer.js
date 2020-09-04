@@ -268,6 +268,9 @@ module.exports = function createSigner(options) {
     throw new TokenError(TokenError.codes.invalidOption, 'The header option must be a object.')
   }
 
+  const fpo = { jti, aud, iss, sub, nonce }
+  const fixedPayload = Object.keys(fpo).reduce((obj, key) => { return (fpo[key] !== undefined) ? Object.assign(obj, { [key]: fpo[key] }) : obj }, {})
+
   // Return the signer
   const context = {
     key,
@@ -280,13 +283,7 @@ module.exports = function createSigner(options) {
     kid,
     isAsync: keyType === 'function',
     additionalHeader,
-    fixedPayload: {
-      jti,
-      aud,
-      iss,
-      sub,
-      nonce
-    }
+    fixedPayload
   }
 
   return sign.bind(null, context)
