@@ -324,6 +324,7 @@ module.exports = function createVerifier(options) {
     complete,
     cache: cacheSize,
     cacheTTL,
+    checkTyp,
     clockTimestamp,
     clockTolerance,
     ignoreExpiration,

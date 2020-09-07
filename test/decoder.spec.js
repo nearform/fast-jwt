@@ -6,7 +6,7 @@ const { createDecoder } = require('../src')
 
 const defaultDecoder = createDecoder()
 // const rawDecoder = createDecoder({ json: false })
-const typDecoder = createDecoder({ skipTypCheck: true })
+const typDecoder = createDecoder({ checkTyp: 'JWT' })
 const completeDecoder = createDecoder({ complete: true })
 
 const token =
@@ -55,13 +55,7 @@ test('invalid header', t => {
 
   t.throws(() => defaultDecoder('Zm9v.b.c'), { message: 'The token header is not a valid base64url serialized JSON.' })
 
-  t.throws(() => defaultDecoder(nonJwtToken), { message: 'The type must be JWT.' })
-
-  t.end()
-})
-
-test('bypass aws cognito invalid header', t => {
-  t.doesNotThrow(() => typDecoder(nonJwtToken))
+  t.throws(() => typDecoder(nonJwtToken), { message: 'The type must be "JWT".' })
 
   t.end()
 })
