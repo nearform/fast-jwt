@@ -53,11 +53,31 @@ test('it correctly verifies a token - sync', t => {
     { a: 1, iat: 2000000000, exp: 2100000000 }
   )
 
-  t.throws(() => {
-    verify('eyJhbGciOiJIUzI1NiJ9.MTIz.UqiZ2LDYZqYB3xJgkHaihGQnJ_WPTz3hERDpA7bWYjA', { noTimestamp: true })
-  }, {
-    code: 'FAST_JWT_INVALID_TYPE'
-  })
+  t.strictDeepEqual(
+    verify('eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxfQ.57TF7smP9XDhIexBqPC-F1toZReYZLWb_YRU5tv0sxM', {
+      checkTyp: 'jwt',
+      noTimestamp: true
+    }),
+    { a: 1 }
+  )
+
+  t.strictDeepEqual(
+    verify('eyJhbGciOiJIUzI1NiIsInR5cCI6ImFwcGxpY2F0aW9uL2p3dCJ9.eyJhIjoxfQ.1ptuaNj5R0owE-5663LpMknK3eRgZVDHkMkOKkxlteM', {
+      checkTyp: 'jwt'
+    }),
+    { a: 1 }
+  )
+
+  t.throws(
+    () =>
+      verify(
+        'eyJhbGciOiJIUzI1NiJ9.eyJhIjoxfQ.LrlPmSL4FxrzAHJSYbKzsA997COXdYCeFKlt3zt5DIY',
+        { checkTyp: 'test' }
+      ),
+    {
+      message: 'Invalid typ.'
+    }
+  )
 
   t.strictDeepEqual(
     verify('eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxfQ.57TF7smP9XDhIexBqPC-F1toZReYZLWb_YRU5tv0sxM', {

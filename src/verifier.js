@@ -157,7 +157,7 @@ function validateClaimValue(value, modifier, now, greater, errorCode, errorVerb)
 function verifyToken(
   key,
   { input, header, payload, signature },
-  { validators, allowedAlgorithms, clockTimestamp, clockTolerance }
+  { validators, allowedAlgorithms, checkTyp, clockTimestamp, clockTolerance }
 ) {
   // Verify the key
   /* istanbul ignore next */
@@ -170,6 +170,14 @@ function verifyToken(
   }
 
   validateAlgorithmAndSignature(input, header, signature, key, allowedAlgorithms)
+
+  // Verify typ
+  if (checkTyp) {
+    const headerTyp = (header.typ || '').toLowerCase().replace(/^application\//, '')
+    if (checkTyp !== headerTyp) {
+      throw new TokenError(TokenError.codes.invalidType, 'Invalid typ.')
+    }
+  }
 
   // Verify the payload
   const now = (clockTimestamp || Date.now()) + clockTolerance
@@ -202,6 +210,7 @@ function verify(
     allowedAlgorithms,
     complete,
     cacheTTL,
+    checkTyp,
     clockTimestamp,
     clockTolerance,
     ignoreExpiration,
@@ -259,7 +268,7 @@ function verify(
 
   const { header, payload, signature } = decoded
   cacheContext.payload = payload
-  const validationContext = { validators, allowedAlgorithms, clockTimestamp, clockTolerance }
+  const validationContext = { validators, allowedAlgorithms, checkTyp, clockTimestamp, clockTolerance }
 
   // We have the key
   if (!callback) {
@@ -324,6 +333,7 @@ module.exports = function createVerifier(options) {
     complete,
     cache: cacheSize,
     cacheTTL,
+    checkTyp,
     clockTimestamp,
     clockTolerance,
     ignoreExpiration,
@@ -411,11 +421,17 @@ module.exports = function createVerifier(options) {
     validators.push({ type: 'string', claim: 'nonce', allowed: ensureStringClaimMatcher(allowedNonce) })
   }
 
+  let normalizedTyp = null
+  if (checkTyp) {
+    normalizedTyp = checkTyp.toLowerCase().replace(/^application\//, '')
+  }
+
   const context = {
     key,
     allowedAlgorithms,
     complete,
     cacheTTL,
+    checkTyp: normalizedTyp,
     clockTimestamp,
     clockTolerance,
     ignoreExpiration,

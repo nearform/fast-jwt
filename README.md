@@ -76,6 +76,7 @@ async function test() {
 Create a decoder function by calling `createDecoder` and providing one or more of the following options:
 
 - `complete`: Return an object with the decoded header, payload, signature and input (the token part before the signature), instead of just the content of the payload. Default is `false`.
+- `checkTyp`: When validating the decoded header, setting this option forces the check of the `typ` property against this value. Example: `checkTyp: 'JWT'`. Default is `undefined`.
 
 The decoder is a function which accepts a token (as Buffer or string) and returns the payload or the sections of the token.
 

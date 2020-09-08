@@ -2,7 +2,7 @@
 
 const TokenError = require('./error')
 
-function decode({ complete }, token) {
+function decode({ complete, checkTyp }, token) {
   // Make sure the token is a string or a Buffer - Other cases make no sense to even try to validate
   if (token instanceof Buffer) {
     token = token.toString('utf-8')
@@ -22,8 +22,8 @@ function decode({ complete }, token) {
   let validHeader = false
   try {
     const header = JSON.parse(Buffer.from(token.slice(0, firstSeparator), 'base64').toString('utf-8'))
-    if (header.typ !== 'JWT') {
-      throw new TokenError(TokenError.codes.invalidType, 'The type must be JWT.', { header })
+    if (checkTyp && header.typ !== checkTyp) {
+      throw new TokenError(TokenError.codes.invalidType, `The type must be "${checkTyp}".`, { header })
     }
     validHeader = true
 
@@ -54,6 +54,7 @@ function decode({ complete }, token) {
 
 module.exports = function createDecoder(options = {}) {
   const complete = options.complete || false
+  const checkTyp = options.checkTyp
 
-  return decode.bind(null, { complete })
+  return decode.bind(null, { complete, checkTyp })
 }
