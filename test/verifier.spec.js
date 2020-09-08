@@ -55,10 +55,28 @@ test('it correctly verifies a token - sync', t => {
 
   t.strictDeepEqual(
     verify('eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxfQ.57TF7smP9XDhIexBqPC-F1toZReYZLWb_YRU5tv0sxM', {
-      checkTyp: 'test',
+      checkTyp: 'jwt',
       noTimestamp: true
     }),
     { a: 1 }
+  )
+
+  t.strictDeepEqual(
+    verify('eyJhbGciOiJIUzI1NiIsInR5cCI6ImFwcGxpY2F0aW9uL2p3dCJ9.eyJhIjoxfQ.1ptuaNj5R0owE-5663LpMknK3eRgZVDHkMkOKkxlteM', {
+      checkTyp: 'jwt'
+    }),
+    { a: 1 }
+  )
+
+  t.throws(
+    () =>
+      verify(
+        'eyJhbGciOiJIUzI1NiJ9.eyJhIjoxfQ.LrlPmSL4FxrzAHJSYbKzsA997COXdYCeFKlt3zt5DIY',
+        { checkTyp: 'test' }
+      ),
+    {
+      message: 'Invalid typ.'
+    }
   )
 
   t.strictDeepEqual(
