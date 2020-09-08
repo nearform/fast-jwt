@@ -172,9 +172,11 @@ function verifyToken(
   validateAlgorithmAndSignature(input, header, signature, key, allowedAlgorithms)
 
   // Verify typ
-  const headerTyp = (header.typ || '').toLowerCase().replace(/^application\//, '')
-  if (checkTyp && (checkTyp !== headerTyp)) {
-    throw new TokenError(TokenError.codes.invalidType, 'Invalid typ.')
+  if (checkTyp) {
+    const headerTyp = (header.typ || '').toLowerCase().replace(/^application\//, '')
+    if (checkTyp !== headerTyp) {
+      throw new TokenError(TokenError.codes.invalidType, 'Invalid typ.')
+    }
   }
 
   // Verify the payload
