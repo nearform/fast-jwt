@@ -173,8 +173,7 @@ function verifyToken(
 
   // Verify typ
   if (checkTyp) {
-    const headerTyp = (header.typ || '').toLowerCase().replace(/^application\//, '')
-    if (checkTyp !== headerTyp) {
+    if (typeof header.typ !== 'string' || checkTyp !== header.typ.toLowerCase().replace(/^application\//, '')) {
       throw new TokenError(TokenError.codes.invalidType, 'Invalid typ.')
     }
   }
