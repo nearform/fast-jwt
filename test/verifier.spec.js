@@ -79,6 +79,17 @@ test('it correctly verifies a token - sync', t => {
     }
   )
 
+  t.throws(
+    () =>
+      verify(
+        'eyJhbGciOiJIUzI1NiIsInR5cCI6MX0.eyJhIjoxfQ.V6I7eoKYlMG7ipqpsWoZcNZaGOVGPom0rnztq1q2tS4',
+        { checkTyp: 'JWT' }
+      ),
+    {
+      message: 'Invalid typ.'
+    }
+  )
+
   t.strictDeepEqual(
     verify('eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxfQ.57TF7smP9XDhIexBqPC-F1toZReYZLWb_YRU5tv0sxM', {
       noTimestamp: true,
