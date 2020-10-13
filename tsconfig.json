@@ -1,0 +1,21 @@
+{
+  "compilerOptions": {
+    "target": "es2019",
+    "module": "commonjs",
+    "moduleResolution": "node",
+    "jsx": "preserve",
+    "outDir": "lib",
+    "declarationDir": "types",
+    "allowJs": false,
+    "allowSyntheticDefaultImports": true,
+    "esModuleInterop": true,
+    "strict": true,
+    "noImplicitAny": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "strictNullChecks": true,
+    "declaration": true
+  },
+  "include": ["src/**/*.ts", "test/**/*.ts"],
+  "exclude": []
+}

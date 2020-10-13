@@ -32,12 +32,14 @@
     "url": "https://github.com/nearform/fast-jwt/issues"
   },
   "main": "src/index.js",
+  "typings": "src/index.d.ts",
+  "types": "src/index.d.ts",
   "scripts": {
     "prepublishOnly": "npm run ci",
     "postpublish": "git push origin && git push origin -f --tags",
-    "ci": "npm run lint && tap --no-color --reporter=spec --coverage-report=json --coverage-report=text --100 test/*.spec.js test/**/*.spec.js",
-    "lint": "eslint src/**/*.js test/**/*.js",
-    "test": "tap --reporter=spec --coverage-report=html --coverage-report=text --100 --no-browser test/*.spec.js test/**/*.spec.js",
+    "ci": "npm run lint && tap --no-color --reporter=spec --coverage-report=json --coverage-report=text --100 test/*.spec.js test/**/*.spec.js && tsd",
+    "lint": "eslint src/**/*.js test/**/*.js src/**/*.ts test/**/*.ts",
+    "test": "tap --reporter=spec --coverage-report=html --coverage-report=text --100 --no-browser test/*.spec.js test/**/*.spec.js && tsd",
     "test:watch": "tap --watch --reporter=spec --coverage-report=html --coverage-report=text --no-browser test/*.spec.js test/**/*.spec.js",
     "test:generate-keys": "node benchmarks/keys/generate-keys.js",
     "test:generate-tokens": "node benchmarks/keys/generate-tokens.js",
@@ -52,9 +54,13 @@
     "mnemonist": "^0.38.0"
   },
   "devDependencies": {
+    "@types/node": "^14.11.8",
+    "@typescript-eslint/eslint-plugin": "^4.4.0",
+    "@typescript-eslint/parser": "^4.4.0",
     "cronometro": "^0.6.0",
     "eslint": "^7.3.1",
     "eslint-config-standard": "^14.1.0",
+    "eslint-config-standard-with-typescript": "^19.0.1",
     "eslint-plugin-import": "^2.22.0",
     "eslint-plugin-node": "^11.0.0",
     "eslint-plugin-promise": "^4.2.1",
@@ -64,9 +70,14 @@
     "jsonwebtoken": "^8.5.1",
     "lolex": "^6.0.0",
     "prettier": "^2.0.5",
-    "tap": "^14.10.8"
+    "tap": "^14.10.8",
+    "tsd": "^0.13.1",
+    "typescript": "^4.0.3"
   },
   "engines": {
     "node": ">= 10.12.0"
+  },
+  "tsd": {
+    "directory": "test"
   }
 }
