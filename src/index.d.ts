@@ -16,12 +16,20 @@ export type Algorithm =
   | 'PS512'
   | 'EdDSA'
 
-type SignerCallback = (e: Error | null, token: string) => void
-type VerifierCallback = (e: Error | null, payload: any) => void
+declare class TokenError extends Error {
+  static wrap(originalError: Error, code: string, message: string): TokenError
+  static codes: { [key: string]: string }
+
+  code: string;
+  [key: string]: any
+}
+
+type SignerCallback = (e: Error | TokenError | null, token: string) => void
+type VerifierCallback = (e: Error | TokenError | null, payload: any) => void
 
 type KeyFetcher =
   | ((key: string, header: string) => Promise<string | Buffer>)
-  | ((key: string, header: string, cb: (err: Error | null, key: string | Buffer) => void) => void)
+  | ((key: string, header: string, cb: (err: Error | TokenError | null, key: string | Buffer) => void) => void)
 
 declare function Signer(payload: string | Buffer | { [key: string]: any }): Promise<string>
 declare function Signer(payload: string | Buffer | { [key: string]: any }, cb: SignerCallback): void
