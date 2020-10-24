@@ -94,5 +94,5 @@ export interface VerifierOptions {
 }
 
 export function createSigner(options?: Partial<SignerOptions>): typeof Signer
-export function createDecoder(options: Partial<DecoderOptions>): (token: string | Buffer) => any
-export function createVerifier(options: Partial<VerifierOptions>): typeof Verifier
+export function createDecoder(options?: Partial<DecoderOptions>): (token: string | Buffer) => any
+export function createVerifier(options?: Partial<VerifierOptions>): typeof Verifier
