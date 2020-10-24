@@ -44,8 +44,8 @@ type SignerCallback = (e: Error | TokenError | null, token: string) => void
 type VerifierCallback = (e: Error | TokenError | null, payload: any) => void
 
 type KeyFetcher =
-  | ((key: string, header: string) => Promise<string | Buffer>)
-  | ((key: string, header: string, cb: (err: Error | TokenError | null, key: string | Buffer) => void) => void)
+  | ((header: { [key: string]: any }) => Promise<string | Buffer>)
+  | ((header: { [key: string]: any }, cb: (err: Error | TokenError | null, key: string | Buffer) => void) => void)
 
 declare function Signer(payload: string | Buffer | { [key: string]: any }): Promise<string>
 declare function Signer(payload: string | Buffer | { [key: string]: any }, cb: SignerCallback): void
@@ -94,5 +94,5 @@ export interface VerifierOptions {
 }
 
 export function createSigner(options?: Partial<SignerOptions>): typeof Signer
-export function createDecoder(options: Partial<DecoderOptions>): (token: string | Buffer) => any
-export function createVerifier(options: Partial<VerifierOptions>): typeof Verifier
+export function createDecoder(options?: Partial<DecoderOptions>): (token: string | Buffer) => any
+export function createVerifier(options?: Partial<VerifierOptions>): typeof Verifier
