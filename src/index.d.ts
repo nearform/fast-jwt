@@ -16,12 +16,36 @@ export type Algorithm =
   | 'PS512'
   | 'EdDSA'
 
-type SignerCallback = (e: Error | null, token: string) => void
-type VerifierCallback = (e: Error | null, payload: any) => void
+declare class TokenError extends Error {
+  static wrap(originalError: Error, code: string, message: string): TokenError
+  static codes: {
+    invalidType: 'FAST_JWT_INVALID_TYPE'
+    invalidOption: 'FAST_JWT_INVALID_OPTION'
+    invalidAlgorithm: 'FAST_JWT_INVALID_ALGORITHM'
+    invalidClaimType: 'FAST_JWT_INVALID_CLAIM_TYPE'
+    invalidClaimValue: 'FAST_JWT_INVALID_CLAIM_VALUE'
+    invalidKey: 'FAST_JWT_INVALID_KEY'
+    invalidSignature: 'FAST_JWT_INVALID_SIGNATURE'
+    invalidPayload: 'FAST_JWT_INVALID_PAYLOAD'
+    malformed: 'FAST_JWT_MALFORMED'
+    inactive: 'FAST_JWT_INACTIVE'
+    expired: 'FAST_JWT_EXPIRED'
+    missingKey: 'FAST_JWT_MISSING_KEY'
+    keyFetchingError: 'FAST_JWT_KEY_FETCHING_ERROR'
+    signError: 'FAST_JWT_SIGN_ERROR'
+    verifyError: 'FAST_JWT_VERIFY_ERROR'
+  }
+
+  code: string;
+  [key: string]: any
+}
+
+type SignerCallback = (e: Error | TokenError | null, token: string) => void
+type VerifierCallback = (e: Error | TokenError | null, payload: any) => void
 
 type KeyFetcher =
   | ((key: string, header: string) => Promise<string | Buffer>)
-  | ((key: string, header: string, cb: (err: Error | null, key: string | Buffer) => void) => void)
+  | ((key: string, header: string, cb: (err: Error | TokenError | null, key: string | Buffer) => void) => void)
 
 declare function Signer(payload: string | Buffer | { [key: string]: any }): Promise<string>
 declare function Signer(payload: string | Buffer | { [key: string]: any }, cb: SignerCallback): void

@@ -1,4 +1,6 @@
-import { createDecoder, createSigner, createVerifier } from '..'
+/* eslint-disable @typescript-eslint/no-unused-expressions */
+
+import { createDecoder, createSigner, createVerifier, TokenError } from '..'
 
 // Signing
 // Buffer key, both async/callback styles
@@ -48,3 +50,10 @@ createVerifier({
     return 'KEY'
   }
 })('456').then(console.log, console.log)
+
+// Errors
+const wrapped = TokenError.wrap(new Error('ORIGINAL'), 'CODE', 'MESSAGE')
+wrapped.code === 'CODE'
+wrapped.message === 'MESSAGE'
+Array.isArray(wrapped.stack)
+wrapped.originalError.message === 'ORIGINAL'
