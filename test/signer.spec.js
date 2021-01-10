@@ -418,11 +418,11 @@ test('returns a promise according to key option', t => {
 
 test('payload validation', t => {
   t.throws(() => createSigner({ key: 'secret' })(123), {
-    message: 'The payload must be a object, a string or a buffer.'
+    message: 'The payload must be an object.'
   })
 
   t.rejects(async () => createSigner({ key: () => 'secret' })(123), {
-    message: 'The payload must be a object, a string or a buffer.'
+    message: 'The payload must be an object.'
   })
 
   t.end()
