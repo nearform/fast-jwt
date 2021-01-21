@@ -6,9 +6,7 @@
 
 <!-- [![Code Coverage](https://img.shields.io/codecov/c/gh/nearform/-verify?token=)](https://codecov.io/gh/nearform/fast-jwt) -->
 
-Fast JSON Web Token implementation
-
-> This module is experimental. There might be bugs or security vulnerabilities.
+Fast JSON Web Token implementation.
 
 ## Installation
 
@@ -369,4 +367,4 @@ See [CONTRIBUTING.md](./CONTRIBUTING.md)
 
 ## License
 
-Copyright NearForm Ltd 2020. Licensed under the [Apache-2.0 license](http://www.apache.org/licenses/LICENSE-2.0).
+Copyright NearForm Ltd 2020-2021. Licensed under the [Apache-2.0 license](http://www.apache.org/licenses/LICENSE-2.0).
