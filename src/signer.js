@@ -74,7 +74,7 @@ function sign(
 
   // Validate payload
   if (typeof payload !== 'object') {
-    throw new TokenError(TokenError.codes.invalidType, 'The payload must be a object, a string or a buffer.')
+    throw new TokenError(TokenError.codes.invalidType, 'The payload must be an object.')
   }
 
   // Prepare the header
