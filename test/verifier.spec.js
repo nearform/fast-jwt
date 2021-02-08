@@ -4,7 +4,7 @@ const { createHash } = require('crypto')
 const { readFileSync } = require('fs')
 const { resolve } = require('path')
 const { test } = require('tap')
-const { install: fakeTime } = require('lolex')
+const { install: fakeTime } = require('@sinonjs/fake-timers')
 
 const { createSigner, createVerifier, TokenError } = require('../src')
 const { useNewCrypto } = require('../src/crypto')
