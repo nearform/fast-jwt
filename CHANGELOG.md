@@ -1,3 +1,11 @@
+### 2021-03-08 / 1.1.1
+
+- fix: Fixed allowed claims verification. (#67)
+- chore: update workflows and dependabot (#66)
+- feat: Merge pull request #61 from nearform/dependabot/npm_and_yarn/eslint-config-standard-with-typescript-20.0.0
+- chore(test-timers): Replace depreciated lolex with FakeTimers (#65)
+- chore(deps-dev): bump eslint-config-standard-with-typescript
+
 ### 2021-01-21 / 1.0.0
 
 - feat: Merge pull request #57 from nearform/drop-experimental
