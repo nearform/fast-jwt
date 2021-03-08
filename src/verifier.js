@@ -10,6 +10,10 @@ const { getAsyncKey, ensurePromiseCallback, hashToken } = require('./utils')
 
 const defaultCacheSize = 1000
 
+function exactStringClaimMatcher(allowed, actual) {
+  return allowed === actual
+}
+
 function checkAreCompatibleAlgorithms(expected, actual) {
   const expectedType = expected[0].slice(0, 2)
   const actualType = actual[0].slice(0, 2)
@@ -51,7 +55,15 @@ function ensureStringClaimMatcher(raw) {
     raw = [raw]
   }
 
-  return raw.map(r => (r && typeof r.test === 'function' ? r : new RegExp(r.toString())))
+  return raw
+    .filter(r => r)
+    .map(r => {
+      if (r && typeof r.test === 'function') {
+        return r
+      }
+
+      return { test: exactStringClaimMatcher.bind(null, r) }
+    })
 }
 
 function createCache(rawSize) {
@@ -135,9 +147,9 @@ function validateClaimType(values, claim, array, type) {
   }
 }
 
-function validateClaimDateField(values, claim, allowed, arrayValue) {
+function validateClaimValues(values, claim, allowed, arrayValue) {
   const failureMessage = arrayValue
-    ? `None of ${claim} claim values is allowed.`
+    ? `None of ${claim} claim values are allowed.`
     : `The ${claim} claim value is not allowed.`
 
   if (!values.some(v => allowed.some(a => a.test(v)))) {
@@ -145,7 +157,7 @@ function validateClaimDateField(values, claim, allowed, arrayValue) {
   }
 }
 
-function validateClaimValue(value, modifier, now, greater, errorCode, errorVerb) {
+function validateClaimDateValue(value, modifier, now, greater, errorCode, errorVerb) {
   const adjusted = value * 1000 + (modifier || 0)
   const valid = greater ? now >= adjusted : now <= adjusted
 
@@ -196,9 +208,9 @@ function verifyToken(
     validateClaimType(values, claim, array, type === 'date' ? 'number' : 'string')
 
     if (type === 'date') {
-      validateClaimValue(value, modifier, now, greater, errorCode, errorVerb)
+      validateClaimDateValue(value, modifier, now, greater, errorCode, errorVerb)
     } else {
-      validateClaimDateField(values, claim, allowed, arrayValue)
+      validateClaimValues(values, claim, allowed, arrayValue)
     }
   }
 }
