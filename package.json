@@ -34,6 +34,9 @@
   "main": "src/index.js",
   "typings": "src/index.d.ts",
   "types": "src/index.d.ts",
+  "files": [
+    "src"
+  ],
   "scripts": {
     "prepublishOnly": "npm run ci",
     "postpublish": "git push origin && git push origin -f --tags",
