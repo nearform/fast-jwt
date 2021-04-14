@@ -70,7 +70,7 @@
     "eslint-plugin-promise": "^4.2.1",
     "eslint-plugin-standard": "^5.0.0",
     "fastify": "^3.0.3",
-    "jose": "^2.0.2",
+    "jose": "^3.11.5",
     "jsonwebtoken": "^8.5.1",
     "prettier": "^2.0.5",
     "tap": "^15.0.2",
