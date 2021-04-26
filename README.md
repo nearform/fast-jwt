@@ -160,6 +160,30 @@ async function test() {
   const payload = await verifyWithPromise(token)
   // => { a: 1, b: 2, c: 3, iat: 1579521212 }
 }
+
+// Verify using JWKS with key as a function and caching enabled (Uses get-jwks package)
+const { createVerifier } = require('fast-jwt')
+const buildGetJwks = require('get-jwks')
+
+// well known url of the token issuer
+// often encoded as the `iss` property of the token payload
+const domain = 'https://...'
+
+const getJwks = buildGetJwks()
+
+// create a verifier function with key as a function
+const verifyWithPromise = createVerifier({
+  key: async function (token) {
+    const publicKey = getJwks.getPublicKey({
+      kid: token.kid,
+      alg: token.alg,
+      domain,
+    })
+    return publicKey
+  },
+})
+
+const payload = await verifyWithPromise(token)
 ```
 
 ## Algorithms supported
