@@ -58,7 +58,7 @@
   },
   "devDependencies": {
     "@sinonjs/fake-timers": "^7.0.2",
-    "@types/node": "^15.0.0",
+    "@types/node": "^16.0.0",
     "@typescript-eslint/eslint-plugin": "^4.4.0",
     "@typescript-eslint/parser": "^4.4.0",
     "cronometro": "^0.8.0",
