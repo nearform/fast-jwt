@@ -64,7 +64,7 @@
     "cronometro": "^1.0.0",
     "eslint": "^7.3.1",
     "eslint-config-standard": "^16.0.0",
-    "eslint-config-standard-with-typescript": "^20.0.0",
+    "eslint-config-standard-with-typescript": "^21.0.1",
     "eslint-plugin-import": "^2.22.0",
     "eslint-plugin-node": "^11.0.0",
     "eslint-plugin-promise": "^5.1.0",
