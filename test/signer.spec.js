@@ -13,6 +13,7 @@ const privateKeys = {
   ES384: readFileSync(resolve(__dirname, '../benchmarks/keys/es-384-private.key')),
   ES512: readFileSync(resolve(__dirname, '../benchmarks/keys/es-512-private.key')),
   RS: readFileSync(resolve(__dirname, '../benchmarks/keys/rs-512-private.key')),
+  PPRS: readFileSync(resolve(__dirname, '../benchmarks/keys/pprs-512-private.key')),
   PS: readFileSync(resolve(__dirname, '../benchmarks/keys/ps-512-private.key')),
   Ed25519: readFileSync(resolve(__dirname, '../benchmarks/keys/ed-25519-private.key')),
   Ed448: readFileSync(resolve(__dirname, '../benchmarks/keys/ed-448-private.key'))
@@ -24,6 +25,7 @@ const publicKeys = {
   ES384: readFileSync(resolve(__dirname, '../benchmarks/keys/es-384-public.key')),
   ES512: readFileSync(resolve(__dirname, '../benchmarks/keys/es-512-public.key')),
   RS: readFileSync(resolve(__dirname, '../benchmarks/keys/rs-512-public.key')),
+  PPRS: readFileSync(resolve(__dirname, '../benchmarks/keys/pprs-512-public.key')),
   PS: readFileSync(resolve(__dirname, '../benchmarks/keys/ps-512-public.key')),
   Ed25519: readFileSync(resolve(__dirname, '../benchmarks/keys/ed-25519-public.key')),
   Ed448: readFileSync(resolve(__dirname, '../benchmarks/keys/ed-448-public.key'))
@@ -94,6 +96,13 @@ test('it correctly returns a token - callback - key as promise', t => {
     t.equal(token, 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxfQ.57TF7smP9XDhIexBqPC-F1toZReYZLWb_YRU5tv0sxM')
     t.end()
   })
+})
+
+test('it correctly returns a token - key as passphrase protected key', async t => {
+  t.equal(
+    await sign({ a: 1 }, { key: { key: privateKeys.PPRS, passphrase: 'secret'} }),
+    'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxfQ.57TF7smP9XDhIexBqPC-F1toZReYZLWb_YRU5tv0sxM'
+  )
 })
 
 test('it correctly autodetects the algorithm depending on the secret provided', t => {
