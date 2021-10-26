@@ -4,9 +4,11 @@ const { generateKeyPair } = require('crypto')
 const { writeFileSync } = require('fs')
 const { resolve } = require('path')
 
+const passProtectedKeyPassphrase = 'secret'
 const configurations = {
   es: { 256: 'prime256v1', 384: 'secp384r1', 512: 'secp521r1' },
   rs: { 512: null },
+  pprs: { 512: null },
   ps: { 512: null },
   ed: { 25519: null, 448: null }
 }
@@ -38,6 +40,7 @@ for (const [prefix, configuration] of Object.entries(configurations)) {
     }
   } else {
     for (const [bits, namedCurve] of Object.entries(configuration)) {
+      const isPasswordProtectedPrivateKey = prefix === 'pprs'
       let type = 'pkcs8'
       let format = 'pem'
 
@@ -60,7 +63,9 @@ for (const [prefix, configuration] of Object.entries(configurations)) {
           },
           privateKeyEncoding: {
             type,
-            format
+            format,
+            cipher: isPasswordProtectedPrivateKey ? 'aes-256-cbc' : undefined,
+            passphrase: isPasswordProtectedPrivateKey ? passProtectedKeyPassphrase : undefined
           }
         },
         (err, publicKey, privateKey) => {
