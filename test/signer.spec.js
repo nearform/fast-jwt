@@ -100,10 +100,10 @@ test('it correctly returns a token - callback - key as promise', t => {
 
 test('it correctly returns a token - key as passphrase protected key', async t => {
   const payload = { a: 1 }
-  const signedToken = await sign(payload, { key: { key: privateKeys.PPRS, passphrase: 'secret'} })
+  const signedToken = await sign(payload, { key: { key: privateKeys.PPRS, passphrase: 'secret' } })
   const decoder = createDecoder()
   const result = decoder(signedToken)
-  
+
   t.equal(payload.a, result.a)
 })
 
