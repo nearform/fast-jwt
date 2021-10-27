@@ -205,6 +205,7 @@ module.exports = function createSigner(options) {
   }
 
   const keyType = typeof key
+  const isKeyPasswordProtected = (keyType === 'object') && key && key.key && key.passphrase
 
   if (algorithm === 'none') {
     if (key) {
@@ -213,17 +214,19 @@ module.exports = function createSigner(options) {
         'The key option must not be provided when the algorithm option is "none".'
       )
     }
-  } else if (!key || (keyType !== 'string' && !(key instanceof Buffer) && keyType !== 'function')) {
+  } else if (!key || (keyType !== 'string' && !(key instanceof Buffer) && keyType !== 'function' && !isKeyPasswordProtected)) {
     throw new TokenError(
       TokenError.codes.invalidOption,
-      'The key option must be a string, a buffer or a function returning the algorithm secret or private key.'
+      'The key option must be a string, a buffer, an object containing key/passphrase properties or a function returning the algorithm secret or private key.'
     )
   }
 
+  const currentKey = isKeyPasswordProtected ? key.key : key
+
   // Convert the key to a string when not a function, in order to be able to detect
-  if (key && keyType !== 'function') {
+  if (currentKey && keyType !== 'function') {
     // Detect the private key - If the algorithm was known, just verify they match, otherwise assign it
-    const availableAlgorithm = detectPrivateKeyAlgorithm(key)
+    const availableAlgorithm = detectPrivateKeyAlgorithm(currentKey)
 
     if (algorithm) {
       checkIsCompatibleAlgorithm(algorithm, availableAlgorithm)
@@ -231,7 +234,7 @@ module.exports = function createSigner(options) {
       algorithm = availableAlgorithm
     }
 
-    key = prepareKeyOrSecret(key, algorithm)
+    key = prepareKeyOrSecret(currentKey, algorithm)
   }
 
   if (expiresIn && (typeof expiresIn !== 'number' || expiresIn < 0)) {

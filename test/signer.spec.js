@@ -4,7 +4,7 @@ const { readFileSync } = require('fs')
 const { resolve } = require('path')
 const { test } = require('tap')
 
-const { createSigner, createVerifier, TokenError } = require('../src')
+const { createSigner, createVerifier, TokenError, createDecoder } = require('../src')
 const { useNewCrypto } = require('../src/crypto')
 
 const privateKeys = {
@@ -99,10 +99,12 @@ test('it correctly returns a token - callback - key as promise', t => {
 })
 
 test('it correctly returns a token - key as passphrase protected key', async t => {
-  t.equal(
-    await sign({ a: 1 }, { key: { key: privateKeys.PPRS, passphrase: 'secret'} }),
-    'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxfQ.57TF7smP9XDhIexBqPC-F1toZReYZLWb_YRU5tv0sxM'
-  )
+  const payload = { a: 1 }
+  const signedToken = await sign(payload, { key: { key: privateKeys.PPRS, passphrase: 'secret'} })
+  const decoder = createDecoder()
+  const result = decoder(signedToken)
+  
+  t.equal(payload.a, result.a)
 })
 
 test('it correctly autodetects the algorithm depending on the secret provided', t => {
@@ -490,7 +492,7 @@ test('options validation - algorithm', t => {
 
 test('options validation - key', t => {
   t.throws(() => createSigner({ key: 123 }), {
-    message: 'The key option must be a string, a buffer or a function returning the algorithm secret or private key.'
+    message: 'The key option must be a string, a buffer, an object containing key/passphrase properties or a function returning the algorithm secret or private key.'
   })
 
   t.throws(() => createSigner({ algorithm: 'none', key: 123 }), {
