@@ -100,7 +100,7 @@ test('it correctly returns a token - callback - key as promise', t => {
 
 test('it correctly returns a token - key as passphrase protected key', async t => {
   const payload = { a: 1 }
-  const signedToken = await sign(payload, { key: { key: privateKeys.PPRS, passphrase: 'secret' } })
+  const signedToken = sign(payload, { key: { key: privateKeys.PPRS, passphrase: 'secret' } })
   const decoder = createDecoder()
   const result = decoder(signedToken)
 
@@ -110,6 +110,7 @@ test('it correctly returns a token - key as passphrase protected key', async t =
 test('it correctly autodetects the algorithm depending on the secret provided', t => {
   const hsVerifier = createVerifier({ complete: true, key: publicKeys.HS })
   const rsVerifier = createVerifier({ complete: true, key: publicKeys.RS })
+  const pprsVerifier = createVerifier({ complete: true, key: publicKeys.PPRS })
   const psVerifier = createVerifier({ complete: true, key: publicKeys.PS })
   const es256Verifier = createVerifier({ complete: true, key: publicKeys.ES256 })
   const es384Verifier = createVerifier({ complete: true, key: publicKeys.ES384 })
@@ -119,36 +120,40 @@ test('it correctly autodetects the algorithm depending on the secret provided', 
 
   let token = createSigner({ key: privateKeys.HS })({ a: 1 })
   let verification = hsVerifier(token)
-  t.is(verification.header.alg, 'HS256')
+  t.equal(verification.header.alg, 'HS256')
 
   token = createSigner({ key: privateKeys.RS })({ a: 1 })
   verification = rsVerifier(token)
-  t.is(verification.header.alg, 'RS256')
+  t.equal(verification.header.alg, 'RS256')
+
+  token = createSigner({ key: { key: privateKeys.PPRS, passphrase: 'secret' } })({ a: 1 })
+  verification = pprsVerifier(token)
+  t.equal(verification.header.alg, 'RS256')
 
   token = createSigner({ key: privateKeys.PS })({ a: 1 })
   verification = psVerifier(token)
-  t.is(verification.header.alg, 'RS256')
+  t.equal(verification.header.alg, 'RS256')
 
   token = createSigner({ key: privateKeys.ES256 })({ a: 1 })
   verification = es256Verifier(token)
-  t.is(verification.header.alg, 'ES256')
+  t.equal(verification.header.alg, 'ES256')
 
   token = createSigner({ key: privateKeys.ES384 })({ a: 1 })
   verification = es384Verifier(token)
-  t.is(verification.header.alg, 'ES384')
+  t.equal(verification.header.alg, 'ES384')
 
   token = createSigner({ key: privateKeys.ES512 })({ a: 1 })
   verification = es512Verifier(token)
-  t.is(verification.header.alg, 'ES512')
+  t.equal(verification.header.alg, 'ES512')
 
   if (useNewCrypto) {
     token = createSigner({ key: privateKeys.Ed25519 })({ a: 1 })
     verification = es25519Verifier(token)
-    t.is(verification.header.alg, 'EdDSA')
+    t.equal(verification.header.alg, 'EdDSA')
 
     token = createSigner({ key: privateKeys.Ed448 })({ a: 1 })
     verification = es448Verifier(token)
-    t.is(verification.header.alg, 'EdDSA')
+    t.equal(verification.header.alg, 'EdDSA')
   }
 
   t.end()
@@ -492,6 +497,14 @@ test('options validation - algorithm', t => {
 
 test('options validation - key', t => {
   t.throws(() => createSigner({ key: 123 }), {
+    message: 'The key option must be a string, a buffer, an object containing key/passphrase properties or a function returning the algorithm secret or private key.'
+  })
+
+  t.throws(() => createSigner({ key: { key: privateKeys.PPRS } }), {
+    message: 'The key option must be a string, a buffer, an object containing key/passphrase properties or a function returning the algorithm secret or private key.'
+  })
+
+  t.throws(() => createSigner({ key: { passphrase: 'secret' } }), {
     message: 'The key option must be a string, a buffer, an object containing key/passphrase properties or a function returning the algorithm secret or private key.'
   })
 

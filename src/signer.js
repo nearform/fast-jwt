@@ -221,12 +221,10 @@ module.exports = function createSigner(options) {
     )
   }
 
-  const currentKey = isKeyPasswordProtected ? key.key : key
-
   // Convert the key to a string when not a function, in order to be able to detect
-  if (currentKey && keyType !== 'function') {
+  if (key && keyType !== 'function') {
     // Detect the private key - If the algorithm was known, just verify they match, otherwise assign it
-    const availableAlgorithm = detectPrivateKeyAlgorithm(currentKey)
+    const availableAlgorithm = detectPrivateKeyAlgorithm(isKeyPasswordProtected ? key.key : key)
 
     if (algorithm) {
       checkIsCompatibleAlgorithm(algorithm, availableAlgorithm)
@@ -234,7 +232,7 @@ module.exports = function createSigner(options) {
       algorithm = availableAlgorithm
     }
 
-    key = prepareKeyOrSecret(currentKey, algorithm)
+    key = prepareKeyOrSecret(key, algorithm)
   }
 
   if (expiresIn && (typeof expiresIn !== 'number' || expiresIn < 0)) {

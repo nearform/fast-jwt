@@ -24,7 +24,7 @@ const useNewCrypto = typeof directSign === 'function'
 const base64UrlMatcher = /[=+/]/g
 const encoderMap = { '=': '', '+': '-', '/': '_' }
 
-const privateKeyPemMatcher = /^-----BEGIN(?: (RSA|EC))? PRIVATE KEY-----/
+const privateKeyPemMatcher = /^-----BEGIN(?: (RSA|EC|ENCRYPTED))? PRIVATE KEY-----/
 const publicKeyPemMatcher = '-----BEGIN PUBLIC KEY-----'
 const privateKeysCache = new Cache(1000)
 const publicKeysCache = new Cache(1000)
@@ -116,7 +116,8 @@ function performDetectPrivateKeyAlgoritm(key) {
   let curveId
 
   switch (pemData[1]) {
-    case 'RSA': // pkcs1 format - Can only be a RSA key
+    case 'RSA': // pkcs1 format - Can only be RSA or an ENCRYPTED (RSA) key
+    case 'ENCRYPTED':
       return 'RS256'
     case 'EC': // sec1 format - Can only be a EC key
       keyData = ECPrivateKey.decode(key, 'pem', { label: 'EC PRIVATE KEY' })
