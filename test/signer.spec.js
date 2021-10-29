@@ -116,7 +116,7 @@ test('it correctly returns a token - key as passphrase protected key', async t =
   }
 })
 
-test('it correctly autodetects the algorithm depending on the secret provided', t => {
+test('it correctly autodetects the algorithm depending on the secret provided', async t => {
   const hsVerifier = createVerifier({ complete: true, key: publicKeys.HS })
   const rsVerifier = createVerifier({ complete: true, key: publicKeys.RS })
   const pprsVerifier = createVerifier({ complete: true, key: publicKeys.PPRS })
@@ -164,8 +164,6 @@ test('it correctly autodetects the algorithm depending on the secret provided', 
     verification = es448Verifier(token)
     t.equal(verification.header.alg, 'EdDSA')
   }
-
-  t.end()
 })
 
 test('it correctly set a timestamp', t => {
@@ -406,7 +404,7 @@ test('it correctly handle errors - callback', t => {
       noTimestamp: true
     },
     (error, token) => {
-      t.true(error instanceof TokenError)
+      t.ok(error instanceof TokenError)
       t.equal(error.message, 'Cannot fetch key.')
 
       t.end()
@@ -424,7 +422,7 @@ test('it correctly validates the key received from the callback', t => {
       noTimestamp: true
     },
     (error, token) => {
-      t.true(error instanceof TokenError)
+      t.ok(error instanceof TokenError)
       t.equal(
         error.message,
         'The key returned from the callback must be a string or a buffer containing a secret or a private key.'
@@ -446,7 +444,7 @@ test('it correctly handle errors - evented callback', t => {
       algorithm: 'RS256'
     },
     (error, token) => {
-      t.true(error instanceof TokenError)
+      t.ok(error instanceof TokenError)
       t.equal(error.message, 'Invalid private key provided for algorithm RS256.')
 
       t.end()
@@ -458,8 +456,8 @@ test('returns a promise according to key option', t => {
   const s1 = createSigner({ key: 'secret' })({ a: 'PAYLOAD' })
   const s2 = createSigner({ key: async () => 'secret' })({ a: 'PAYLOAD' })
 
-  t.true(typeof s1.then === 'undefined')
-  t.true(typeof s2.then === 'function')
+  t.ok(typeof s1.then === 'undefined')
+  t.ok(typeof s2.then === 'function')
 
   s2.then(
     () => false,

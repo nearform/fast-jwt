@@ -15,9 +15,9 @@ const nonJwtToken =
   'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVEFBIn0.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6Ik9LIiwiaWF0Ijo5ODc2NTQzMjEwfQ.Tauq025SLRNP4qTYsr_FHXwjQ_ZTsAjBGwE-2h6if4k'
 
 test('should return a valid token', t => {
-  t.strictDeepEqual(defaultDecoder(token), { sub: '1234567890', name: 'OK', iat: 9876543210 })
+  t.strictSame(defaultDecoder(token), { sub: '1234567890', name: 'OK', iat: 9876543210 })
 
-  t.strictDeepEqual(completeDecoder(Buffer.from(token, 'utf-8')), {
+  t.strictSame(completeDecoder(Buffer.from(token, 'utf-8')), {
     header: {
       alg: 'HS256',
       typ: 'JWT'
