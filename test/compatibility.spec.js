@@ -44,7 +44,7 @@ for (const type of ['HS', 'ES', 'RS', 'PS']) {
       const verify = createVerifier({ algorithm, key: publicKey.toString() })
       const token = jsonwebtokenSign({ a: 1, b: 2, c: 3 }, privateKey.toString(), { algorithm, noTimestamp: true })
 
-      t.strictDeepEqual(verify(token), { a: 1, b: 2, c: 3 })
+      t.strictSame(verify(token), { a: 1, b: 2, c: 3 })
 
       t.end()
     })
@@ -53,7 +53,7 @@ for (const type of ['HS', 'ES', 'RS', 'PS']) {
       const signer = createSigner({ algorithm, key: privateKey, noTimestamp: true })
       const token = signer({ a: 1, b: 2, c: 3 })
 
-      t.strictDeepEqual(jsonwebtokenVerify(token, publicKey, { algorithm }), { a: 1, b: 2, c: 3 })
+      t.strictSame(jsonwebtokenVerify(token, publicKey, { algorithm }), { a: 1, b: 2, c: 3 })
       t.end()
     })
   }
@@ -70,7 +70,7 @@ if (useNewCrypto) {
         }
       })
 
-      t.strictDeepEqual(verify(token), { a: 1, b: 2, c: 3 })
+      t.strictSame(verify(token), { a: 1, b: 2, c: 3 })
 
       t.end()
     })
@@ -79,7 +79,7 @@ if (useNewCrypto) {
       const signer = createSigner({ key: privateKeys[curve], noTimestamp: true })
       const token = signer({ a: 1, b: 2, c: 3 })
 
-      t.strictDeepEqual(joseVerify(token, asKey(publicKeys[curve])), { a: 1, b: 2, c: 3 })
+      t.strictSame(joseVerify(token, asKey(publicKeys[curve])), { a: 1, b: 2, c: 3 })
       t.end()
     })
   }

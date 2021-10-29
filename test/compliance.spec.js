@@ -85,7 +85,7 @@ test('HS256', t => {
 
   const verified = createVerifier({ key })(token)
 
-  t.deepEqual(verified, payload)
+  t.same(verified, payload)
   t.equal(token, expectedToken)
 
   t.end()
@@ -104,7 +104,7 @@ test('RS256', t => {
 
   const verified = createVerifier({ key: rsaPublicKey })(token)
 
-  t.deepEqual(verified, payload)
+  t.same(verified, payload)
   t.equal(token, expectedToken)
 
   t.end()
@@ -123,7 +123,7 @@ test('PS384', t => {
 
   const verified = createVerifier({ key: rsaPublicKey })(token)
 
-  t.deepEqual(verified, payload)
+  t.same(verified, payload)
   // Since PS algorithm uses random data, we cannot match the signature
   t.equal(token.replace(/\..+/, ''), expectedToken.replace(/\..+/, ''))
 
@@ -143,7 +143,7 @@ test('ES512', t => {
 
   const verified = createVerifier({ key: ecPublicKey })(token)
 
-  t.deepEqual(verified, payload)
+  t.same(verified, payload)
   // Since ES algorithm uses random data, we cannot match the signature
   t.equal(token.replace(/\..+/, ''), expectedToken.replace(/\..+/, ''))
 
@@ -173,7 +173,7 @@ if (useNewCrypto) {
 
     const verified = createVerifier({ key: ed25519PublicKey })(token)
 
-    t.deepEqual(verified, payload)
+    t.same(verified, payload)
     t.equal(token, expectedToken)
 
     t.end()

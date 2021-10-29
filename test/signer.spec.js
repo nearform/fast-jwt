@@ -4,7 +4,7 @@ const { readFileSync } = require('fs')
 const { resolve } = require('path')
 const { test } = require('tap')
 
-const { createSigner, createVerifier, TokenError } = require('../src')
+const { createSigner, createVerifier, TokenError, createDecoder } = require('../src')
 const { useNewCrypto } = require('../src/crypto')
 
 const privateKeys = {
@@ -13,6 +13,7 @@ const privateKeys = {
   ES384: readFileSync(resolve(__dirname, '../benchmarks/keys/es-384-private.key')),
   ES512: readFileSync(resolve(__dirname, '../benchmarks/keys/es-512-private.key')),
   RS: readFileSync(resolve(__dirname, '../benchmarks/keys/rs-512-private.key')),
+  PPRS: readFileSync(resolve(__dirname, '../benchmarks/keys/pprs-512-private.key')),
   PS: readFileSync(resolve(__dirname, '../benchmarks/keys/ps-512-private.key')),
   Ed25519: readFileSync(resolve(__dirname, '../benchmarks/keys/ed-25519-private.key')),
   Ed448: readFileSync(resolve(__dirname, '../benchmarks/keys/ed-448-private.key'))
@@ -24,6 +25,7 @@ const publicKeys = {
   ES384: readFileSync(resolve(__dirname, '../benchmarks/keys/es-384-public.key')),
   ES512: readFileSync(resolve(__dirname, '../benchmarks/keys/es-512-public.key')),
   RS: readFileSync(resolve(__dirname, '../benchmarks/keys/rs-512-public.key')),
+  PPRS: readFileSync(resolve(__dirname, '../benchmarks/keys/pprs-512-public.key')),
   PS: readFileSync(resolve(__dirname, '../benchmarks/keys/ps-512-public.key')),
   Ed25519: readFileSync(resolve(__dirname, '../benchmarks/keys/ed-25519-public.key')),
   Ed448: readFileSync(resolve(__dirname, '../benchmarks/keys/ed-448-public.key'))
@@ -96,9 +98,28 @@ test('it correctly returns a token - callback - key as promise', t => {
   })
 })
 
-test('it correctly autodetects the algorithm depending on the secret provided', t => {
+test('it correctly returns a token - key as passphrase protected key', async t => {
+  const payload = { a: 1 }
+  if (useNewCrypto) {
+    const signedToken = sign(payload, { key: { key: privateKeys.PPRS, passphrase: 'secret' } })
+    const decoder = createDecoder()
+    const result = decoder(signedToken)
+
+    t.equal(payload.a, result.a)
+  } else {
+    t.throws(() => sign(payload, { key: { key: privateKeys.PPRS, passphrase: 'secret' } }), {
+      message: 'Cannot create the signature.',
+      originalError: {
+        message: 'The "key" argument must be one of type string, Buffer, TypedArray, or DataView. Received type object'
+      }
+    })
+  }
+})
+
+test('it correctly autodetects the algorithm depending on the secret provided', async t => {
   const hsVerifier = createVerifier({ complete: true, key: publicKeys.HS })
   const rsVerifier = createVerifier({ complete: true, key: publicKeys.RS })
+  const pprsVerifier = createVerifier({ complete: true, key: publicKeys.PPRS })
   const psVerifier = createVerifier({ complete: true, key: publicKeys.PS })
   const es256Verifier = createVerifier({ complete: true, key: publicKeys.ES256 })
   const es384Verifier = createVerifier({ complete: true, key: publicKeys.ES384 })
@@ -108,39 +129,41 @@ test('it correctly autodetects the algorithm depending on the secret provided', 
 
   let token = createSigner({ key: privateKeys.HS })({ a: 1 })
   let verification = hsVerifier(token)
-  t.is(verification.header.alg, 'HS256')
+  t.equal(verification.header.alg, 'HS256')
 
   token = createSigner({ key: privateKeys.RS })({ a: 1 })
   verification = rsVerifier(token)
-  t.is(verification.header.alg, 'RS256')
+  t.equal(verification.header.alg, 'RS256')
 
   token = createSigner({ key: privateKeys.PS })({ a: 1 })
   verification = psVerifier(token)
-  t.is(verification.header.alg, 'RS256')
+  t.equal(verification.header.alg, 'RS256')
 
   token = createSigner({ key: privateKeys.ES256 })({ a: 1 })
   verification = es256Verifier(token)
-  t.is(verification.header.alg, 'ES256')
+  t.equal(verification.header.alg, 'ES256')
 
   token = createSigner({ key: privateKeys.ES384 })({ a: 1 })
   verification = es384Verifier(token)
-  t.is(verification.header.alg, 'ES384')
+  t.equal(verification.header.alg, 'ES384')
 
   token = createSigner({ key: privateKeys.ES512 })({ a: 1 })
   verification = es512Verifier(token)
-  t.is(verification.header.alg, 'ES512')
+  t.equal(verification.header.alg, 'ES512')
 
   if (useNewCrypto) {
+    token = createSigner({ key: { key: privateKeys.PPRS, passphrase: 'secret' } })({ a: 1 })
+    verification = pprsVerifier(token)
+    t.equal(verification.header.alg, 'RS256')
+
     token = createSigner({ key: privateKeys.Ed25519 })({ a: 1 })
     verification = es25519Verifier(token)
-    t.is(verification.header.alg, 'EdDSA')
+    t.equal(verification.header.alg, 'EdDSA')
 
     token = createSigner({ key: privateKeys.Ed448 })({ a: 1 })
     verification = es448Verifier(token)
-    t.is(verification.header.alg, 'EdDSA')
+    t.equal(verification.header.alg, 'EdDSA')
   }
-
-  t.end()
 })
 
 test('it correctly set a timestamp', t => {
@@ -381,7 +404,7 @@ test('it correctly handle errors - callback', t => {
       noTimestamp: true
     },
     (error, token) => {
-      t.true(error instanceof TokenError)
+      t.ok(error instanceof TokenError)
       t.equal(error.message, 'Cannot fetch key.')
 
       t.end()
@@ -399,7 +422,7 @@ test('it correctly validates the key received from the callback', t => {
       noTimestamp: true
     },
     (error, token) => {
-      t.true(error instanceof TokenError)
+      t.ok(error instanceof TokenError)
       t.equal(
         error.message,
         'The key returned from the callback must be a string or a buffer containing a secret or a private key.'
@@ -421,7 +444,7 @@ test('it correctly handle errors - evented callback', t => {
       algorithm: 'RS256'
     },
     (error, token) => {
-      t.true(error instanceof TokenError)
+      t.ok(error instanceof TokenError)
       t.equal(error.message, 'Invalid private key provided for algorithm RS256.')
 
       t.end()
@@ -433,8 +456,8 @@ test('returns a promise according to key option', t => {
   const s1 = createSigner({ key: 'secret' })({ a: 'PAYLOAD' })
   const s2 = createSigner({ key: async () => 'secret' })({ a: 'PAYLOAD' })
 
-  t.true(typeof s1.then === 'undefined')
-  t.true(typeof s2.then === 'function')
+  t.ok(typeof s1.then === 'undefined')
+  t.ok(typeof s2.then === 'function')
 
   s2.then(
     () => false,
@@ -481,7 +504,15 @@ test('options validation - algorithm', t => {
 
 test('options validation - key', t => {
   t.throws(() => createSigner({ key: 123 }), {
-    message: 'The key option must be a string, a buffer or a function returning the algorithm secret or private key.'
+    message: 'The key option must be a string, a buffer, an object containing key/passphrase properties or a function returning the algorithm secret or private key.'
+  })
+
+  t.throws(() => createSigner({ key: { key: privateKeys.PPRS } }), {
+    message: 'The key option must be a string, a buffer, an object containing key/passphrase properties or a function returning the algorithm secret or private key.'
+  })
+
+  t.throws(() => createSigner({ key: { passphrase: 'secret' } }), {
+    message: 'The key option must be a string, a buffer, an object containing key/passphrase properties or a function returning the algorithm secret or private key.'
   })
 
   t.throws(() => createSigner({ algorithm: 'none', key: 123 }), {
