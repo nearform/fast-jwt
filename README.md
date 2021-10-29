@@ -79,8 +79,8 @@ async function test() {
 // Using password protected private key
 const signSync = createSigner({
   key: {
-    key: '<YOUR_RSA_ENCRYPTED _PRIVATE_KEY>',
-    passphrase: '<PASSPHRASE>'
+    key: '<YOUR_RSA_ENCRYPTED_PRIVATE_KEY>',
+    passphrase: '<PASSPHRASE_THAT_WAS_USED_TO_ENCRYPT_THE_PRIVATE_KEY>'
   })
 const token = signSync({ a: 1, b: 2, c: 3 })
 ```
