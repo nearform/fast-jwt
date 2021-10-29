@@ -22,7 +22,7 @@ npm install fast-jwt
 
 Create a signer function by calling `createSigner` and providing one or more of the following options:
 
-- `key`: A string or a buffer containing the secret for `HS*` algorithms or the PEM encoded public key for `RS*`, `PS*`, `ES*` and `EdDSA` algorithms. The key can also be a function accepting a Node style callback or a function returning a promise. This is the only mandatory option. This is the only mandatory option, which must NOT be provided if the token algorithm is `none`.
+- `key`: A string or a buffer containing the secret for `HS*` algorithms, the PEM encoded public key for `RS*`, `PS*`, `ES*` and `EdDSA` algorithms or it can be an object containing passphrase protected private key (more details below). The key can also be a function accepting a Node style callback or a function returning a promise. This is the only mandatory option. This is the only mandatory option, which must NOT be provided if the token algorithm is `none`.
 - `algorithm`: The algorithm to use to sign the token. The default is autodetected from the key, using `RS256` for RSA private keys, `HS256` for plain secrets and the correspondent `ES` or `EdDSA` algorithms for EC or Ed\* private keys.
 - `mutatePayload`: If the original payload must be modified in place (via `Object.assign`) and thus will result changed to the caller funciton.
 - `expiresIn`: Time span (in milliseconds) after which the token expires, added as the `exp` claim in the payload. This will override any existing value in the claim.
@@ -42,6 +42,14 @@ The signer is a function which accepts a payload and returns the token.
 The payload must be an object.
 
 If the `key` option is a function, the signer will also accept a Node style callback and will return a promise, supporting therefore both callback and async/await styles.
+
+If the `key` is a passphrase protected private key, then it must be an object with the following structure:
+```js
+{
+  key: '<YOUR_RSA_ENCRYPTED _PRIVATE_KEY>'
+  passphrase: '<PASSPHRASE_THAT_WAS_USED_TO_ENCRYPT_THE _PRIVATE_KEY>'
+}
+```
 
 #### Example
 
@@ -67,6 +75,14 @@ async function test() {
   const token = await signWithPromise({ a: 1, b: 2, c: 3 })
   // => eyJhbGciOiJIUzUxMiIsInR5cCI6IkpXVCJ9.eyJhIjoxLCJiIjoyLCJjIjozLCJpYXQiOjE1Nzk1MjEyMTJ9.mIcxteEVjbh2MnKQ3EQlojZojGSyA_guqRBYHQURcfnCSSBTT2OShF8lo9_ogjAv-5oECgmCur_cDWB7x3X53g
 }
+
+// Using password protected private key
+const signSync = createSigner({
+  key: {
+    key: '<YOUR_RSA_ENCRYPTED _PRIVATE_KEY>',
+    passphrase: '<PASSPHRASE>'
+  })
+const token = signSync({ a: 1, b: 2, c: 3 })
 ```
 
 ### createDecoder
