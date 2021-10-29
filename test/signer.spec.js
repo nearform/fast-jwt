@@ -100,11 +100,20 @@ test('it correctly returns a token - callback - key as promise', t => {
 
 test('it correctly returns a token - key as passphrase protected key', async t => {
   const payload = { a: 1 }
-  const signedToken = sign(payload, { key: { key: privateKeys.PPRS, passphrase: 'secret' } })
-  const decoder = createDecoder()
-  const result = decoder(signedToken)
+  if (useNewCrypto) {
+    const signedToken = sign(payload, { key: { key: privateKeys.PPRS, passphrase: 'secret' } })
+    const decoder = createDecoder()
+    const result = decoder(signedToken)
 
-  t.equal(payload.a, result.a)
+    t.equal(payload.a, result.a)
+  } else {
+    t.throws(() => sign(payload, { key: { key: privateKeys.PPRS, passphrase: 'secret' } }), {
+      message: 'Cannot create the signature.',
+      originalError: {
+        message: 'The "key" argument must be one of type string, Buffer, TypedArray, or DataView. Received type object'
+      }
+    })
+  }
 })
 
 test('it correctly autodetects the algorithm depending on the secret provided', t => {
@@ -126,10 +135,6 @@ test('it correctly autodetects the algorithm depending on the secret provided', 
   verification = rsVerifier(token)
   t.equal(verification.header.alg, 'RS256')
 
-  token = createSigner({ key: { key: privateKeys.PPRS, passphrase: 'secret' } })({ a: 1 })
-  verification = pprsVerifier(token)
-  t.equal(verification.header.alg, 'RS256')
-
   token = createSigner({ key: privateKeys.PS })({ a: 1 })
   verification = psVerifier(token)
   t.equal(verification.header.alg, 'RS256')
@@ -147,6 +152,10 @@ test('it correctly autodetects the algorithm depending on the secret provided', 
   t.equal(verification.header.alg, 'ES512')
 
   if (useNewCrypto) {
+    token = createSigner({ key: { key: privateKeys.PPRS, passphrase: 'secret' } })({ a: 1 })
+    verification = pprsVerifier(token)
+    t.equal(verification.header.alg, 'RS256')
+
     token = createSigner({ key: privateKeys.Ed25519 })({ a: 1 })
     verification = es25519Verifier(token)
     t.equal(verification.header.alg, 'EdDSA')
