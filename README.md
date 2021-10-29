@@ -46,8 +46,8 @@ If the `key` option is a function, the signer will also accept a Node style call
 If the `key` is a passphrase protected private key, then it must be an object with the following structure:
 ```js
 {
-  key: '<YOUR_RSA_ENCRYPTED _PRIVATE_KEY>'
-  passphrase: '<PASSPHRASE_THAT_WAS_USED_TO_ENCRYPT_THE _PRIVATE_KEY>'
+  key: '<YOUR_RSA_ENCRYPTED_PRIVATE_KEY>',
+  passphrase: '<PASSPHRASE_THAT_WAS_USED_TO_ENCRYPT_THE_PRIVATE_KEY>'
 }
 ```
 
