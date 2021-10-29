@@ -1,8 +1,7 @@
 # fast-jwt
 
 [![Package Version](https://img.shields.io/npm/v/fast-jwt.svg)](https://npm.im/fast-jwt)
-[![Dependency Status](https://img.shields.io/david/nearform/fast-jwt)](https://david-dm.org/nearform/fast-jwt)
-[![Build](https://github.com/nearform/fast-jwt/workflows/CI/badge.svg)](https://github.com/nearform/fast-jwt/actions?query=workflow%3ACI)
+[![CI](https://github.com/nearform/fast-jwt/actions/workflows/ci.yml/badge.svg)](https://github.com/nearform/fast-jwt/actions/workflows/ci.yml)
 
 <!-- [![Code Coverage](https://img.shields.io/codecov/c/gh/nearform/-verify?token=)](https://codecov.io/gh/nearform/fast-jwt) -->
 
