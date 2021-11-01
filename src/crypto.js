@@ -117,11 +117,19 @@ function performDetectPrivateKeyAlgoritm(key) {
 
   switch (pemData[1]) {
     case 'RSA': // pkcs1 format - Can only be RSA or an ENCRYPTED (RSA) key
-    case 'ENCRYPTED':
       return 'RS256'
     case 'EC': // sec1 format - Can only be a EC key
       keyData = ECPrivateKey.decode(key, 'pem', { label: 'EC PRIVATE KEY' })
       curveId = keyData.parameters.value.join('.')
+      break
+    case 'ENCRYPTED':
+      try {
+        keyData = ECPrivateKey.decode(key, 'pem', { label: 'ENCRYPTED PRIVATE KEY' })
+        curveId = keyData.parameters.value.join('.')
+      } catch(e) {
+        console.log('decode ex:', e)
+        return 'RS256'
+      }
       break
     default:
       // pkcs8
@@ -163,6 +171,8 @@ function performDetectPublicKeyAlgorithms(key) {
   const keyData = PublicKey.decode(key, 'pem', { label: 'PUBLIC KEY' })
   const oid = keyData.algorithm.algorithm.join('.')
   let curveId
+
+  console.log('performDetectPublicKeyAlgorithms: ', oid)
 
   switch (oid) {
     case '1.2.840.113549.1.1.1': // RSA
