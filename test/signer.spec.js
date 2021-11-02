@@ -176,6 +176,26 @@ test('it correctly returns a token - key as an ES512 passphrase protected key', 
   }
 })
 
+test('it correctly returns an error when algorithm is not provided when using passphrase protected key', async t => {
+  t.throws(() => sign({ a: 1 }, { key: { key: privateKeys.PPRS, passphrase: 'secret' } }), {
+    message: 'When using password protected key you must provide the algorithm option.'
+  })
+})
+
+test('it correctly returns an error when using "EdDSA" algorithm passphrase protected key', async t => {
+  t.throws(() => sign({ a: 1 }, { algorithm: 'EdDSA', key: { key: privateKeys.PPRS, passphrase: 'secret' } }), {
+    message: 'Invalid private key provided for algorithm EdDSA.',
+    code: TokenError.codes.invalidKey
+  })
+})
+
+test('it correctly returns an error when using "ES256" algorithm with RSA private key', async t => {
+  t.throws(() => sign({ a: 1 }, { algorithm: 'ES256', key: privateKeys.RS }), {
+    message: 'Invalid private key provided for algorithm ES256.',
+    code: TokenError.codes.invalidKey
+  })
+})
+
 test('it correctly autodetects the algorithm depending on the secret provided', async t => {
   const hsVerifier = createVerifier({ complete: true, key: publicKeys.HS })
   const rsVerifier = createVerifier({ complete: true, key: publicKeys.RS })

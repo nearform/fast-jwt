@@ -37,7 +37,7 @@ const ecCurves = {
   '1.2.840.10045.3.1.7': { bits: '256', names: ['P-256', 'prime256v1'] },
   '1.3.132.0.10': { bits: '256', names: ['secp256k1'] },
   '1.3.132.0.34': { bits: '384', names: ['P-384', 'secp384r1'] },
-  '1.3.132.0.35': { bits: '512', names: ['P-521', 'secp521r1'] },
+  '1.3.132.0.35': { bits: '512', names: ['P-521', 'secp521r1'] }
 }
 
 /* istanbul ignore next */
@@ -209,22 +209,11 @@ function detectPrivateKeyAlgorithm(key, providedAlgorithm) {
     const detectedAlgorithm = performDetectPrivateKeyAlgorithm(key);
 
     if (detectedAlgorithm === 'ENCRYPTED') {
-
-      if (providedAlgorithm) {
-        return cacheSet(privateKeysCache, key, providedAlgorithm) 
-      } else {
-        throw Error(TokenError.codes.invalidAlgorithm)
-      }
+      return cacheSet(privateKeysCache, key, providedAlgorithm) 
     }
     return cacheSet(privateKeysCache, key, detectedAlgorithm)
   } catch (e) {
-    let error = TokenError.wrap(e, TokenError.codes.invalidKey, 'Unsupported PEM private key.')
-    
-    if (e && e.message === TokenError.codes.invalidAlgorithm) {
-      error = TokenError.wrap(e, TokenError.codes.invalidAlgorithm, 'No algorithm supplied for decoding password protected private key.')
-    }
-
-    throw cacheSet(privateKeysCache, key, null, error)
+    throw cacheSet(privateKeysCache, key, null, TokenError.wrap(e, TokenError.codes.invalidKey, 'Unsupported PEM private key.'))
   }
 }
 
@@ -298,9 +287,6 @@ function createSignature(algorithm, key, input) {
         break
       case 'Ed':
         raw = directSign(undefined, Buffer.from(input, 'utf-8'), key).toString('base64')
-        break
-      case 'EN':
-        raw = createSign('RSA-SHA')
     }
 
     return raw.replace(base64UrlMatcher, base64UrlReplacer)

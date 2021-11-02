@@ -25,12 +25,13 @@ function checkIsCompatibleAlgorithm(expected, actual) {
 
   let valid = true // We accept everything for HS
 
+  // If the key is passphrase encrypted (actual === "ENCRYPTED") only RS and ES algos are supported
   if (expectedType === 'RS' || expectedType === 'PS') {
     // RS and PS use same keys
     valid = actualType === 'RS' || (expectedType === 'RS' && actual === 'ENCRYPTED')
   } else if (expectedType === 'ES' || expectedType === 'Ed') {
     // ES and Ed must match
-    valid = actualType === actualType || (expectedType === 'ES' && actual === 'ENCRYPTED')
+    valid = expectedType === actualType || (expectedType === 'ES' && actual === 'ENCRYPTED')
   }
 
   if (!valid) {
@@ -161,7 +162,6 @@ function sign(
       const input = encodedHeader + '.' + encodedPayload
       token = input + '.' + createSignature(algorithm, currentKey, input)
     } catch (e) {
-      console.log('FAIL:', e)
       return callback(e)
     }
 
@@ -206,7 +206,7 @@ module.exports = function createSigner(options) {
   }
 
   const keyType = typeof key
-  const isKeyPasswordProtected = (keyType === 'object') && key && key.key && key.passphrase
+  const isKeyPasswordProtected = keyType === 'object' && key && key.key && key.passphrase
 
   if (algorithm === 'none') {
     if (key) {
@@ -215,7 +215,10 @@ module.exports = function createSigner(options) {
         'The key option must not be provided when the algorithm option is "none".'
       )
     }
-  } else if (!key || (keyType !== 'string' && !(key instanceof Buffer) && keyType !== 'function' && !isKeyPasswordProtected)) {
+  } else if (
+    !key ||
+    (keyType !== 'string' && !(key instanceof Buffer) && keyType !== 'function' && !isKeyPasswordProtected)
+  ) {
     throw new TokenError(
       TokenError.codes.invalidOption,
       'The key option must be a string, a buffer, an object containing key/passphrase properties or a function returning the algorithm secret or private key.'
@@ -282,7 +285,9 @@ module.exports = function createSigner(options) {
   }
 
   const fpo = { jti, aud, iss, sub, nonce }
-  const fixedPayload = Object.keys(fpo).reduce((obj, key) => { return (fpo[key] !== undefined) ? Object.assign(obj, { [key]: fpo[key] }) : obj }, {})
+  const fixedPayload = Object.keys(fpo).reduce((obj, key) => {
+    return fpo[key] !== undefined ? Object.assign(obj, { [key]: fpo[key] }) : obj
+  }, {})
 
   // Return the signer
   const context = {
