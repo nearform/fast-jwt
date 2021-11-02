@@ -165,7 +165,6 @@ function performDetectPublicKeyAlgorithms(key) {
   const oid = keyData.algorithm.algorithm.join('.')
   let curveId
 
-
   switch (oid) {
     case '1.2.840.113549.1.1.1': // RSA
       return rsaAlgorithms
@@ -206,10 +205,10 @@ function detectPrivateKeyAlgorithm(key, providedAlgorithm) {
 
   // Try detecting
   try {
-    const detectedAlgorithm = performDetectPrivateKeyAlgorithm(key);
+    const detectedAlgorithm = performDetectPrivateKeyAlgorithm(key)
 
     if (detectedAlgorithm === 'ENCRYPTED') {
-      return cacheSet(privateKeysCache, key, providedAlgorithm) 
+      return cacheSet(privateKeysCache, key, providedAlgorithm)
     }
     return cacheSet(privateKeysCache, key, detectedAlgorithm)
   } catch (e) {
