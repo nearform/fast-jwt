@@ -27,10 +27,10 @@ function checkIsCompatibleAlgorithm(expected, actual) {
 
   if (expectedType === 'RS' || expectedType === 'PS') {
     // RS and PS use same keys
-    valid = actualType === 'RS'
+    valid = actualType === 'RS' || (expectedType === 'RS' && actual === 'ENCRYPTED')
   } else if (expectedType === 'ES' || expectedType === 'Ed') {
     // ES and Ed must match
-    valid = expectedType === actualType
+    valid = actualType === actualType || (expectedType === 'ES' && actual === 'ENCRYPTED')
   }
 
   if (!valid) {
@@ -144,7 +144,7 @@ function sign(
     let token
     try {
       // Detect the private key - If the algorithm was known, just verify they match, otherwise assign it
-      const availableAlgorithm = detectPrivateKeyAlgorithm(currentKey)
+      const availableAlgorithm = detectPrivateKeyAlgorithm(currentKey, algorithm)
 
       if (algorithm) {
         checkIsCompatibleAlgorithm(algorithm, availableAlgorithm)
@@ -161,6 +161,7 @@ function sign(
       const input = encodedHeader + '.' + encodedPayload
       token = input + '.' + createSignature(algorithm, currentKey, input)
     } catch (e) {
+      console.log('FAIL:', e)
       return callback(e)
     }
 
@@ -219,12 +220,17 @@ module.exports = function createSigner(options) {
       TokenError.codes.invalidOption,
       'The key option must be a string, a buffer, an object containing key/passphrase properties or a function returning the algorithm secret or private key.'
     )
+  } else if (isKeyPasswordProtected && !algorithm) {
+    throw new TokenError(
+      TokenError.codes.invalidAlgorithm,
+      'When using password protected key you must provide the algorithm option.'
+    )
   }
 
   // Convert the key to a string when not a function, in order to be able to detect
   if (key && keyType !== 'function') {
     // Detect the private key - If the algorithm was known, just verify they match, otherwise assign it
-    const availableAlgorithm = detectPrivateKeyAlgorithm(isKeyPasswordProtected ? key.key : key)
+    const availableAlgorithm = detectPrivateKeyAlgorithm(isKeyPasswordProtected ? key.key : key, algorithm)
 
     if (algorithm) {
       checkIsCompatibleAlgorithm(algorithm, availableAlgorithm)

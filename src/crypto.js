@@ -37,7 +37,7 @@ const ecCurves = {
   '1.2.840.10045.3.1.7': { bits: '256', names: ['P-256', 'prime256v1'] },
   '1.3.132.0.10': { bits: '256', names: ['secp256k1'] },
   '1.3.132.0.34': { bits: '384', names: ['P-384', 'secp384r1'] },
-  '1.3.132.0.35': { bits: '512', names: ['P-521', 'secp521r1'] }
+  '1.3.132.0.35': { bits: '512', names: ['P-521', 'secp521r1'] },
 }
 
 /* istanbul ignore next */
@@ -100,7 +100,7 @@ function cacheSet(cache, key, value, error) {
   return value || error
 }
 
-function performDetectPrivateKeyAlgoritm(key) {
+function performDetectPrivateKeyAlgorithm(key) {
   if (key.includes(publicKeyPemMatcher)) {
     throw new TokenError(TokenError.codes.invalidKey, 'Public keys are not supported for signing.')
   }
@@ -116,21 +116,14 @@ function performDetectPrivateKeyAlgoritm(key) {
   let curveId
 
   switch (pemData[1]) {
-    case 'RSA': // pkcs1 format - Can only be RSA or an ENCRYPTED (RSA) key
+    case 'RSA': // pkcs1 format - Can only be RSA key
       return 'RS256'
     case 'EC': // sec1 format - Can only be a EC key
       keyData = ECPrivateKey.decode(key, 'pem', { label: 'EC PRIVATE KEY' })
       curveId = keyData.parameters.value.join('.')
       break
-    case 'ENCRYPTED':
-      try {
-        keyData = ECPrivateKey.decode(key, 'pem', { label: 'ENCRYPTED PRIVATE KEY' })
-        curveId = keyData.parameters.value.join('.')
-      } catch(e) {
-        console.log('decode ex:', e)
-        return 'RS256'
-      }
-      break
+    case 'ENCRYPTED': // Can be either RSA or EC key - we'll used the supplied algorithm
+      return 'ENCRYPTED'
     default:
       // pkcs8
       keyData = PrivateKey.decode(key, 'pem', { label: 'PRIVATE KEY' })
@@ -172,7 +165,6 @@ function performDetectPublicKeyAlgorithms(key) {
   const oid = keyData.algorithm.algorithm.join('.')
   let curveId
 
-  console.log('performDetectPublicKeyAlgorithms: ', oid)
 
   switch (oid) {
     case '1.2.840.113549.1.1.1': // RSA
@@ -196,7 +188,7 @@ function performDetectPublicKeyAlgorithms(key) {
   return [`ES${curve.bits}`]
 }
 
-function detectPrivateKeyAlgorithm(key) {
+function detectPrivateKeyAlgorithm(key, providedAlgorithm) {
   if (key instanceof Buffer) {
     key = key.toString('utf-8')
   } else if (typeof key !== 'string') {
@@ -214,14 +206,25 @@ function detectPrivateKeyAlgorithm(key) {
 
   // Try detecting
   try {
-    return cacheSet(privateKeysCache, key, performDetectPrivateKeyAlgoritm(key))
+    const detectedAlgorithm = performDetectPrivateKeyAlgorithm(key);
+
+    if (detectedAlgorithm === 'ENCRYPTED') {
+
+      if (providedAlgorithm) {
+        return cacheSet(privateKeysCache, key, providedAlgorithm) 
+      } else {
+        throw Error(TokenError.codes.invalidAlgorithm)
+      }
+    }
+    return cacheSet(privateKeysCache, key, detectedAlgorithm)
   } catch (e) {
-    throw cacheSet(
-      privateKeysCache,
-      key,
-      null,
-      TokenError.wrap(e, TokenError.codes.invalidKey, 'Unsupported PEM private key.')
-    )
+    let error = TokenError.wrap(e, TokenError.codes.invalidKey, 'Unsupported PEM private key.')
+    
+    if (e && e.message === TokenError.codes.invalidAlgorithm) {
+      error = TokenError.wrap(e, TokenError.codes.invalidAlgorithm, 'No algorithm supplied for decoding password protected private key.')
+    }
+
+    throw cacheSet(privateKeysCache, key, null, error)
   }
 }
 
@@ -295,6 +298,9 @@ function createSignature(algorithm, key, input) {
         break
       case 'Ed':
         raw = directSign(undefined, Buffer.from(input, 'utf-8'), key).toString('base64')
+        break
+      case 'EN':
+        raw = createSign('RSA-SHA')
     }
 
     return raw.replace(base64UrlMatcher, base64UrlReplacer)

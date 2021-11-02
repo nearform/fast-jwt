@@ -181,9 +181,6 @@ function verifyToken(
     throw new TokenError(TokenError.codes.missingKey, 'The key option is missing.')
   }
 
-  console.log('SSSSSS', header)
-  console.log('SSSSSS allowedAlgorithms', allowedAlgorithms)
-
   validateAlgorithmAndSignature(input, header, signature, key, allowedAlgorithms)
 
   // Verify typ
@@ -376,8 +373,6 @@ module.exports = function createVerifier(options) {
   if (key && keyType !== 'function') {
     // Detect the private key - If the algorithms were known, just verify they match, otherwise assign them
     const availableAlgorithms = detectPublicKeyAlgorithms(key)
-
-    console.log('detectPublicKeyAlgorithms:', availableAlgorithms)
 
     if (allowedAlgorithms.length) {
       checkAreCompatibleAlgorithms(allowedAlgorithms, availableAlgorithms)

@@ -107,7 +107,7 @@ test('it correctly returns a token - callback - key as promise', t => {
 test('it correctly returns a token - key as an RSA passphrase protected key', async t => {
   const payload = { a: 1 }
   if (useNewCrypto) {
-    const signedToken = sign(payload, { key: { key: privateKeys.PPRS, passphrase: 'secret' } })
+    const signedToken = sign(payload, { algorithm: 'RS256', key: { key: privateKeys.PPRS, passphrase: 'secret' } })
     const decoder = createDecoder()
     const result = decoder(signedToken)
 
@@ -125,7 +125,7 @@ test('it correctly returns a token - key as an RSA passphrase protected key', as
 test('it correctly returns a token - key as an ES256 passphrase protected key', async t => {
   const payload = { a: 1 }
   if (useNewCrypto) {
-    const signedToken = sign(payload, { key: { key: privateKeys.PPES256, passphrase: 'secret' } })
+    const signedToken = sign(payload, { algorithm: 'ES256', key: { key: privateKeys.PPES256, passphrase: 'secret' } })
     const decoder = createDecoder()
     const result = decoder(signedToken)
 
@@ -143,7 +143,7 @@ test('it correctly returns a token - key as an ES256 passphrase protected key', 
 test('it correctly returns a token - key as an ES384 passphrase protected key', async t => {
   const payload = { a: 1 }
   if (useNewCrypto) {
-    const signedToken = sign(payload, { key: { key: privateKeys.PPES384, passphrase: 'secret' } })
+    const signedToken = sign(payload, { algorithm: 'ES384', key: { key: privateKeys.PPES384, passphrase: 'secret' } })
     const decoder = createDecoder()
     const result = decoder(signedToken)
 
@@ -161,7 +161,7 @@ test('it correctly returns a token - key as an ES384 passphrase protected key', 
 test('it correctly returns a token - key as an ES512 passphrase protected key', async t => {
   const payload = { a: 1 }
   if (useNewCrypto) {
-    const signedToken = sign(payload, { key: { key: privateKeys.PPES512, passphrase: 'secret' } })
+    const signedToken = sign(payload, { algorithm: 'ES512', key: { key: privateKeys.PPES512, passphrase: 'secret' } })
     const decoder = createDecoder()
     const result = decoder(signedToken)
 
@@ -215,26 +215,20 @@ test('it correctly autodetects the algorithm depending on the secret provided', 
   t.equal(verification.header.alg, 'ES512')
 
   if (useNewCrypto) {
-    token = createSigner({ key: { key: privateKeys.PPRS, passphrase: 'secret' } })({ a: 1 })
+    token = createSigner({ algorithm: 'RS256', key: { key: privateKeys.PPRS, passphrase: 'secret' } })({ a: 1 })
     verification = pprsVerifier(token)
     t.equal(verification.header.alg, 'RS256')
 
-    // token = createSigner({ key: { key: privateKeys.PPES256, passphrase: 'secret' } })({ a: 1 })
-    // console.log('ppes256Verifier @@@@', token)
-    // verification = ppes256Verifier(token)
-    // console.log('ppes256Verifier @@@@', verification.header.alg)
-    // t.equal(verification.header.alg, 'ES256')
+    token = createSigner({ algorithm: 'ES256', key: { key: privateKeys.PPES256, passphrase: 'secret' } })({ a: 1 })
+    verification = ppes256Verifier(token)
+    t.equal(verification.header.alg, 'ES256')
 
-    // token = createSigner({ key: { key: privateKeys.PPES384, passphrase: 'secret' } })({ a: 1 })
-    // console.log('ppes384Verifier @@@@', token)
-    // verification = ppes384Verifier(token)
-    // console.log('ppes384Verifier @@@@', verification.header.alg)
-    // t.equal(verification.header.alg, 'ES384')
+    token = createSigner({ algorithm: 'ES384', key: { key: privateKeys.PPES384, passphrase: 'secret' } })({ a: 1 })
+    verification = ppes384Verifier(token)
+    t.equal(verification.header.alg, 'ES384')
 
-    token = createSigner({ key: { key: privateKeys.PPES512, passphrase: 'secret' } })({ a: 1 })
-    console.log('ppes512Verifier @@@@', token)
+    token = createSigner({ algorithm: 'ES512', key: { key: privateKeys.PPES512, passphrase: 'secret' } })({ a: 1 })
     verification = ppes512Verifier(token)
-    console.log('ppes512Verifier @@@@', verification.header.alg)
     t.equal(verification.header.alg, 'ES512')
 
     token = createSigner({ key: privateKeys.Ed25519 })({ a: 1 })
