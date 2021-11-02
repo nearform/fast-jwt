@@ -42,7 +42,7 @@ The payload must be an object.
 
 If the `key` option is a function, the signer will also accept a Node style callback and will return a promise, supporting therefore both callback and async/await styles.
 
-If the `key` is a passphrase protected private key, then it must be an object with the following structure:
+If the `key` is a passphrase protected private key, the `algorithm` option must be provided and must be either a `RS*` or `ES*` encoded key and the `key` option must be an object with the following structure:
 ```js
 {
   key: '<YOUR_RSA_ENCRYPTED_PRIVATE_KEY>',

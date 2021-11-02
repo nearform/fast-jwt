@@ -7,6 +7,7 @@ const { resolve } = require('path')
 const passProtectedKeyPassphrase = 'secret'
 const configurations = {
   es: { 256: 'prime256v1', 384: 'secp384r1', 512: 'secp521r1' },
+  ppes: { 256: 'prime256v1', 384: 'secp384r1', 512: 'secp521r1' },
   rs: { 512: null },
   pprs: { 512: null },
   ps: { 512: null },
@@ -40,7 +41,8 @@ for (const [prefix, configuration] of Object.entries(configurations)) {
     }
   } else {
     for (const [bits, namedCurve] of Object.entries(configuration)) {
-      const isPasswordProtectedPrivateKey = prefix === 'pprs'
+      const isPasswordProtectedPrivateKey = prefix === 'pprs' || prefix === 'ppes'
+      const isEcAlgorithm = prefix === 'es' || prefix === 'ppes'
       let type = 'pkcs8'
       let format = 'pem'
 
@@ -53,7 +55,7 @@ for (const [prefix, configuration] of Object.entries(configurations)) {
       }
 
       generateKeyPair(
-        prefix === 'es' ? 'ec' : 'rsa',
+        isEcAlgorithm ? 'ec' : 'rsa',
         {
           modulusLength: 4096,
           namedCurve,

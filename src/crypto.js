@@ -100,7 +100,7 @@ function cacheSet(cache, key, value, error) {
   return value || error
 }
 
-function performDetectPrivateKeyAlgoritm(key) {
+function performDetectPrivateKeyAlgorithm(key) {
   if (key.includes(publicKeyPemMatcher)) {
     throw new TokenError(TokenError.codes.invalidKey, 'Public keys are not supported for signing.')
   }
@@ -116,13 +116,14 @@ function performDetectPrivateKeyAlgoritm(key) {
   let curveId
 
   switch (pemData[1]) {
-    case 'RSA': // pkcs1 format - Can only be RSA or an ENCRYPTED (RSA) key
-    case 'ENCRYPTED':
+    case 'RSA': // pkcs1 format - Can only be RSA key
       return 'RS256'
     case 'EC': // sec1 format - Can only be a EC key
       keyData = ECPrivateKey.decode(key, 'pem', { label: 'EC PRIVATE KEY' })
       curveId = keyData.parameters.value.join('.')
       break
+    case 'ENCRYPTED': // Can be either RSA or EC key - we'll used the supplied algorithm
+      return 'ENCRYPTED'
     default:
       // pkcs8
       keyData = PrivateKey.decode(key, 'pem', { label: 'PRIVATE KEY' })
@@ -186,7 +187,7 @@ function performDetectPublicKeyAlgorithms(key) {
   return [`ES${curve.bits}`]
 }
 
-function detectPrivateKeyAlgorithm(key) {
+function detectPrivateKeyAlgorithm(key, providedAlgorithm) {
   if (key instanceof Buffer) {
     key = key.toString('utf-8')
   } else if (typeof key !== 'string') {
@@ -204,14 +205,14 @@ function detectPrivateKeyAlgorithm(key) {
 
   // Try detecting
   try {
-    return cacheSet(privateKeysCache, key, performDetectPrivateKeyAlgoritm(key))
+    const detectedAlgorithm = performDetectPrivateKeyAlgorithm(key)
+
+    if (detectedAlgorithm === 'ENCRYPTED') {
+      return cacheSet(privateKeysCache, key, providedAlgorithm)
+    }
+    return cacheSet(privateKeysCache, key, detectedAlgorithm)
   } catch (e) {
-    throw cacheSet(
-      privateKeysCache,
-      key,
-      null,
-      TokenError.wrap(e, TokenError.codes.invalidKey, 'Unsupported PEM private key.')
-    )
+    throw cacheSet(privateKeysCache, key, null, TokenError.wrap(e, TokenError.codes.invalidKey, 'Unsupported PEM private key.'))
   }
 }
 

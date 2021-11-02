@@ -12,6 +12,9 @@ const privateKeys = {
   ES256: readFileSync(resolve(__dirname, '../benchmarks/keys/es-256-private.key')),
   ES384: readFileSync(resolve(__dirname, '../benchmarks/keys/es-384-private.key')),
   ES512: readFileSync(resolve(__dirname, '../benchmarks/keys/es-512-private.key')),
+  PPES256: readFileSync(resolve(__dirname, '../benchmarks/keys/ppes-256-private.key')),
+  PPES384: readFileSync(resolve(__dirname, '../benchmarks/keys/ppes-384-private.key')),
+  PPES512: readFileSync(resolve(__dirname, '../benchmarks/keys/ppes-512-private.key')),
   RS: readFileSync(resolve(__dirname, '../benchmarks/keys/rs-512-private.key')),
   PPRS: readFileSync(resolve(__dirname, '../benchmarks/keys/pprs-512-private.key')),
   PS: readFileSync(resolve(__dirname, '../benchmarks/keys/ps-512-private.key')),
@@ -24,6 +27,9 @@ const publicKeys = {
   ES256: readFileSync(resolve(__dirname, '../benchmarks/keys/es-256-public.key')),
   ES384: readFileSync(resolve(__dirname, '../benchmarks/keys/es-384-public.key')),
   ES512: readFileSync(resolve(__dirname, '../benchmarks/keys/es-512-public.key')),
+  PPES256: readFileSync(resolve(__dirname, '../benchmarks/keys/ppes-256-public.key')),
+  PPES384: readFileSync(resolve(__dirname, '../benchmarks/keys/ppes-384-public.key')),
+  PPES512: readFileSync(resolve(__dirname, '../benchmarks/keys/ppes-512-public.key')),
   RS: readFileSync(resolve(__dirname, '../benchmarks/keys/rs-512-public.key')),
   PPRS: readFileSync(resolve(__dirname, '../benchmarks/keys/pprs-512-public.key')),
   PS: readFileSync(resolve(__dirname, '../benchmarks/keys/ps-512-public.key')),
@@ -98,10 +104,10 @@ test('it correctly returns a token - callback - key as promise', t => {
   })
 })
 
-test('it correctly returns a token - key as passphrase protected key', async t => {
+test('it correctly returns a token - key as an RSA passphrase protected key', async t => {
   const payload = { a: 1 }
   if (useNewCrypto) {
-    const signedToken = sign(payload, { key: { key: privateKeys.PPRS, passphrase: 'secret' } })
+    const signedToken = sign(payload, { algorithm: 'RS256', key: { key: privateKeys.PPRS, passphrase: 'secret' } })
     const decoder = createDecoder()
     const result = decoder(signedToken)
 
@@ -116,6 +122,80 @@ test('it correctly returns a token - key as passphrase protected key', async t =
   }
 })
 
+test('it correctly returns a token - key as an ES256 passphrase protected key', async t => {
+  const payload = { a: 1 }
+  if (useNewCrypto) {
+    const signedToken = sign(payload, { algorithm: 'ES256', key: { key: privateKeys.PPES256, passphrase: 'secret' } })
+    const decoder = createDecoder()
+    const result = decoder(signedToken)
+
+    t.equal(payload.a, result.a)
+  } else {
+    t.throws(() => sign(payload, { key: { key: privateKeys.PPES256, passphrase: 'secret' } }), {
+      message: 'Cannot create the signature.',
+      originalError: {
+        message: 'The "key" argument must be one of type string, Buffer, TypedArray, or DataView. Received type object'
+      }
+    })
+  }
+})
+
+test('it correctly returns a token - key as an ES384 passphrase protected key', async t => {
+  const payload = { a: 1 }
+  if (useNewCrypto) {
+    const signedToken = sign(payload, { algorithm: 'ES384', key: { key: privateKeys.PPES384, passphrase: 'secret' } })
+    const decoder = createDecoder()
+    const result = decoder(signedToken)
+
+    t.equal(payload.a, result.a)
+  } else {
+    t.throws(() => sign(payload, { key: { key: privateKeys.PPES384, passphrase: 'secret' } }), {
+      message: 'Cannot create the signature.',
+      originalError: {
+        message: 'The "key" argument must be one of type string, Buffer, TypedArray, or DataView. Received type object'
+      }
+    })
+  }
+})
+
+test('it correctly returns a token - key as an ES512 passphrase protected key', async t => {
+  const payload = { a: 1 }
+  if (useNewCrypto) {
+    const signedToken = sign(payload, { algorithm: 'ES512', key: { key: privateKeys.PPES512, passphrase: 'secret' } })
+    const decoder = createDecoder()
+    const result = decoder(signedToken)
+
+    t.equal(payload.a, result.a)
+  } else {
+    t.throws(() => sign(payload, { key: { key: privateKeys.PPES512, passphrase: 'secret' } }), {
+      message: 'Cannot create the signature.',
+      originalError: {
+        message: 'The "key" argument must be one of type string, Buffer, TypedArray, or DataView. Received type object'
+      }
+    })
+  }
+})
+
+test('it correctly returns an error when algorithm is not provided when using passphrase protected key', async t => {
+  t.throws(() => sign({ a: 1 }, { key: { key: privateKeys.PPRS, passphrase: 'secret' } }), {
+    message: 'When using password protected key you must provide the algorithm option.'
+  })
+})
+
+test('it correctly returns an error when using "EdDSA" algorithm passphrase protected key', async t => {
+  t.throws(() => sign({ a: 1 }, { algorithm: 'EdDSA', key: { key: privateKeys.PPRS, passphrase: 'secret' } }), {
+    message: 'Invalid private key provided for algorithm EdDSA.',
+    code: TokenError.codes.invalidKey
+  })
+})
+
+test('it correctly returns an error when using "ES256" algorithm with RSA private key', async t => {
+  t.throws(() => sign({ a: 1 }, { algorithm: 'ES256', key: privateKeys.RS }), {
+    message: 'Invalid private key provided for algorithm ES256.',
+    code: TokenError.codes.invalidKey
+  })
+})
+
 test('it correctly autodetects the algorithm depending on the secret provided', async t => {
   const hsVerifier = createVerifier({ complete: true, key: publicKeys.HS })
   const rsVerifier = createVerifier({ complete: true, key: publicKeys.RS })
@@ -124,6 +204,9 @@ test('it correctly autodetects the algorithm depending on the secret provided', 
   const es256Verifier = createVerifier({ complete: true, key: publicKeys.ES256 })
   const es384Verifier = createVerifier({ complete: true, key: publicKeys.ES384 })
   const es512Verifier = createVerifier({ complete: true, key: publicKeys.ES512 })
+  const ppes256Verifier = createVerifier({ complete: true, key: publicKeys.PPES256 })
+  const ppes384Verifier = createVerifier({ complete: true, key: publicKeys.PPES384 })
+  const ppes512Verifier = createVerifier({ complete: true, key: publicKeys.PPES512 })
   const es25519Verifier = createVerifier({ complete: true, key: publicKeys.Ed25519 })
   const es448Verifier = createVerifier({ complete: true, key: publicKeys.Ed448 })
 
@@ -152,9 +235,21 @@ test('it correctly autodetects the algorithm depending on the secret provided', 
   t.equal(verification.header.alg, 'ES512')
 
   if (useNewCrypto) {
-    token = createSigner({ key: { key: privateKeys.PPRS, passphrase: 'secret' } })({ a: 1 })
+    token = createSigner({ algorithm: 'RS256', key: { key: privateKeys.PPRS, passphrase: 'secret' } })({ a: 1 })
     verification = pprsVerifier(token)
     t.equal(verification.header.alg, 'RS256')
+
+    token = createSigner({ algorithm: 'ES256', key: { key: privateKeys.PPES256, passphrase: 'secret' } })({ a: 1 })
+    verification = ppes256Verifier(token)
+    t.equal(verification.header.alg, 'ES256')
+
+    token = createSigner({ algorithm: 'ES384', key: { key: privateKeys.PPES384, passphrase: 'secret' } })({ a: 1 })
+    verification = ppes384Verifier(token)
+    t.equal(verification.header.alg, 'ES384')
+
+    token = createSigner({ algorithm: 'ES512', key: { key: privateKeys.PPES512, passphrase: 'secret' } })({ a: 1 })
+    verification = ppes512Verifier(token)
+    t.equal(verification.header.alg, 'ES512')
 
     token = createSigner({ key: privateKeys.Ed25519 })({ a: 1 })
     verification = es25519Verifier(token)

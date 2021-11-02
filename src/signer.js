@@ -25,12 +25,13 @@ function checkIsCompatibleAlgorithm(expected, actual) {
 
   let valid = true // We accept everything for HS
 
+  // If the key is passphrase encrypted (actual === "ENCRYPTED") only RS and ES algos are supported
   if (expectedType === 'RS' || expectedType === 'PS') {
     // RS and PS use same keys
-    valid = actualType === 'RS'
+    valid = actualType === 'RS' || (expectedType === 'RS' && actual === 'ENCRYPTED')
   } else if (expectedType === 'ES' || expectedType === 'Ed') {
     // ES and Ed must match
-    valid = expectedType === actualType
+    valid = expectedType === actualType || (expectedType === 'ES' && actual === 'ENCRYPTED')
   }
 
   if (!valid) {
@@ -144,7 +145,7 @@ function sign(
     let token
     try {
       // Detect the private key - If the algorithm was known, just verify they match, otherwise assign it
-      const availableAlgorithm = detectPrivateKeyAlgorithm(currentKey)
+      const availableAlgorithm = detectPrivateKeyAlgorithm(currentKey, algorithm)
 
       if (algorithm) {
         checkIsCompatibleAlgorithm(algorithm, availableAlgorithm)
@@ -205,7 +206,7 @@ module.exports = function createSigner(options) {
   }
 
   const keyType = typeof key
-  const isKeyPasswordProtected = (keyType === 'object') && key && key.key && key.passphrase
+  const isKeyPasswordProtected = keyType === 'object' && key && key.key && key.passphrase
 
   if (algorithm === 'none') {
     if (key) {
@@ -214,17 +215,25 @@ module.exports = function createSigner(options) {
         'The key option must not be provided when the algorithm option is "none".'
       )
     }
-  } else if (!key || (keyType !== 'string' && !(key instanceof Buffer) && keyType !== 'function' && !isKeyPasswordProtected)) {
+  } else if (
+    !key ||
+    (keyType !== 'string' && !(key instanceof Buffer) && keyType !== 'function' && !isKeyPasswordProtected)
+  ) {
     throw new TokenError(
       TokenError.codes.invalidOption,
       'The key option must be a string, a buffer, an object containing key/passphrase properties or a function returning the algorithm secret or private key.'
+    )
+  } else if (isKeyPasswordProtected && !algorithm) {
+    throw new TokenError(
+      TokenError.codes.invalidAlgorithm,
+      'When using password protected key you must provide the algorithm option.'
     )
   }
 
   // Convert the key to a string when not a function, in order to be able to detect
   if (key && keyType !== 'function') {
     // Detect the private key - If the algorithm was known, just verify they match, otherwise assign it
-    const availableAlgorithm = detectPrivateKeyAlgorithm(isKeyPasswordProtected ? key.key : key)
+    const availableAlgorithm = detectPrivateKeyAlgorithm(isKeyPasswordProtected ? key.key : key, algorithm)
 
     if (algorithm) {
       checkIsCompatibleAlgorithm(algorithm, availableAlgorithm)
@@ -276,7 +285,9 @@ module.exports = function createSigner(options) {
   }
 
   const fpo = { jti, aud, iss, sub, nonce }
-  const fixedPayload = Object.keys(fpo).reduce((obj, key) => { return (fpo[key] !== undefined) ? Object.assign(obj, { [key]: fpo[key] }) : obj }, {})
+  const fixedPayload = Object.keys(fpo).reduce((obj, key) => {
+    return fpo[key] !== undefined ? Object.assign(obj, { [key]: fpo[key] }) : obj
+  }, {})
 
   // Return the signer
   const context = {
