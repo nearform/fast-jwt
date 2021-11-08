@@ -11,6 +11,8 @@ on:
         description: "The npm tag"
         required: false
         default: "latest"
+  pull_request:
+    types: [closed]
 
 jobs:
   release:
