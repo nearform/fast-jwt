@@ -75,8 +75,9 @@ async function test() {
   // => eyJhbGciOiJIUzUxMiIsInR5cCI6IkpXVCJ9.eyJhIjoxLCJiIjoyLCJjIjozLCJpYXQiOjE1Nzk1MjEyMTJ9.mIcxteEVjbh2MnKQ3EQlojZojGSyA_guqRBYHQURcfnCSSBTT2OShF8lo9_ogjAv-5oECgmCur_cDWB7x3X53g
 }
 
-// Using password protected private key
+// Using password protected private key - in this case you MUST provide the algorithm as well
 const signSync = createSigner({
+  algorithm: '<ANY_RS*_OR_ES*_ALGORITHM>',
   key: {
     key: '<YOUR_RSA_ENCRYPTED_PRIVATE_KEY>',
     passphrase: '<PASSPHRASE_THAT_WAS_USED_TO_ENCRYPT_THE_PRIVATE_KEY>'
