@@ -41,7 +41,7 @@ Create a signer function by calling `createSigner` and providing one or more of 
 
 - `nonce`: The token nonce, added as the `nonce` claim in the payload. The `nonce` value is used to associate a Client session with an ID Token. Note that this is a [IANA JSON Web Token Claims Registry](https://www.iana.org/assignments/jwt/jwt.xhtml#claims) public claim registered by OpenID Connect (OIDC). It must be a string. This will override any existing value in the claim.
 
-- `kid`: The token key id, added as the `kid` claim in the header section as defined by the [section 3.4 of RFC 7800](https://www.rfc-editor.org/rfc/rfc7800.html#section-3.4). It must be a string.
+- `kid`: The token key id, added as the `kid` claim in the header section (see [section 4.1.4 of RFC 7515](https://www.rfc-editor.org/rfc/rfc7515#section-4.1.4) and [section 4.5 of RFC 7517](https://datatracker.ietf.org/doc/html/rfc7517#section-4.5)). It must be a string.
 
 - `header`: Additional claims to add to the header section. This will override the `typ` and `kid` claims.
 
