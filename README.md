@@ -21,19 +21,32 @@ npm install fast-jwt
 
 Create a signer function by calling `createSigner` and providing one or more of the following options:
 
-- `key`: A string or a buffer containing the secret for `HS*` algorithms, the PEM encoded public key for `RS*`, `PS*`, `ES*` and `EdDSA` algorithms or it can be an object containing passphrase protected private key (more details below). The key can also be a function accepting a Node style callback or a function returning a promise. This is the only mandatory option, which must NOT be provided if the token algorithm is `none`.
-- `algorithm`: The algorithm to use to sign the token. The default is autodetected from the key, using `RS256` for RSA private keys, `HS256` for plain secrets and the correspondent `ES` or `EdDSA` algorithms for EC or Ed\* private keys.
-- `mutatePayload`: If set to `true`, the original payload will be modified in place (via `Object.assign`) by the signing function. This is useful if you need a raw reference to the payload after claims have been applied to it but before it has been encoded into a token.
-- `expiresIn`: Time span (in milliseconds) after which the token expires, added as the `exp` claim in the payload. This will override any existing value in the claim.
-- `notBefore`: Time span (in milliseconds) before the token is active, added as the `nbf` claim in the payload. This will override any existing value in the claim.
-- `jti`: The token id, added as the `jti` claim in the payload. This will override any existing value in the claim.
-- `aud`: The token audience, added as the `aud` claim in the payload. It must be a string or an array of strings. This will override any existing value in the claim.
-- `iss`: The token audience, added as the `iss` claim in the payload. It must be a string. This will override any existing value in the claim.
-- `sub`: The token audience, added as the `sub` claim in the payload. It must be a string. This will override any existing value in the claim.
-- `nonce`: The token audience, added as the `nonce` claim in the payload. It must be a string. This will override any existing value in the claim.
-- `kid`: The token key id, added as the `kid` claim in the header section. It must be a string.
+- `key`: A string or a buffer containing the secret for `HS*` algorithms or the PEM encoded private key for `RS*`, `PS*`, `ES*` and `EdDSA` algorithms. If the `key` is a passphrase protected private key it must be an object (more details below). The key can also be a function accepting a Node style callback or a function returning a promise. This is the only mandatory option, which MUST NOT be provided if the token algorithm is `none`.
+
+- `algorithm`: The algorithm to use to sign the token. The default value is autodetected from the key, using `RS256` for RSA private keys, `HS256` for plain secrets and the corresponding `ES` or `EdDSA` algorithms for EC or Ed\* private keys.
+
+- `mutatePayload`: If set to `true`, the original payload will be modified in place (via `Object.assign`) by the signing function. This is useful if you need a raw reference to the payload after claims have been applied to it but before it has been encoded into a token. Default is `false`.
+
+- `expiresIn`: Time span (in milliseconds) after which the token expires, added as the `exp` claim in the payload as defined by the [section 4.1.4 of RFC 7519](https://datatracker.ietf.org/doc/html/rfc7519#section-4.1.4). This will override any existing value in the claim.
+
+- `notBefore`: Time span (in milliseconds) before the token is active, added as the `nbf` claim in the payload as defined by the [section 4.1.5 of RFC 7519](https://datatracker.ietf.org/doc/html/rfc7519#section-4.1.5). This will override any existing value in the claim.
+
+- `jti`: The token unique identifier, added as the `jti` claim in the payload as defined by the [section 4.1.7 of RFC 7519](https://datatracker.ietf.org/doc/html/rfc7519#section-4.1.7). This will override any existing value in the claim.
+
+- `aud`: The token audience, added as the `aud` claim in the payload as defined by the [section 4.1.3 of RFC 7519](https://datatracker.ietf.org/doc/html/rfc7519#section-4.1.3). This claim identifies the recipients that the token is intended for. It must be a string or an array of strings. This will override any existing value in the claim.
+
+- `iss`: The token issuer, added as the `iss` claim in the payload as defined by the [section 4.1.1 of RFC 7519](https://datatracker.ietf.org/doc/html/rfc7519#section-4.1.1). It must be a string. This will override any existing value in the claim.
+
+- `sub`: The token subject, added as the `sub` claim in the payload as defined by the [section 4.1.2 of RFC 7519](https://datatracker.ietf.org/doc/html/rfc7519#section-4.1.2). It must be a string. This will override any existing value in the claim.
+
+- `nonce`: The token nonce, added as the `nonce` claim in the payload. The `nonce` value is used to associate a Client session with an ID Token. Note that this is a [IANA JSON Web Token Claims Registry](https://www.iana.org/assignments/jwt/jwt.xhtml#claims) public claim registered by OpenID Connect (OIDC). It must be a string. This will override any existing value in the claim.
+
+- `kid`: The token key id, added as the `kid` claim in the header section as defined by the [section 3.4 of RFC 7800](https://www.rfc-editor.org/rfc/rfc7800.html#section-3.4). It must be a string.
+
 - `header`: Additional claims to add to the header section. This will override the `typ` and `kid` claims.
-- `noTimestamp`: If the `iat` claim should not be added to the token.
+
+- `noTimestamp`: If set to `true`, the `iat` claim should not be added to the token. Default is `false`.
+
 - `clockTimestamp`: The timestamp in milliseconds (like the output of `Date.now()`) that should be used as the current time for all necessary time comparisons. Default is the system time.
 
 The signer is a function which accepts a payload and returns the token.
@@ -90,6 +103,7 @@ const token = signSync({ a: 1, b: 2, c: 3 })
 Create a decoder function by calling `createDecoder` and providing one or more of the following options:
 
 - `complete`: Return an object with the decoded header, payload, signature and input (the token part before the signature), instead of just the content of the payload. Default is `false`.
+
 - `checkTyp`: When validating the decoded header, setting this option forces the check of the `typ` property against this value. Example: `checkTyp: 'JWT'`. Default is `undefined`.
 
 The decoder is a function which accepts a token (as Buffer or string) and returns the payload or the sections of the token.
@@ -123,20 +137,34 @@ const sections = decodeComplete(token)
 
 Create a verifier function by calling `createVerifier` and providing one or more of the following options:
 
-- `key`: A string or a buffer containing the secret for `HS*` algorithms or the PEM encoded public key for `RS*`, `PS*`, `ES*` and `EdDSA` algorithms. The key can also be a function accepting a Node style callback or a function returning a promise. This is the only mandatory option, which must NOT be provided if the token algorithm is `none`.
+- `key`: A string or a buffer containing the secret for `HS*` algorithms or the PEM encoded public key for `RS*`, `PS*`, `ES*` and `EdDSA` algorithms. The key can also be a function accepting a Node style callback or a function returning a promise. This is the only mandatory option, which MUST NOT be provided if the token algorithm is `none`.
+
 - `algorithms`: List of strings with the names of the allowed algorithms. By default, all algorithms are accepted.
+
 - `complete`: Return an object with the decoded header, payload, signature and input (the token part before the signature), instead of just the content of the payload. Default is `false`.
+
 - `cache`: A positive number specifying the size of the verified tokens cache (using LRU strategy). Setting to `true` is equivalent to provide the size `1000`. When enabled, as you can see in the benchmarks section below, performances dramatically improve. By default the cache is disabled.
+
 - `cacheTTL`: The maximum time to live of a cache entry (in milliseconds). If the token has a earlier expiration or the verifier has a shorter `maxAge`, the earlier takes precedence. The default is `600000`, which is 10 minutes.
+
 - `allowedJti`: A string, a regular expression, an array of strings or an array of regular expressions containing allowed values for the id claim (`jti`). By default, all values are accepted.
+
 - `allowedAud`: A string, a regular expression, an array of strings or an array of regular expressions containing allowed values for the audience claim (`aud`). By default, all values are accepted.
+
 - `allowedIss`: A string, a regular expression, an array of strings or an array of regular expressions containing allowed values for the issuer claim (`iss`). By default, all values are accepted.
+
 - `allowedSub`: A string, a regular expression, an array of strings or an array of regular expressions containing allowed values for the subject claim (`sub`). By default, all values are accepted.
+
 - `allowedNonce`: A string, a regular expression, an array of strings or an array of regular expressions containing allowed values for the nonce claim (`nonce`). By default, all values are accepted.
+
 - `ignoreExpiration`: Do not validate the expiration of the token. Default is `false`.
+
 - `ignoreNotBefore`: Do not validate the activation of the token. Default is `false`.
+
 - `maxAge`: The maximum allowed age (in milliseconds) for tokens to still be valid. By default this is not checked.
+
 - `clockTimestamp`: The timestamp in milliseconds (like the output of `Date.now()`) that should be used as the current time for all necessary time comparisons. Default is the system time.
+
 - `clockTolerance`: Timespan in milliseconds to add the current timestamp when performing time comparisons. Default is `0`.
 
 The verifier is a function which accepts a token (as Buffer or string) and returns the payload or the sections of the token.
