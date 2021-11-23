@@ -54,16 +54,16 @@ declare function Verifier(token: string | Buffer): Promise<any>
 declare function Verifier(token: string | Buffer, cb: object): void
 
 export interface JwtHeader {
-  alg: string | Algorithm;
-  typ?: string | undefined;
-  cty?: string | undefined;
-  crit?: Array<string | Exclude<keyof JwtHeader, 'crit'>> | undefined;
-  kid?: string | undefined;
-  jku?: string | undefined;
-  x5u?: string | string[] | undefined;
-  'x5t#S256'?: string | undefined;
-  x5t?: string | undefined;
-  x5c?: string | string[] | undefined;
+  alg: string | Algorithm
+  typ?: string | undefined
+  cty?: string | undefined
+  crit?: Array<string | Exclude<keyof JwtHeader, 'crit'>> | undefined
+  kid?: string | undefined
+  jku?: string | undefined
+  x5u?: string | string[] | undefined
+  'x5t#S256'?: string | undefined
+  x5t?: string | undefined
+  x5c?: string | string[] | undefined
 }
 
 export interface SignerOptions {
