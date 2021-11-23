@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unused-expressions */
 
-import { createDecoder, createSigner, createVerifier, TokenError } from '..'
+import { createDecoder, createSigner, createVerifier, JwtHeader, TokenError } from '..'
+import { expectAssignable, expectNotAssignable } from 'tsd'
 
 // Signing
 // Buffer key, both async/callback styles
@@ -57,3 +58,34 @@ wrapped.code === 'CODE'
 wrapped.message === 'MESSAGE'
 Array.isArray(wrapped.stack)
 wrapped.originalError.message === 'ORIGINAL'
+
+const signerOptions = {
+  header: {
+    alg: 'RS256',
+    typ: '',
+    cty: '',
+    crit: [''],
+    kid: '',
+    jku: '',
+    x5u: '',
+    'x5t#S256': '',
+    x5t: '',
+    x5c: ''
+  }
+}
+expectAssignable<JwtHeader>(signerOptions.header)
+
+const signerOptionsNoAlg = {
+  header: {
+    typ: '',
+    cty: '',
+    crit: [''],
+    kid: '',
+    jku: '',
+    x5u: '',
+    'x5t#S256': '',
+    x5t: '',
+    x5c: ''
+  }
+}
+expectNotAssignable<JwtHeader>(signerOptionsNoAlg.header)
