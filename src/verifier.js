@@ -15,17 +15,15 @@ function exactStringClaimMatcher(allowed, actual) {
 }
 
 function checkAreCompatibleAlgorithms(expected, actual) {
-  const expectedType = expected[0].slice(0, 2)
-  const actualType = actual[0].slice(0, 2)
+  let valid = false
 
-  let valid = true // We accept everything for HS
+  for (const expectedAlg of expected) {
+    valid = actual.indexOf(expectedAlg) !== -1
 
-  if (expectedType === 'RS' || expectedType === 'PS') {
-    // RS and PS use same keys
-    valid = actualType === 'RS'
-  } else if (expectedType === 'ES' || expectedType === 'Ed') {
-    // ES and Ed only can have a single value
-    valid = expectedType === actualType
+    // if at least one of the expected algorithms is compatible we're done
+    if (valid) {
+      break
+    }
   }
 
   if (!valid) {
