@@ -22,7 +22,7 @@ function checkAreCompatibleAlgorithms(expected, actual) {
 
     // if at least one of the expected algorithms is compatible we're done
     if (valid) {
-      break;
+      break
     }
   }
 
