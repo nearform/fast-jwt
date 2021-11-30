@@ -287,7 +287,7 @@ test('it handles decoding errors', async t => {
   })
 })
 
-test('it validates if the token is using an allowed algorithm - sync ', t => {
+test('it validates if the token is not using an allowed algorithm - sync ', t => {
   t.throws(
     () => {
       return verify(
@@ -301,7 +301,51 @@ test('it validates if the token is using an allowed algorithm - sync ', t => {
   t.end()
 })
 
-test('it validates if the public is consistent with the allowed algorithms - sync ', t => {
+test('it validates if the token is using one of the allowed algorithm - sync ', t => {
+  t.strictSame(
+    verify('eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxfQ.57TF7smP9XDhIexBqPC-F1toZReYZLWb_YRU5tv0sxM', {
+      noTimestamp: true
+    }),
+    { a: 1 }
+  )
+
+  t.strictSame(
+    verify('eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxfQ.57TF7smP9XDhIexBqPC-F1toZReYZLWb_YRU5tv0sxM', {
+      noTimestamp: true,
+      algorithms: ['HS256']
+    }),
+    { a: 1 }
+  )
+
+  t.strictSame(
+    verify('eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxfQ.57TF7smP9XDhIexBqPC-F1toZReYZLWb_YRU5tv0sxM', {
+      noTimestamp: true,
+      algorithms: ['RS256', 'HS256']
+    }),
+    { a: 1 }
+  )
+
+  t.strictSame(
+    verify('eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxfQ.57TF7smP9XDhIexBqPC-F1toZReYZLWb_YRU5tv0sxM', {
+      noTimestamp: true,
+      algorithms: ['RS256', 'HS256'],
+      key: 'secret'
+    }),
+    { a: 1 }
+  )
+
+  t.strictSame(
+    verify('eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxfQ.57TF7smP9XDhIexBqPC-F1toZReYZLWb_YRU5tv0sxM', {
+      noTimestamp: true,
+      algorithms: ['RS256', 'RS384', 'RS512', 'HS256', 'HS384', 'HS512', 'ES256', 'ES384', 'ES512', 'PS256', 'PS384', 'PS512', 'EdDSA']
+    }),
+    { a: 1 }
+  )
+
+  t.end()
+})
+
+test('it validates if the public key is consistent with the allowed algorithms - sync ', t => {
   t.throws(
     () => {
       return verify(
