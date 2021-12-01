@@ -6,6 +6,7 @@ const {
   createVerify,
   createSign,
   timingSafeEqual,
+  createPublicKey,
   constants: {
     RSA_PKCS1_PSS_PADDING,
     RSA_PSS_SALTLEN_DIGEST,
@@ -26,6 +27,7 @@ const encoderMap = { '=': '', '+': '-', '/': '_' }
 
 const privateKeyPemMatcher = /^-----BEGIN(?: (RSA|EC|ENCRYPTED))? PRIVATE KEY-----/
 const publicKeyPemMatcher = '-----BEGIN PUBLIC KEY-----'
+const publicKeyX509CertMatcher = '-----BEGIN CERTIFICATE-----'
 const privateKeysCache = new Cache(1000)
 const publicKeysCache = new Cache(1000)
 
@@ -101,7 +103,7 @@ function cacheSet(cache, key, value, error) {
 }
 
 function performDetectPrivateKeyAlgorithm(key) {
-  if (key.includes(publicKeyPemMatcher)) {
+  if (key.includes(publicKeyPemMatcher) || key.includes(publicKeyX509CertMatcher)) {
     throw new TokenError(TokenError.codes.invalidKey, 'Public keys are not supported for signing.')
   }
 
@@ -155,12 +157,16 @@ function performDetectPrivateKeyAlgorithm(key) {
 function performDetectPublicKeyAlgorithms(key) {
   if (key.match(privateKeyPemMatcher)) {
     throw new TokenError(TokenError.codes.invalidKey, 'Private keys are not supported for verifying.')
-  } else if (!key.includes(publicKeyPemMatcher)) {
+  } else if (!key.includes(publicKeyPemMatcher) && !key.includes(publicKeyX509CertMatcher)) {
     // Not a PEM, assume a plain secret
     return hsAlgorithms
   }
 
-  // We only support a single format for public keys. Legacy "BEGIN RSA PUBLIC KEY" are not supported
+  // if the key is a X509 cert we need to convert it
+  if (key.includes(publicKeyX509CertMatcher)) {
+    key = createPublicKey(key).export({ type: 'spki', format: 'pem' })
+  }
+
   const keyData = PublicKey.decode(key, 'pem', { label: 'PUBLIC KEY' })
   const oid = keyData.algorithm.algorithm.join('.')
   let curveId

@@ -16,6 +16,7 @@ const privateKeys = {
   PPES384: readFileSync(resolve(__dirname, '../benchmarks/keys/ppes-384-private.key')),
   PPES512: readFileSync(resolve(__dirname, '../benchmarks/keys/ppes-512-private.key')),
   RS: readFileSync(resolve(__dirname, '../benchmarks/keys/rs-512-private.key')),
+  RSX509: readFileSync(resolve(__dirname, '../benchmarks/keys/rs-x509-private.key')),
   PPRS: readFileSync(resolve(__dirname, '../benchmarks/keys/pprs-512-private.key')),
   PS: readFileSync(resolve(__dirname, '../benchmarks/keys/ps-512-private.key')),
   Ed25519: readFileSync(resolve(__dirname, '../benchmarks/keys/ed-25519-private.key')),
@@ -31,6 +32,7 @@ const publicKeys = {
   PPES384: readFileSync(resolve(__dirname, '../benchmarks/keys/ppes-384-public.key')),
   PPES512: readFileSync(resolve(__dirname, '../benchmarks/keys/ppes-512-public.key')),
   RS: readFileSync(resolve(__dirname, '../benchmarks/keys/rs-512-public.key')),
+  RSX509: readFileSync(resolve(__dirname, '../benchmarks/keys/rs-x509-public.key')),
   PPRS: readFileSync(resolve(__dirname, '../benchmarks/keys/pprs-512-public.key')),
   PS: readFileSync(resolve(__dirname, '../benchmarks/keys/ps-512-public.key')),
   Ed25519: readFileSync(resolve(__dirname, '../benchmarks/keys/ed-25519-public.key')),
@@ -102,6 +104,24 @@ test('it correctly returns a token - callback - key as promise', t => {
     t.equal(token, 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxfQ.57TF7smP9XDhIexBqPC-F1toZReYZLWb_YRU5tv0sxM')
     t.end()
   })
+})
+
+test('it correctly returns a token - key as an RSA X509 key', async t => {
+  const payload = { a: 1 }
+  if (useNewCrypto) {
+    const signedToken = sign(payload, { key: privateKeys.RSX509, noTimestamp: true })
+    const decoder = createDecoder()
+    const result = decoder(signedToken)
+
+    t.equal(payload.a, result.a)
+  } else {
+    t.throws(() => sign(payload, { key: privateKeys.RSX509 }), {
+      message: 'Cannot create the signature.',
+      originalError: {
+        message: 'The "key" argument must be one of type string, Buffer, TypedArray, or DataView. Received type object'
+      }
+    })
+  }
 })
 
 test('it correctly returns a token - key as an RSA passphrase protected key', async t => {
