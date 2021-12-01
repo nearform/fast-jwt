@@ -16,6 +16,7 @@ const privateKeys = {
   ES384: readFileSync(resolve(__dirname, '../benchmarks/keys/es-384-private.key')),
   ES512: readFileSync(resolve(__dirname, '../benchmarks/keys/es-512-private.key')),
   RS: readFileSync(resolve(__dirname, '../benchmarks/keys/rs-512-private.key')),
+  RSX509: readFileSync(resolve(__dirname, '../benchmarks/keys/rs-x509-private.key')),
   PPRS: readFileSync(resolve(__dirname, '../benchmarks/keys/pprs-512-private.key')),
   PS: readFileSync(resolve(__dirname, '../benchmarks/keys/ps-512-private.key')),
   Ed25519: readFileSync(resolve(__dirname, '../benchmarks/keys/ed-25519-private.key')),
@@ -28,6 +29,7 @@ const publicKeys = {
   ES384: readFileSync(resolve(__dirname, '../benchmarks/keys/es-384-public.key')),
   ES512: readFileSync(resolve(__dirname, '../benchmarks/keys/es-512-public.key')),
   RS: readFileSync(resolve(__dirname, '../benchmarks/keys/rs-512-public.key')),
+  RSX509: readFileSync(resolve(__dirname, '../benchmarks/keys/rs-x509-public.key')),
   PPRS: readFileSync(resolve(__dirname, '../benchmarks/keys/pprs-512-public.key')),
   PS: readFileSync(resolve(__dirname, '../benchmarks/keys/ps-512-public.key')),
   Ed25519: readFileSync(resolve(__dirname, '../benchmarks/keys/ed-25519-public.key')),
@@ -339,6 +341,20 @@ test('it validates if the token is using one of the allowed algorithm - sync ', 
       noTimestamp: true,
       algorithms: ['RS256', 'RS384', 'RS512', 'HS256', 'HS384', 'HS512', 'ES256', 'ES384', 'ES512', 'PS256', 'PS384', 'PS512', 'EdDSA']
     }),
+    { a: 1 }
+  )
+
+  t.end()
+})
+
+test('it validates if the token can be verified with X509 public key certificate ', t => {
+  t.strictSame(
+    verify('eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxfQ.daq6gJpUPB2daOBWB3SdhMZsXiFfeCflJ36uztKVAzQu0apv-RRewfCFL2-M8iAu1ndAc-a57pG4TkRZjYw4UXD28hFZYjc4fBteoXyFWySkuqlFVCOph8gKkiFszLutE5sAJEoiGD_wnPw38pYj3d0sqsnDUezzNvEDK5Oa2_PYTnsQJi0JGupy2oE1RX7CuVVLBRnI8HOruMagn25FLShjjiiGw90yKq5AYk_Jlv8XFt4rypZj_O1JaGHVp3MTzrJ-Ku95BPDuhH4awBy8MSpPBtCoRPAUuP6jTetpCsRhmWlqf0OrmEMF81ZXlmS4LcbborwSTZ8cZvgc4OwIVU2I19fYLwDRqgL3GQy5GS8WGPTNbvwouvyTFr-omZtSeHUbguLTib5WYZlI1Sq9IPIG5dUDAlfWflPgOInZaE2n4kgGj2iKmUKWiGfuABSdsPgw2a1vTwQ5HZsljV0gHaz7WeCGJ8MZOMa7nvb3pDWfPjTBdcTZWvpzQWagRqVxCMK0gvSOaFLuvk89NFS-jr3eFkLVSAu07YWpPc80_QDcCMCqWU9JcW-FSUV3XHB5U6Yl8zDO6QKT4V-nWxLt8q1He3xHf27-7UoczzDC0-H-uIRjx-dPV_1B-b5axibEcQeNTEjOQv6KTrUOXVwyimLGUkoNUl9bKWyCfZ0QF8Q',
+      {
+        noTimestamp: true,
+        key: publicKeys.RSX509
+      }
+    ),
     { a: 1 }
   )
 
