@@ -4,6 +4,8 @@ on: [push, pull_request]
 jobs:
   build:
     uses: pkgjs/action/.github/workflows/node-test.yaml@main
+    with:
+      post-install-steps: 'npm run lint'
 
   automerge:
     needs: build
