@@ -2,10 +2,8 @@
 name: CI
 on: [push, pull_request]
 jobs:
-  build:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: pkgjs/action/.github/workflows/node-test.yaml@main
+  test:
+    - uses: pkgjs/action/.github/workflows/node-test.yaml@main
 
   automerge:
     needs: build
