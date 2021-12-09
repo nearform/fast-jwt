@@ -5,7 +5,8 @@ jobs:
   build:
     uses: pkgjs/action/.github/workflows/node-test.yaml@main
     with:
-      post-install-steps: 'npm run lint'
+      strategy-fail-fast: true
+      test-command: npm run ci
 
   automerge:
     needs: build
