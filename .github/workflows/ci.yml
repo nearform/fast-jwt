@@ -4,25 +4,8 @@ on: [push, pull_request]
 jobs:
   build:
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        node-version: [12, 14, 16, 17]
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v2.4.0
-      - name: Use Node.js
-        uses: actions/setup-node@v2.5.0
-        with:
-          node-version: ${{ matrix.node-version }}
-      - name: Restore cached dependencies
-        uses: actions/cache@v2.1.7
-        with:
-          path: node_modules
-          key: node-modules-${{ hashFiles('package.json') }}
-      - name: Install dependencies
-        run: npm install
-      - name: Run Tests
-        run: npm run ci
+    test:
+      uses: pkgjs/action/.github/workflows/node-test.yaml@main
 
   automerge:
     needs: build
