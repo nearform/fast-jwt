@@ -4,8 +4,8 @@ on: [push, pull_request]
 jobs:
   build:
     runs-on: ubuntu-latest
-    test:
-      uses: pkgjs/action/.github/workflows/node-test.yaml@main
+    steps:
+      - uses: pkgjs/action/.github/workflows/node-test.yaml@main
 
   automerge:
     needs: build
