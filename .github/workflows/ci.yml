@@ -3,7 +3,7 @@ name: CI
 on: [push, pull_request]
 jobs:
   test:
-    - uses: pkgjs/action/.github/workflows/node-test.yaml@main
+    uses: pkgjs/action/.github/workflows/node-test.yaml@main
 
   automerge:
     needs: build
