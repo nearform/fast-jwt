@@ -5,9 +5,12 @@ import { expectAssignable, expectNotAssignable } from 'tsd'
 
 // Signing
 // Buffer key, both async/callback styles
-const signer = createSigner({ key: Buffer.from('KEY'), algorithm: 'RS256' })
-signer({ key: '1' }).then(console.log, console.log)
-signer({ key: '1' }, (_e: Error | null, _token?: string) => {})
+const signerSync = createSigner({ key: Buffer.from('KEY'), algorithm: 'RS256' })
+signerSync({ key: '1' })
+
+const signerAsync = createSigner({ key: () => Buffer.from('KEY'), algorithm: 'RS256' })
+signerAsync({ key: '1' }).then(console.log, console.log)
+signerAsync({ key: '1' }, (_e: Error | null, _token?: string) => {})
 
 // Dynamic key in callback style
 createSigner({
@@ -32,9 +35,12 @@ decoder(Buffer.from('FOO'))
 
 // Verifying
 // String key, both async/callback styles
-const verifier = createVerifier({ key: 'KEY', algorithms: ['RS256'] })
-verifier('123').then(console.log, console.log)
-verifier(Buffer.from('456'), (_e: Error | null, _token?: string) => {})
+const verifierSync = createVerifier({ key: 'KEY', algorithms: ['RS256'] })
+verifierSync('2134')
+
+const verifierAsync = createVerifier({ key: () => 'KEY', algorithms: ['RS256'] })
+verifierAsync('123').then(console.log, console.log)
+verifierAsync(Buffer.from('456'), (_e: Error | null, _token?: string) => {})
 
 // Dynamic key in callback style
 createVerifier({
