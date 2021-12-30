@@ -47,11 +47,13 @@ type KeyFetcher =
   | ((header: { [key: string]: any }) => Promise<string | Buffer>)
   | ((header: { [key: string]: any }, cb: (err: Error | TokenError | null, key: string | Buffer) => void) => void)
 
-declare function Signer(payload: string | Buffer | { [key: string]: any }): Promise<string>
-declare function Signer(payload: string | Buffer | { [key: string]: any }, cb: SignerCallback): void
+declare function SignerSync(payload: string | Buffer | { [key: string]: any }): string
+declare function SignerAsync(payload: string | Buffer | { [key: string]: any }): Promise<string>
+declare function SignerAsync(payload: string | Buffer | { [key: string]: any }, cb: SignerCallback): void
 
-declare function Verifier(token: string | Buffer): Promise<any>
-declare function Verifier(token: string | Buffer, cb: object): void
+declare function VerifierSync(token: string | Buffer): any
+declare function VerifierAsync(token: string | Buffer): Promise<any>
+declare function VerifierAsync(token: string | Buffer, cb: object): void
 
 export interface JwtHeader {
   alg: string | Algorithm
@@ -67,7 +69,6 @@ export interface JwtHeader {
 }
 
 export interface SignerOptions {
-  key: string | Buffer | KeyFetcher
   algorithm: Algorithm
   mutatePayload: boolean
   expiresIn: number
@@ -89,7 +90,6 @@ export interface DecoderOptions {
 }
 
 export interface VerifierOptions {
-  key: string | Buffer | KeyFetcher
   algorithms: Algorithm[]
   complete: boolean
   cache: boolean | number
@@ -106,6 +106,8 @@ export interface VerifierOptions {
   clockTolerance: number
 }
 
-export function createSigner(options?: Partial<SignerOptions>): typeof Signer
+export function createSigner(options?: Partial<SignerOptions & { key: string | Buffer }>): typeof SignerSync
+export function createSigner(options?: Partial<SignerOptions & { key: KeyFetcher }>): typeof SignerAsync
 export function createDecoder(options?: Partial<DecoderOptions>): (token: string | Buffer) => any
-export function createVerifier(options?: Partial<VerifierOptions>): typeof Verifier
+export function createVerifier(options?: Partial<VerifierOptions & { key: string | Buffer }>): typeof VerifierSync
+export function createVerifier(options?: Partial<VerifierOptions & { key: KeyFetcher }>): typeof VerifierAsync
