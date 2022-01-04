@@ -1,0 +1,8 @@
+{
+  "$schema": "https://typedoc.org/schema.json",
+  "entryPoints": ["../src/index.d.ts"],
+  "tsconfig": "../tsconfig.json",
+  "readme": "none",
+  "disableSources": true,
+  "sort": ["source-order"]
+}

@@ -1,3 +1,10 @@
+/**
+ * This is the doc comment for file1.ts
+ *
+ * Specify this is a module comment and rename it to my-module:
+ * @module
+ */
+
 import 'node'
 
 export type Algorithm =
@@ -47,6 +54,9 @@ type KeyFetcher =
   | ((header: { [key: string]: any }) => Promise<string | Buffer>)
   | ((header: { [key: string]: any }, cb: (err: Error | TokenError | null, key: string | Buffer) => void) => void)
 
+/**
+ *  @internal
+ */
 declare function SignerSync(payload: string | Buffer | { [key: string]: any }): string
 declare function SignerAsync(payload: string | Buffer | { [key: string]: any }): Promise<string>
 declare function SignerAsync(payload: string | Buffer | { [key: string]: any }, cb: SignerCallback): void
@@ -106,8 +116,37 @@ export interface VerifierOptions {
   clockTolerance: number
 }
 
+/**
+ * Creates a sync version of a signer
+ * @category Primary API
+ * @param options The signer options
+ */
 export function createSigner(options?: Partial<SignerOptions & { key: string | Buffer }>): typeof SignerSync
+
+/**
+ * Creates an async version of a signer
+ * @category Primary API
+ * @param options The signer options
+ */
 export function createSigner(options?: Partial<SignerOptions & { key: KeyFetcher }>): typeof SignerAsync
+
+/**
+ * Creates a decoder
+ * @category Primary API
+ * @param options The decoder options
+ */
 export function createDecoder(options?: Partial<DecoderOptions>): (token: string | Buffer) => any
+
+/**
+ * Creates a synchronous verifier
+ * @category Primary API
+ * @param options The verifier options
+ */
 export function createVerifier(options?: Partial<VerifierOptions & { key: string | Buffer }>): typeof VerifierSync
+
+/**
+ * Creates an asynchronous verifier
+ * @category Primary API
+ * @param options The verifier options
+ */
 export function createVerifier(options?: Partial<VerifierOptions & { key: KeyFetcher }>): typeof VerifierAsync
