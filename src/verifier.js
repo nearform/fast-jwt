@@ -167,7 +167,7 @@ function validateClaimDateValue(value, modifier, now, greater, errorCode, errorV
 function verifyToken(
   key,
   { input, header, payload, signature },
-  { validators, allowedAlgorithms, checkTyp, clockTimestamp, clockTolerance }
+  { validators, allowedAlgorithms, checkTyp, clockTimestamp, clockTolerance, requiredClaims }
 ) {
   // Verify the key
   /* istanbul ignore next */
@@ -197,8 +197,12 @@ function verifyToken(
     const arrayValue = Array.isArray(value)
     const values = arrayValue ? value : [value]
 
-    // Skip validation if claim is missing
+    // Check if the claim is marked as required before skipping it
     if (!(claim in payload)) {
+      if (requiredClaims && requiredClaims.includes(claim)) {
+        throw new TokenError(TokenError.codes.missingRequiredClaim, `The ${claim} claim is required.`)
+      }
+
       continue
     }
 
@@ -228,7 +232,8 @@ function verify(
     isAsync,
     validators,
     decode,
-    cache
+    cache,
+    requiredClaims
   },
   token,
   cb
@@ -277,7 +282,7 @@ function verify(
 
   const { header, payload, signature } = decoded
   cacheContext.payload = payload
-  const validationContext = { validators, allowedAlgorithms, checkTyp, clockTimestamp, clockTolerance }
+  const validationContext = { validators, allowedAlgorithms, checkTyp, clockTimestamp, clockTolerance, requiredClaims }
 
   // We have the key
   if (!callback) {
@@ -352,7 +357,8 @@ module.exports = function createVerifier(options) {
     allowedAud,
     allowedIss,
     allowedSub,
-    allowedNonce
+    allowedNonce,
+    requiredClaims
   } = { cacheTTL: 600000, ...options }
 
   // Validate options
@@ -393,6 +399,10 @@ module.exports = function createVerifier(options) {
 
   if (cacheTTL && (typeof cacheTTL !== 'number' || cacheTTL < 0)) {
     throw new TokenError(TokenError.codes.invalidOption, 'The cacheTTL option must be a positive number.')
+  }
+
+  if (requiredClaims && !Array.isArray(requiredClaims)) {
+    throw new TokenError(TokenError.codes.invalidOption, 'The requiredClaims option must be an array.')
   }
 
   // Add validators
@@ -449,7 +459,8 @@ module.exports = function createVerifier(options) {
     isAsync: keyType === 'function',
     validators,
     decode: createDecoder({ complete: true }),
-    cache: createCache(cacheSize)
+    cache: createCache(cacheSize),
+    requiredClaims
   }
 
   // Return the verifier
