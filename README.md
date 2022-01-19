@@ -157,6 +157,8 @@ Create a verifier function by calling `createVerifier` and providing one or more
 
 - `allowedNonce`: A string, a regular expression, an array of strings or an array of regular expressions containing allowed values for the nonce claim (`nonce`). By default, all values are accepted.
 
+- `requiredClaims`: An array of strings containing which claims should exist in the token. By default, no claim is marked as required.
+
 - `ignoreExpiration`: Do not validate the expiration of the token. Default is `false`.
 
 - `ignoreNotBefore`: Do not validate the activation of the token. Default is `false`.
