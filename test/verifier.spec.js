@@ -873,6 +873,46 @@ test('it validates allowed claims values using equality when appropriate', t => 
   t.end()
 })
 
+test('it validates whether a required claim is present in the payload or not', t => {
+  // Token payload: { "iss": "ISS"}
+  const token = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJJU1MifQ.FKjJd2A-T8ufN7Y0LpjMR23P7CwEQ3Y-LBIYd2Vh_Rs'
+
+  t.strictSame(
+    verify(
+      token,
+      { allowedIss: 'ISS', requiredClaims: ['iss'] }
+    ),
+    { iss: 'ISS' }
+  )
+
+  t.throws(
+    () => {
+      return verify(
+        token,
+        { allowedSub: 'SUB', requiredClaims: ['sub'] }
+      )
+    },
+    { message: 'The sub claim is required.' }
+  )
+
+  t.end()
+})
+
+test('it skips validation when an allowed claim isn\'t present in the payload', t => {
+  // Token payload: { "iss": "ISS"}
+  const token = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJJU1MifQ.FKjJd2A-T8ufN7Y0LpjMR23P7CwEQ3Y-LBIYd2Vh_Rs'
+
+  t.strictSame(
+    verify(
+      token,
+      { allowedIss: 'ISS', allowedAud: 'AUD' }
+    ),
+    { iss: 'ISS' }
+  )
+
+  t.end()
+})
+
 test('token type validation', t => {
   t.throws(() => createVerifier({ key: 'secret' })(123), {
     message: 'The token must be a string or a buffer.'
@@ -920,6 +960,14 @@ test('options validation - cacheTTL', t => {
 
   t.throws(() => createVerifier({ key: 'secret', cacheTTL: -1 }), {
     message: 'The cacheTTL option must be a positive number.'
+  })
+
+  t.end()
+})
+
+test('options validation - requiredClaims', t => {
+  t.throws(() => createVerifier({ key: 'secret', requiredClaims: 'ISS' }), {
+    message: 'The requiredClaims option must be an array.'
   })
 
   t.end()
