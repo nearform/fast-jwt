@@ -23,6 +23,14 @@ jobs:
         run: npm install
       - name: Run Tests
         run: npm run ci
+      - name: Run sign benchmark
+        run: npm run benchmark:sign
+      - name: Run decode benchmark
+        run: npm run benchmark:decode
+      - name: Run verify benchmark
+        run: npm run benchmark:verify
+      - name: Run auth0 benchmark
+        run: npm run benchmark:auth0
 
   automerge:
     needs: build
