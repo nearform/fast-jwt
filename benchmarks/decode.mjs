@@ -1,6 +1,9 @@
 'use strict'
 
-const { compareDecoding, saveLogs } = require('./utils')
+import {
+  compareDecoding,
+  saveLogs
+} from './utils.mjs'
 
 // Regenerate this token after regenerating the keys by running `npm run generate-tokens` and getting the RS512 token
 const rsToken =

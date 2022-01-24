@@ -46,10 +46,10 @@
     "test:watch": "tap --watch --reporter=spec --coverage-report=html --coverage-report=text --no-browser test/*.spec.js test/**/*.spec.js",
     "test:generate-keys": "node benchmarks/keys/generate-keys.js",
     "test:generate-tokens": "node benchmarks/keys/generate-tokens.js",
-    "benchmark:sign": "node benchmarks/sign.js",
-    "benchmark:decode": "node benchmarks/decode.js",
-    "benchmark:verify": "node benchmarks/verify.js",
-    "benchmark:auth0": "node benchmarks/auth0.js"
+    "benchmark:sign": "node benchmarks/sign.mjs",
+    "benchmark:decode": "node benchmarks/decode.mjs",
+    "benchmark:verify": "node benchmarks/verify.mjs",
+    "benchmark:auth0": "node benchmarks/auth0.mjs"
   },
   "dependencies": {
     "asn1.js": "^5.3.0",
