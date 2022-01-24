@@ -3,6 +3,8 @@ name: CI
 on: [push, pull_request]
 jobs:
   build:
+    env:
+      BENCHMARK_ITERATIONS: 100
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -23,6 +25,13 @@ jobs:
         run: npm install
       - name: Run Tests
         run: npm run ci
+      - name: Run benchmarks
+        if: ${{ matrix.node-version > 12 }}
+        run: |
+          npm run benchmark:sign
+          npm run benchmark:decode
+          npm run benchmark:verify
+          npm run benchmark:auth0
 
   automerge:
     needs: build
