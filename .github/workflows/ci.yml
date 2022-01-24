@@ -25,18 +25,13 @@ jobs:
         run: npm install
       - name: Run Tests
         run: npm run ci
-      - name: Run sign benchmark
+      - name: Run benchmarks
         if: ${{matrix.node-version > 12}}
-        run: npm run benchmark:sign
-      - name: Run decode benchmark
-        if: ${{matrix.node-version > 12}}
-        run: npm run benchmark:decode
-      - name: Run verify benchmark
-        if: ${{matrix.node-version > 12}}
-        run: npm run benchmark:verify
-      - name: Run auth0 benchmark
-        if: ${{matrix.node-version > 12}}
-        run: npm run benchmark:auth0
+        run: |
+          npm run benchmark:sign
+          npm run benchmark:decode
+          npm run benchmark:verify
+          npm run benchmark:auth0
 
   automerge:
     needs: build
