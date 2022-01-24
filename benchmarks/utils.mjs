@@ -30,9 +30,11 @@ const {
 const { sign: joseSign, verify: joseVerify, decode: joseDecode } = JWTJose
 const { asKey } = JWKJose
 
+const iterations = process.env.BENCHMARK_ITERATIONS || 10000
+
 const output = []
 const cronometroOptions = {
-  iterations: 10000,
+  iterations: Number.parseInt(iterations, 10),
   warmup: true,
   print: { compare: true, compareMode: 'base' }
 }

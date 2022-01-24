@@ -3,6 +3,8 @@ name: CI
 on: [push, pull_request]
 jobs:
   build:
+    env:
+      BENCHMARK_ITERATIONS: 100
     runs-on: ubuntu-latest
     strategy:
       matrix:
