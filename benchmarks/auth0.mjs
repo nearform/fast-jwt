@@ -1,7 +1,15 @@
 'use strict'
 
-const { isMainThread } = require('worker_threads')
-const { tokens, privateKeys, publicKeys, compareSigning, compareVerifying, saveLogs } = require('./utils')
+import { isMainThread } from 'worker_threads'
+
+import {
+  tokens,
+  privateKeys,
+  publicKeys,
+  compareSigning,
+  compareVerifying,
+  saveLogs
+} from './utils.mjs'
 
 async function runSuites() {
   if (!isMainThread) {
