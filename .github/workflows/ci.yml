@@ -24,12 +24,16 @@ jobs:
       - name: Run Tests
         run: npm run ci
       - name: Run sign benchmark
+        if: ${{matrix.node-version > 12}}
         run: npm run benchmark:sign
       - name: Run decode benchmark
+        if: ${{matrix.node-version > 12}}
         run: npm run benchmark:decode
       - name: Run verify benchmark
+        if: ${{matrix.node-version > 12}}
         run: npm run benchmark:verify
       - name: Run auth0 benchmark
+        if: ${{matrix.node-version > 12}}
         run: npm run benchmark:auth0
 
   automerge:
