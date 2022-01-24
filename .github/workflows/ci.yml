@@ -26,7 +26,7 @@ jobs:
       - name: Run Tests
         run: npm run ci
       - name: Run benchmarks
-        if: ${{matrix.node-version > 12}}
+        if: ${{ matrix.node-version > 12 }}
         run: |
           npm run benchmark:sign
           npm run benchmark:decode
