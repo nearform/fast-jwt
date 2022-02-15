@@ -82,13 +82,13 @@ function cacheSet(
 
   // Add time range of the token
   if (hasIat) {
-    cacheValue[1] = !ignoreNotBefore && typeof payload.nbf === 'number' ? payload.nbf * 1000 : 0
+    cacheValue[1] = !ignoreNotBefore && typeof payload.nbf === 'number' ? (payload.nbf * 1000 - clockTolerance) : 0
 
     if (!ignoreExpiration) {
       if (typeof payload.exp === 'number') {
-        cacheValue[2] = payload.exp * 1000
+        cacheValue[2] = payload.exp * 1000 + clockTolerance
       } else if (maxAge) {
-        cacheValue[2] = payload.iat * 1000 + maxAge
+        cacheValue[2] = payload.iat * 1000 + maxAge + clockTolerance
       }
     }
   }
@@ -255,7 +255,7 @@ function verify(
   // Check the cache
   if (cache) {
     const [value, min, max] = cache.get(hashToken(token)) || [undefined, 0, 0]
-    const now = (clockTimestamp || Date.now()) + clockTolerance
+    const now = clockTimestamp || Date.now()
 
     // Validate time range
     if (typeof value !== 'undefined' && (min === 0 || now > min) && (max === 0 || now <= max)) {
