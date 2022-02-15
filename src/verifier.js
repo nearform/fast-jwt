@@ -189,7 +189,7 @@ function verifyToken(
   }
 
   // Verify the payload
-  const now = (clockTimestamp || Date.now()) + clockTolerance
+  const now = clockTimestamp || Date.now()
 
   for (const validator of validators) {
     const { type, claim, allowed, array, modifier, greater, errorCode, errorVerb } = validator
@@ -393,7 +393,7 @@ module.exports = function createVerifier(options) {
 
   if (clockTolerance && (typeof clockTolerance !== 'number' || clockTolerance < 0)) {
     throw new TokenError(TokenError.codes.invalidOption, 'The clockTolerance option must be a positive number.')
-  } else {
+  } else if (!clockTolerance) {
     clockTolerance = 0
   }
 
@@ -409,11 +409,11 @@ module.exports = function createVerifier(options) {
   const validators = []
 
   if (!ignoreNotBefore) {
-    validators.push({ type: 'date', claim: 'nbf', errorCode: 'inactive', errorVerb: 'will be active', greater: true })
+    validators.push({ type: 'date', claim: 'nbf', errorCode: 'inactive', errorVerb: 'will be active', greater: true, modifier: -clockTolerance })
   }
 
   if (!ignoreExpiration) {
-    validators.push({ type: 'date', claim: 'exp', errorCode: 'expired', errorVerb: 'has expired' })
+    validators.push({ type: 'date', claim: 'exp', errorCode: 'expired', errorVerb: 'has expired', modifier: +clockTolerance })
   }
 
   if (typeof maxAge === 'number') {
