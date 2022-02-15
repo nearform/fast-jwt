@@ -167,7 +167,7 @@ Create a verifier function by calling `createVerifier` and providing one or more
 
 - `clockTimestamp`: The timestamp in milliseconds (like the output of `Date.now()`) that should be used as the current time for all necessary time comparisons. Default is the system time.
 
-- `clockTolerance`: Timespan in milliseconds to add the current timestamp when performing time comparisons. Default is `0`.
+- `clockTolerance`: Timespan in milliseconds is the tolerance to apply to the current timestamp when performing time comparisons. Default is `0`.
 
 The verifier is a function which accepts a token (as Buffer or string) and returns the payload or the sections of the token.
 
