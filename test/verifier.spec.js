@@ -399,6 +399,27 @@ test('it validates if the token is active unless explicitily disabled', t => {
   t.end()
 })
 
+test('it validates if the token is active including the clock tolerance', t => {
+  const clockTimestamp = Date.now()
+  const notBefore = 1000
+  const token = createSigner({ key: 'secret', clockTimestamp, notBefore })({ a: 1 })
+
+  t.strictSame(
+    verify(
+      token,
+      {
+        clockTolerance: 5000
+      }
+    ),
+    {
+      a: 1,
+      iat: Math.floor(clockTimestamp / 1000),
+      nbf: Math.floor((clockTimestamp + notBefore) / 1000)
+    }
+  )
+  t.end()
+})
+
 test('it validates if the token has not expired (via exp) unless explicitily disabled', t => {
   t.throws(
     () => {
@@ -439,6 +460,27 @@ test('it validates if the token has not expired (via maxAge) only if explicitily
     { a: 1, iat: 100 }
   )
 
+  t.end()
+})
+
+test('it validates if the token has not expired including the clock tolerance', t => {
+  const clockTimestamp = Date.now() - 5000
+  const expiresIn = 1000
+  const token = createSigner({ key: 'secret', clockTimestamp, expiresIn })({ a: 1 })
+
+  t.strictSame(
+    verify(
+      token,
+      {
+        clockTolerance: 5000
+      }
+    ),
+    {
+      a: 1,
+      iat: Math.floor(clockTimestamp / 1000),
+      exp: Math.floor((clockTimestamp + expiresIn) / 1000)
+    }
+  )
   t.end()
 })
 
