@@ -1172,7 +1172,7 @@ test('caching - should correctly expire cached token using the maxAge claim', t 
   t.end()
 })
 
-test('caching - should correctly expire not yet cached token using the nbf claim', t => {
+test('caching - should correctly expire not yet cached token using the nbf claim at exact notBefore time', t => {
   const clock = fakeTime({ now: 100000 })
 
   const signer = createSigner({ key: 'secret', notBefore: 200000 })
@@ -1195,6 +1195,34 @@ test('caching - should correctly expire not yet cached token using the nbf claim
   t.strictSame(verifier(token), { a: 1, iat: 100, nbf: 300 })
   t.equal(verifier.cache.size, 1)
   t.strictSame(verifier.cache.get(hashToken(token)), [{ a: 1, iat: 100, nbf: 300 }, 300000, 900000])
+
+  clock.uninstall()
+  t.end()
+})
+
+test('caching - should correctly expire not yet cached token using the nbf claim while checking after expiry period', t => {
+  const clock = fakeTime({ now: 100000 })
+
+  const signer = createSigner({ key: 'secret', notBefore: 200000 })
+  const verifier = createVerifier({ key: 'secret', cache: true })
+  const token = signer({ a: 1 })
+
+  // First of all, make a token and verify it's cached and rejected
+  t.equal(verifier.cache.size, 0)
+  t.throws(() => verifier(token), { message: 'The token will be active at 1970-01-01T00:05:00.000Z.' })
+  t.equal(verifier.cache.size, 1)
+  t.throws(() => verifier(token), { message: 'The token will be active at 1970-01-01T00:05:00.000Z.' })
+  t.ok(verifier.cache.get(hashToken(token))[0] instanceof TokenError)
+
+  // Now advance after expired time
+  clock.tick(200010)
+
+  // The token should now be active and the cache should have been updated to reflect it
+  t.strictSame(verifier(token), { a: 1, iat: 100, nbf: 300 })
+  t.equal(verifier.cache.size, 1)
+  t.strictSame(verifier(token), { a: 1, iat: 100, nbf: 300 })
+  t.equal(verifier.cache.size, 1)
+  t.strictSame(verifier.cache.get(hashToken(token)), [{ a: 1, iat: 100, nbf: 300 }, 300000, 900010])
 
   clock.uninstall()
   t.end()
