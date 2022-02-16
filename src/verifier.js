@@ -82,13 +82,13 @@ function cacheSet(
 
   // Add time range of the token
   if (hasIat) {
-    cacheValue[1] = !ignoreNotBefore && typeof payload.nbf === 'number' ? payload.nbf * 1000 : 0
+    cacheValue[1] = !ignoreNotBefore && typeof payload.nbf === 'number' ? (payload.nbf * 1000 - clockTolerance) : 0
 
     if (!ignoreExpiration) {
       if (typeof payload.exp === 'number') {
-        cacheValue[2] = payload.exp * 1000
+        cacheValue[2] = payload.exp * 1000 + clockTolerance
       } else if (maxAge) {
-        cacheValue[2] = payload.iat * 1000 + maxAge
+        cacheValue[2] = payload.iat * 1000 + maxAge + clockTolerance
       }
     }
   }
@@ -189,7 +189,7 @@ function verifyToken(
   }
 
   // Verify the payload
-  const now = (clockTimestamp || Date.now()) + clockTolerance
+  const now = clockTimestamp || Date.now()
 
   for (const validator of validators) {
     const { type, claim, allowed, array, modifier, greater, errorCode, errorVerb } = validator
@@ -255,7 +255,7 @@ function verify(
   // Check the cache
   if (cache) {
     const [value, min, max] = cache.get(hashToken(token)) || [undefined, 0, 0]
-    const now = (clockTimestamp || Date.now()) + clockTolerance
+    const now = clockTimestamp || Date.now()
 
     // Validate time range
     if (typeof value !== 'undefined' && (min === 0 || now > min) && (max === 0 || now <= max)) {
@@ -359,7 +359,7 @@ module.exports = function createVerifier(options) {
     allowedSub,
     allowedNonce,
     requiredClaims
-  } = { cacheTTL: 600000, ...options }
+  } = { cacheTTL: 600000, clockTolerance: 0, ...options }
 
   // Validate options
   if (!Array.isArray(allowedAlgorithms)) {
@@ -393,8 +393,6 @@ module.exports = function createVerifier(options) {
 
   if (clockTolerance && (typeof clockTolerance !== 'number' || clockTolerance < 0)) {
     throw new TokenError(TokenError.codes.invalidOption, 'The clockTolerance option must be a positive number.')
-  } else {
-    clockTolerance = 0
   }
 
   if (cacheTTL && (typeof cacheTTL !== 'number' || cacheTTL < 0)) {
@@ -409,11 +407,11 @@ module.exports = function createVerifier(options) {
   const validators = []
 
   if (!ignoreNotBefore) {
-    validators.push({ type: 'date', claim: 'nbf', errorCode: 'inactive', errorVerb: 'will be active', greater: true })
+    validators.push({ type: 'date', claim: 'nbf', errorCode: 'inactive', errorVerb: 'will be active', greater: true, modifier: -clockTolerance })
   }
 
   if (!ignoreExpiration) {
-    validators.push({ type: 'date', claim: 'exp', errorCode: 'expired', errorVerb: 'has expired' })
+    validators.push({ type: 'date', claim: 'exp', errorCode: 'expired', errorVerb: 'has expired', modifier: +clockTolerance })
   }
 
   if (typeof maxAge === 'number') {
