@@ -359,7 +359,7 @@ module.exports = function createVerifier(options) {
     allowedSub,
     allowedNonce,
     requiredClaims
-  } = { cacheTTL: 600000, ...options }
+  } = { cacheTTL: 600000, clockTolerance: 0, ...options }
 
   // Validate options
   if (!Array.isArray(allowedAlgorithms)) {
@@ -393,8 +393,6 @@ module.exports = function createVerifier(options) {
 
   if (clockTolerance && (typeof clockTolerance !== 'number' || clockTolerance < 0)) {
     throw new TokenError(TokenError.codes.invalidOption, 'The clockTolerance option must be a positive number.')
-  } else if (!clockTolerance) {
-    clockTolerance = 0
   }
 
   if (cacheTTL && (typeof cacheTTL !== 'number' || cacheTTL < 0)) {
