@@ -1314,7 +1314,7 @@ test('caching - should be able to consider clockTolerance on both nbf and exp fi
   t.equal(verifier.cache.size, 1)
   t.strictSame(verifier.cache.get(hashToken(token)), [{ a: 1, iat: 100, nbf: 300, exp: 500 }, 240000, 560000])
 
-  // Now advance again after the expiry time, in clockTolerance range (current time going to be 450000 )
+  // Now advance again after the expiry time, in clockTolerance range (current time going to be 540000 )
   clock.tick(150000)
   t.strictSame(verifier(token), { a: 1, iat: 100, nbf: 300, exp: 500 })
   t.equal(verifier.cache.size, 1)
