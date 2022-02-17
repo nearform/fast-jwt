@@ -38,10 +38,11 @@
     "src"
   ],
   "scripts": {
-    "prepublishOnly": "npm run lint && npm test",
+    "prepublishOnly": "npm run test:ci",
     "postpublish": "git push origin && git push origin -f --tags",
     "lint": "eslint src/**/*.js test/**/*.js src/**/*.ts test/**/*.ts",
     "test": "tap --reporter=spec --coverage-report=html --coverage-report=text --100 --no-browser test/*.spec.js test/**/*.spec.js && tsd",
+    "test:ci": "npm run lint && tap --no-color --reporter=spec --coverage-report=json --coverage-report=text --100 test/*.spec.js test/**/*.spec.js && tsd",
     "test:watch": "tap --watch --reporter=spec --coverage-report=html --coverage-report=text --no-browser test/*.spec.js test/**/*.spec.js",
     "test:generate-keys": "node benchmarks/keys/generate-keys.js",
     "test:generate-tokens": "node benchmarks/keys/generate-tokens.js",
