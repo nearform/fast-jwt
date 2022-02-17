@@ -23,8 +23,10 @@ jobs:
           key: node-modules-${{ hashFiles('package.json') }}
       - name: Install dependencies
         run: npm install
+      - name: Run linter
+        run: npm run lint
       - name: Run Tests
-        run: npm run ci
+        run: npm test
       - name: Run benchmarks
         if: ${{ matrix.node-version > 12 }}
         run: |

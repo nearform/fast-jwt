@@ -38,9 +38,8 @@
     "src"
   ],
   "scripts": {
-    "prepublishOnly": "npm run ci",
+    "prepublishOnly": "npm run lint && npm test",
     "postpublish": "git push origin && git push origin -f --tags",
-    "ci": "npm run lint && tap --no-color --reporter=spec --coverage-report=json --coverage-report=text --100 test/*.spec.js test/**/*.spec.js && tsd",
     "lint": "eslint src/**/*.js test/**/*.js src/**/*.ts test/**/*.ts",
     "test": "tap --reporter=spec --coverage-report=html --coverage-report=text --100 --no-browser test/*.spec.js test/**/*.spec.js && tsd",
     "test:watch": "tap --watch --reporter=spec --coverage-report=html --coverage-report=text --no-browser test/*.spec.js test/**/*.spec.js",
