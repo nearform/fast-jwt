@@ -24,7 +24,7 @@ jobs:
       - name: Install dependencies
         run: npm install
       - name: Run Tests
-        run: npm test:ci
+        run: npm run test:ci
       - name: Run benchmarks
         if: ${{ matrix.node-version > 12 }}
         run: |
