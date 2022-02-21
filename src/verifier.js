@@ -258,7 +258,9 @@ function verify(
     const now = clockTimestamp || Date.now()
 
     // Validate time range
-    if (typeof value !== 'undefined' && (min === 0 || now > min) && (max === 0 || now <= max)) {
+    if (typeof value !== 'undefined' &&
+      (min === 0 || (now < min && value.code === 'FAST_JWT_INACTIVE') || (now >= min && value.code !== 'FAST_JWT_INACTIVE')) &&
+      (max === 0 || now <= max)) {
       // Cache hit
       return handleCachedResult(value, callback, promise)
     }
