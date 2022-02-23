@@ -30,7 +30,8 @@ TokenError.codes = {
   missingKey: 'FAST_JWT_MISSING_KEY',
   keyFetchingError: 'FAST_JWT_KEY_FETCHING_ERROR',
   signError: 'FAST_JWT_SIGN_ERROR',
-  verifyError: 'FAST_JWT_VERIFY_ERROR'
+  verifyError: 'FAST_JWT_VERIFY_ERROR',
+  missingRequiredClaim: 'FAST_JWT_MISSING_REQUIRED_CLAIM'
 }
 
 TokenError.wrap = function(originalError, code, message) {

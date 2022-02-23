@@ -82,13 +82,13 @@ function cacheSet(
 
   // Add time range of the token
   if (hasIat) {
-    cacheValue[1] = !ignoreNotBefore && typeof payload.nbf === 'number' ? payload.nbf * 1000 : 0
+    cacheValue[1] = !ignoreNotBefore && typeof payload.nbf === 'number' ? (payload.nbf * 1000 - clockTolerance) : 0
 
     if (!ignoreExpiration) {
       if (typeof payload.exp === 'number') {
-        cacheValue[2] = payload.exp * 1000
+        cacheValue[2] = payload.exp * 1000 + clockTolerance
       } else if (maxAge) {
-        cacheValue[2] = payload.iat * 1000 + maxAge
+        cacheValue[2] = payload.iat * 1000 + maxAge + clockTolerance
       }
     }
   }
@@ -167,7 +167,7 @@ function validateClaimDateValue(value, modifier, now, greater, errorCode, errorV
 function verifyToken(
   key,
   { input, header, payload, signature },
-  { validators, allowedAlgorithms, checkTyp, clockTimestamp, clockTolerance }
+  { validators, allowedAlgorithms, checkTyp, clockTimestamp, clockTolerance, requiredClaims }
 ) {
   // Verify the key
   /* istanbul ignore next */
@@ -189,7 +189,7 @@ function verifyToken(
   }
 
   // Verify the payload
-  const now = (clockTimestamp || Date.now()) + clockTolerance
+  const now = clockTimestamp || Date.now()
 
   for (const validator of validators) {
     const { type, claim, allowed, array, modifier, greater, errorCode, errorVerb } = validator
@@ -197,8 +197,12 @@ function verifyToken(
     const arrayValue = Array.isArray(value)
     const values = arrayValue ? value : [value]
 
-    // Skip validation if claim is missing
+    // Check if the claim is marked as required before skipping it
     if (!(claim in payload)) {
+      if (requiredClaims && requiredClaims.includes(claim)) {
+        throw new TokenError(TokenError.codes.missingRequiredClaim, `The ${claim} claim is required.`)
+      }
+
       continue
     }
 
@@ -228,7 +232,8 @@ function verify(
     isAsync,
     validators,
     decode,
-    cache
+    cache,
+    requiredClaims
   },
   token,
   cb
@@ -250,10 +255,12 @@ function verify(
   // Check the cache
   if (cache) {
     const [value, min, max] = cache.get(hashToken(token)) || [undefined, 0, 0]
-    const now = (clockTimestamp || Date.now()) + clockTolerance
+    const now = clockTimestamp || Date.now()
 
     // Validate time range
-    if (typeof value !== 'undefined' && (min === 0 || now > min) && (max === 0 || now <= max)) {
+    if (typeof value !== 'undefined' &&
+      (min === 0 || (now < min && value.code === 'FAST_JWT_INACTIVE') || (now >= min && value.code !== 'FAST_JWT_INACTIVE')) &&
+      (max === 0 || now <= max)) {
       // Cache hit
       return handleCachedResult(value, callback, promise)
     }
@@ -277,7 +284,7 @@ function verify(
 
   const { header, payload, signature } = decoded
   cacheContext.payload = payload
-  const validationContext = { validators, allowedAlgorithms, checkTyp, clockTimestamp, clockTolerance }
+  const validationContext = { validators, allowedAlgorithms, checkTyp, clockTimestamp, clockTolerance, requiredClaims }
 
   // We have the key
   if (!callback) {
@@ -352,8 +359,9 @@ module.exports = function createVerifier(options) {
     allowedAud,
     allowedIss,
     allowedSub,
-    allowedNonce
-  } = { cacheTTL: 600000, ...options }
+    allowedNonce,
+    requiredClaims
+  } = { cacheTTL: 600000, clockTolerance: 0, ...options }
 
   // Validate options
   if (!Array.isArray(allowedAlgorithms)) {
@@ -387,23 +395,25 @@ module.exports = function createVerifier(options) {
 
   if (clockTolerance && (typeof clockTolerance !== 'number' || clockTolerance < 0)) {
     throw new TokenError(TokenError.codes.invalidOption, 'The clockTolerance option must be a positive number.')
-  } else {
-    clockTolerance = 0
   }
 
   if (cacheTTL && (typeof cacheTTL !== 'number' || cacheTTL < 0)) {
     throw new TokenError(TokenError.codes.invalidOption, 'The cacheTTL option must be a positive number.')
   }
 
+  if (requiredClaims && !Array.isArray(requiredClaims)) {
+    throw new TokenError(TokenError.codes.invalidOption, 'The requiredClaims option must be an array.')
+  }
+
   // Add validators
   const validators = []
 
   if (!ignoreNotBefore) {
-    validators.push({ type: 'date', claim: 'nbf', errorCode: 'inactive', errorVerb: 'will be active', greater: true })
+    validators.push({ type: 'date', claim: 'nbf', errorCode: 'inactive', errorVerb: 'will be active', greater: true, modifier: -clockTolerance })
   }
 
   if (!ignoreExpiration) {
-    validators.push({ type: 'date', claim: 'exp', errorCode: 'expired', errorVerb: 'has expired' })
+    validators.push({ type: 'date', claim: 'exp', errorCode: 'expired', errorVerb: 'has expired', modifier: +clockTolerance })
   }
 
   if (typeof maxAge === 'number') {
@@ -449,7 +459,8 @@ module.exports = function createVerifier(options) {
     isAsync: keyType === 'function',
     validators,
     decode: createDecoder({ complete: true }),
-    cache: createCache(cacheSize)
+    cache: createCache(cacheSize),
+    requiredClaims
   }
 
   // Return the verifier

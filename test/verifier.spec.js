@@ -399,6 +399,27 @@ test('it validates if the token is active unless explicitily disabled', t => {
   t.end()
 })
 
+test('it validates if the token is active including the clock tolerance', t => {
+  const clockTimestamp = Date.now()
+  const notBefore = 1000
+  const token = createSigner({ key: 'secret', clockTimestamp, notBefore })({ a: 1 })
+
+  t.strictSame(
+    verify(
+      token,
+      {
+        clockTolerance: 5000
+      }
+    ),
+    {
+      a: 1,
+      iat: Math.floor(clockTimestamp / 1000),
+      nbf: Math.floor((clockTimestamp + notBefore) / 1000)
+    }
+  )
+  t.end()
+})
+
 test('it validates if the token has not expired (via exp) unless explicitily disabled', t => {
   t.throws(
     () => {
@@ -439,6 +460,27 @@ test('it validates if the token has not expired (via maxAge) only if explicitily
     { a: 1, iat: 100 }
   )
 
+  t.end()
+})
+
+test('it validates if the token has not expired including the clock tolerance', t => {
+  const clockTimestamp = Date.now() - 5000
+  const expiresIn = 1000
+  const token = createSigner({ key: 'secret', clockTimestamp, expiresIn })({ a: 1 })
+
+  t.strictSame(
+    verify(
+      token,
+      {
+        clockTolerance: 5000
+      }
+    ),
+    {
+      a: 1,
+      iat: Math.floor(clockTimestamp / 1000),
+      exp: Math.floor((clockTimestamp + expiresIn) / 1000)
+    }
+  )
   t.end()
 })
 
@@ -873,6 +915,46 @@ test('it validates allowed claims values using equality when appropriate', t => 
   t.end()
 })
 
+test('it validates whether a required claim is present in the payload or not', t => {
+  // Token payload: { "iss": "ISS"}
+  const token = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJJU1MifQ.FKjJd2A-T8ufN7Y0LpjMR23P7CwEQ3Y-LBIYd2Vh_Rs'
+
+  t.strictSame(
+    verify(
+      token,
+      { allowedIss: 'ISS', requiredClaims: ['iss'] }
+    ),
+    { iss: 'ISS' }
+  )
+
+  t.throws(
+    () => {
+      return verify(
+        token,
+        { allowedSub: 'SUB', requiredClaims: ['sub'] }
+      )
+    },
+    { message: 'The sub claim is required.' }
+  )
+
+  t.end()
+})
+
+test('it skips validation when an allowed claim isn\'t present in the payload', t => {
+  // Token payload: { "iss": "ISS"}
+  const token = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJJU1MifQ.FKjJd2A-T8ufN7Y0LpjMR23P7CwEQ3Y-LBIYd2Vh_Rs'
+
+  t.strictSame(
+    verify(
+      token,
+      { allowedIss: 'ISS', allowedAud: 'AUD' }
+    ),
+    { iss: 'ISS' }
+  )
+
+  t.end()
+})
+
 test('token type validation', t => {
   t.throws(() => createVerifier({ key: 'secret' })(123), {
     message: 'The token must be a string or a buffer.'
@@ -920,6 +1002,14 @@ test('options validation - cacheTTL', t => {
 
   t.throws(() => createVerifier({ key: 'secret', cacheTTL: -1 }), {
     message: 'The cacheTTL option must be a positive number.'
+  })
+
+  t.end()
+})
+
+test('options validation - requiredClaims', t => {
+  t.throws(() => createVerifier({ key: 'secret', requiredClaims: 'ISS' }), {
+    message: 'The requiredClaims option must be an array.'
   })
 
   t.end()
@@ -1124,7 +1214,7 @@ test('caching - should correctly expire cached token using the maxAge claim', t 
   t.end()
 })
 
-test('caching - should correctly expire not yet cached token using the nbf claim', t => {
+test('caching - should correctly expire not yet cached token using the nbf claim at exact notBefore time', t => {
   const clock = fakeTime({ now: 100000 })
 
   const signer = createSigner({ key: 'secret', notBefore: 200000 })
@@ -1147,6 +1237,34 @@ test('caching - should correctly expire not yet cached token using the nbf claim
   t.strictSame(verifier(token), { a: 1, iat: 100, nbf: 300 })
   t.equal(verifier.cache.size, 1)
   t.strictSame(verifier.cache.get(hashToken(token)), [{ a: 1, iat: 100, nbf: 300 }, 300000, 900000])
+
+  clock.uninstall()
+  t.end()
+})
+
+test('caching - should correctly expire not yet cached token using the nbf claim while checking after expiry period', t => {
+  const clock = fakeTime({ now: 100000 })
+
+  const signer = createSigner({ key: 'secret', notBefore: 200000 })
+  const verifier = createVerifier({ key: 'secret', cache: true })
+  const token = signer({ a: 1 })
+
+  // First of all, make a token and verify it's cached and rejected
+  t.equal(verifier.cache.size, 0)
+  t.throws(() => verifier(token), { message: 'The token will be active at 1970-01-01T00:05:00.000Z.' })
+  t.equal(verifier.cache.size, 1)
+  t.throws(() => verifier(token), { message: 'The token will be active at 1970-01-01T00:05:00.000Z.' })
+  t.ok(verifier.cache.get(hashToken(token))[0] instanceof TokenError)
+
+  // Now advance after expired time
+  clock.tick(200010)
+
+  // The token should now be active and the cache should have been updated to reflect it
+  t.strictSame(verifier(token), { a: 1, iat: 100, nbf: 300 })
+  t.equal(verifier.cache.size, 1)
+  t.strictSame(verifier(token), { a: 1, iat: 100, nbf: 300 })
+  t.equal(verifier.cache.size, 1)
+  t.strictSame(verifier.cache.get(hashToken(token)), [{ a: 1, iat: 100, nbf: 300 }, 300000, 900010])
 
   clock.uninstall()
   t.end()
@@ -1185,6 +1303,60 @@ test('caching - should be able to consider both nbf and exp field at the same ti
   t.ok(verifier.cache.get(hashToken(token))[0] instanceof TokenError)
   t.throws(() => verifier(token), { message: 'The token has expired at 1970-01-01T00:08:20.000Z.' })
   t.throws(() => verifier(token), { message: 'The token has expired at 1970-01-01T00:08:20.000Z.' })
+
+  clock.uninstall()
+  t.end()
+})
+
+test('caching - should be able to consider clockTolerance on both nbf and exp field', t => {
+  const clock = fakeTime({ now: 100000 })
+
+  const signer = createSigner({ key: 'secret', expiresIn: 400000, notBefore: 200000 })
+  const verifier = createVerifier({ key: 'secret', cache: true, clockTolerance: 60000 })
+  const token = signer({ a: 1 })
+
+  // At the beginning, the token is not active yet
+  t.equal(verifier.cache.size, 0)
+  t.throws(() => verifier(token), { message: 'The token will be active at 1970-01-01T00:04:00.000Z.' })
+  t.equal(verifier.cache.size, 1)
+  t.throws(() => verifier(token), { message: 'The token will be active at 1970-01-01T00:04:00.000Z.' })
+  t.ok(verifier.cache.get(hashToken(token))[0] instanceof TokenError)
+
+  // Now advance before the activation time, in clockTolerance range
+  clock.tick(140000)
+
+  // The token should now be active and the cache should have been updated to reflect it
+  t.strictSame(verifier(token), { a: 1, iat: 100, nbf: 300, exp: 500 })
+  t.equal(verifier.cache.size, 1)
+  t.strictSame(verifier(token), { a: 1, iat: 100, nbf: 300, exp: 500 })
+  t.equal(verifier.cache.size, 1)
+  t.strictSame(verifier.cache.get(hashToken(token)), [{ a: 1, iat: 100, nbf: 300, exp: 500 }, 240000, 560000])
+
+  // Now advance to activation time
+  clock.tick(150000)
+
+  // The token should now be active and the cache should have been updated to reflect it
+  t.strictSame(verifier(token), { a: 1, iat: 100, nbf: 300, exp: 500 })
+  t.equal(verifier.cache.size, 1)
+  t.strictSame(verifier(token), { a: 1, iat: 100, nbf: 300, exp: 500 })
+  t.equal(verifier.cache.size, 1)
+  t.strictSame(verifier.cache.get(hashToken(token)), [{ a: 1, iat: 100, nbf: 300, exp: 500 }, 240000, 560000])
+
+  // Now advance again after the expiry time, in clockTolerance range (current time going to be 540000 )
+  clock.tick(150000)
+  t.strictSame(verifier(token), { a: 1, iat: 100, nbf: 300, exp: 500 })
+  t.equal(verifier.cache.size, 1)
+  t.strictSame(verifier(token), { a: 1, iat: 100, nbf: 300, exp: 500 })
+  t.equal(verifier.cache.size, 1)
+  t.strictSame(verifier.cache.get(hashToken(token)), [{ a: 1, iat: 100, nbf: 300, exp: 500 }, 240000, 560000])
+
+  clock.tick(100000)
+  // The token should now be expired and the cache should have been updated to reflect it
+  t.throws(() => verifier(token), { message: 'The token has expired at 1970-01-01T00:09:20.000Z.' })
+  t.equal(verifier.cache.size, 1)
+  t.ok(verifier.cache.get(hashToken(token))[0] instanceof TokenError)
+  t.throws(() => verifier(token), { message: 'The token has expired at 1970-01-01T00:09:20.000Z.' })
+  t.throws(() => verifier(token), { message: 'The token has expired at 1970-01-01T00:09:20.000Z.' })
 
   clock.uninstall()
   t.end()

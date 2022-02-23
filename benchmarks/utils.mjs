@@ -1,26 +1,45 @@
 'use strict'
 
-const cronometro = require('cronometro')
-const { readFileSync } = require('fs')
-const { mkdir, writeFile } = require('fs').promises
-const { resolve } = require('path')
+import cronometro from 'cronometro'
+import { readFileSync } from 'fs'
+import { mkdir, writeFile } from 'fs/promises'
+import { resolve, dirname } from 'path'
+import { fileURLToPath } from 'url'
 
-const { sign: jsonwebtokenSign, decode: jsonwebtokenDecode, verify: jsonwebtokenVerify } = require('jsonwebtoken')
+import jwt from 'jsonwebtoken'
+
+import {
+  JWT as JWTJose,
+  JWK as JWKJose
+} from 'jose'
+
+import {
+  createSigner,
+  createDecoder,
+  createVerifier
+} from '../src/index.js'
+
+const __dirname = dirname(fileURLToPath(import.meta.url))
+
 const {
-  JWT: { sign: joseSign, verify: joseVerify, decode: joseDecode },
-  JWK: { asKey }
-} = require('jose')
+  sign: jsonwebtokenSign,
+  decode: jsonwebtokenDecode,
+  verify: jsonwebtokenVerify
+} = jwt
 
-const { createSigner, createDecoder, createVerifier } = require('../src')
+const { sign: joseSign, verify: joseVerify, decode: joseDecode } = JWTJose
+const { asKey } = JWKJose
+
+const iterations = process.env.BENCHMARK_ITERATIONS || 10000
 
 const output = []
 const cronometroOptions = {
-  iterations: 10000,
+  iterations: Number.parseInt(iterations, 10),
   warmup: true,
   print: { compare: true, compareMode: 'base' }
 }
 
-const tokens = {
+export const tokens = {
   /*
     Regenerate these tokens after regenerating the keys
     by running `npm run test:generate-tokens` and getting the HS256, RS256, HS512, ES512, RS512, PS512 and EdDSA tokens
@@ -41,7 +60,7 @@ const tokens = {
     'eyJhbGciOiJFZERTQSIsInR5cCI6IkpXVCIsImt0eSI6Ik9LUCIsImNydiI6IkVkMjU1MTkiLCJraWQiOiIxMjMifQ.eyJhIjoxLCJiIjoyLCJjIjozLCJpYXQiOjE1ODY3ODQ3ODF9.PDIxWOWhAHr-7Zy7UC8W4pRuk7dMYTD8xy0DR0N102P0pXK6U4r6THHe66muTdSM3qiDHZnync1WQp-10QFLCQ'
 }
 
-const privateKeys = {
+export const privateKeys = {
   HS256: 'secretsecretsecret',
   RS256: readFileSync(resolve(__dirname, './keys/rs-512-private.key')),
   HS512: 'secretsecretsecret',
@@ -51,7 +70,7 @@ const privateKeys = {
   EdDSA: readFileSync(resolve(__dirname, './keys/ed-25519-private.key'))
 }
 
-const publicKeys = {
+export const publicKeys = {
   HS256: 'secretsecretsecret',
   RS256: readFileSync(resolve(__dirname, './keys/rs-512-public.key')),
   HS512: 'secretsecretsecret',
@@ -61,7 +80,7 @@ const publicKeys = {
   EdDSA: readFileSync(resolve(__dirname, './keys/ed-25519-public.key'))
 }
 
-async function saveLogs(type) {
+export async function saveLogs(type) {
   const now = new Date()
     .toISOString()
     .replace(/[-:]/g, '')
@@ -84,7 +103,7 @@ function log(message) {
   output.push(message)
 }
 
-function compareDecoding(token, algorithm) {
+export function compareDecoding(token, algorithm) {
   const fastjwtDecoder = createDecoder()
   const fastjwtCompleteDecoder = createDecoder({ complete: true })
 
@@ -122,7 +141,7 @@ function compareDecoding(token, algorithm) {
   )
 }
 
-async function compareSigning(payload, algorithm, privateKey, publicKey) {
+export async function compareSigning(payload, algorithm, privateKey, publicKey) {
   const isEdDSA = algorithm.slice(0, 2) === 'Ed'
 
   const fastjwtSign = createSigner({ algorithm, key: privateKey, noTimestamp: true })
@@ -190,7 +209,7 @@ async function compareSigning(payload, algorithm, privateKey, publicKey) {
   return cronometro(tests, cronometroOptions)
 }
 
-function compareVerifying(token, algorithm, publicKey) {
+export function compareVerifying(token, algorithm, publicKey) {
   const isEdDSA = algorithm.slice(0, 2) === 'Ed'
 
   const fastjwtVerify = createVerifier({ key: publicKey })
@@ -241,14 +260,4 @@ function compareVerifying(token, algorithm, publicKey) {
   }
 
   return cronometro(tests, cronometroOptions)
-}
-
-module.exports = {
-  tokens,
-  privateKeys,
-  publicKeys,
-  compareDecoding,
-  compareSigning,
-  compareVerifying,
-  saveLogs
 }
