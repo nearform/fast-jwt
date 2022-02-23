@@ -3,7 +3,7 @@ name: CI
 on: [push, pull_request]
 jobs:
   build:
-    uses: pkgjs/action/.github/workflows/node-test.yaml@main
+    uses: pkgjs/action/.github/workflows/node-test.yaml@v0.1.1
     with:
       strategy-fail-fast: true
       test-command: npm run ci
