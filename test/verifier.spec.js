@@ -502,7 +502,7 @@ test('it validates the jti claim only if explicitily enabled', t => {
         { allowedJti: 'JTI1' }
       )
     },
-    { message: 'The jti claim value is not allowed.' }
+    { message: 'The jti claim value is not allowed: "JTI"' }
   )
 
   t.throws(
@@ -512,7 +512,7 @@ test('it validates the jti claim only if explicitily enabled', t => {
         { allowedJti: [/abc/, 'cde'] }
       )
     },
-    { message: 'The jti claim value is not allowed.' }
+    { message: 'The jti claim value is not allowed: "JTI"' }
   )
 
   t.strictSame(
@@ -591,7 +591,7 @@ test('it validates the aud claim only if explicitily enabled', t => {
         { allowedAud: 'AUD2' }
       )
     },
-    { message: 'None of aud claim values are allowed.' }
+    { message: 'None of aud claim values are allowed: ["AUD1","DUA2"]' }
   )
 
   t.throws(
@@ -601,7 +601,7 @@ test('it validates the aud claim only if explicitily enabled', t => {
         { allowedAud: [/abc/, 'cde'] }
       )
     },
-    { message: 'None of aud claim values are allowed.' }
+    { message: 'None of aud claim values are allowed: ["AUD1","DUA2"]' }
   )
 
   t.strictSame(
@@ -670,7 +670,7 @@ test('it validates the iss claim only if explicitily enabled', t => {
         { allowedIss: 'ISS1' }
       )
     },
-    { message: 'The iss claim value is not allowed.' }
+    { message: 'The iss claim value is not allowed: "ISS"' }
   )
 
   t.throws(
@@ -680,7 +680,7 @@ test('it validates the iss claim only if explicitily enabled', t => {
         { allowedIss: [/abc/, 'cde'] }
       )
     },
-    { message: 'The iss claim value is not allowed.' }
+    { message: 'The iss claim value is not allowed: "ISS"' }
   )
 
   t.strictSame(
@@ -749,7 +749,7 @@ test('it validates the sub claim only if explicitily enabled', t => {
         { allowedSub: 'SUB1' }
       )
     },
-    { message: 'The sub claim value is not allowed.' }
+    { message: 'The sub claim value is not allowed: "SUB"' }
   )
 
   t.throws(
@@ -759,7 +759,7 @@ test('it validates the sub claim only if explicitily enabled', t => {
         { allowedSub: [/abc/, 'cde'] }
       )
     },
-    { message: 'The sub claim value is not allowed.' }
+    { message: 'The sub claim value is not allowed: "SUB"' }
   )
 
   t.strictSame(
@@ -828,7 +828,7 @@ test('it validates the nonce claim only if explicitily enabled', t => {
         { allowedNonce: 'NONCE1' }
       )
     },
-    { message: 'The nonce claim value is not allowed.' }
+    { message: 'The nonce claim value is not allowed: "NONCE"' }
   )
 
   t.throws(
@@ -838,7 +838,7 @@ test('it validates the nonce claim only if explicitily enabled', t => {
         { allowedNonce: [/abc/, 'cde'] }
       )
     },
-    { message: 'The nonce claim value is not allowed.' }
+    { message: 'The nonce claim value is not allowed: "NONCE"' }
   )
 
   t.strictSame(
@@ -898,7 +898,7 @@ test('it validates allowed claims values using equality when appropriate', t => 
         { allowedIss: 'ISS' }
       )
     },
-    { message: 'The iss claim value is not allowed.' }
+    { message: 'The iss claim value is not allowed: "ISS_PREFIX"' }
   )
 
   // The iss claim in the token ends with ISS
@@ -909,7 +909,7 @@ test('it validates allowed claims values using equality when appropriate', t => 
         { allowedIss: 'ISS' }
       )
     },
-    { message: 'The iss claim value is not allowed.' }
+    { message: 'The iss claim value is not allowed: "SUFFIX_ISS"' }
   )
 
   t.end()

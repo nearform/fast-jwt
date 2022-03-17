@@ -147,8 +147,8 @@ function validateClaimType(values, claim, array, type) {
 
 function validateClaimValues(values, claim, allowed, arrayValue) {
   const failureMessage = arrayValue
-    ? `None of ${claim} claim values are allowed.`
-    : `The ${claim} claim value is not allowed.`
+    ? `None of ${claim} claim values are allowed: ${JSON.stringify(values)}`
+    : `The ${claim} claim value is not allowed: ${JSON.stringify(values[0])}`
 
   if (!values.some(v => allowed.some(a => a.test(v)))) {
     throw new TokenError(TokenError.codes.invalidClaimValue, failureMessage)
