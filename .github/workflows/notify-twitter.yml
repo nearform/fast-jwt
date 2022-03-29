@@ -1,4 +1,4 @@
-name: Notify twitter
+name: Notify Twitter
 
 on:
   workflow_dispatch:
