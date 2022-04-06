@@ -106,7 +106,14 @@ export interface VerifierOptions {
   clockTolerance: number
 }
 
-export function createSigner(options?: Partial<SignerOptions & { key: string | Buffer }>): typeof SignerSync
+export interface PrivateKey {
+  key: string | Buffer
+  passphrase: string | undefined
+}
+
+export function createSigner(
+  options?: Partial<SignerOptions & { key: string | Buffer | PrivateKey }>
+): typeof SignerSync
 export function createSigner(options?: Partial<SignerOptions & { key: KeyFetcher }>): typeof SignerAsync
 export function createDecoder(options?: Partial<DecoderOptions>): (token: string | Buffer) => any
 export function createVerifier(options?: Partial<VerifierOptions & { key: string | Buffer }>): typeof VerifierSync
