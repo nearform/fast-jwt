@@ -6,7 +6,7 @@ on:
       semver:
         description: 'The semver to use'
         required: true
-        dedefault: patch
+        default: patch
         type: choice
         options:
           - patch
