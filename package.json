@@ -59,23 +59,21 @@
   "devDependencies": {
     "@sinonjs/fake-timers": "^9.0.0",
     "@types/node": "^18.0.0",
-    "@typescript-eslint/eslint-plugin": "^4.4.0",
-    "@typescript-eslint/parser": "^4.4.0",
+    "@typescript-eslint/eslint-plugin": "^5.29.0",
+    "@typescript-eslint/parser": "^5.29.0",
     "cronometro": "^1.0.0",
     "eslint": "^8.18.0",
-    "eslint-config-standard": "^16.0.0",
-    "eslint-config-standard-with-typescript": "^21.0.1",
+    "eslint-config-standard": "^17.0.0",
     "eslint-plugin-import": "^2.22.0",
-    "eslint-plugin-node": "^11.0.0",
-    "eslint-plugin-promise": "^5.1.0",
-    "eslint-plugin-standard": "^5.0.0",
+    "eslint-plugin-n": "^15.2.3",
+    "eslint-plugin-promise": "^6.0.0",
     "fastify": "^4.0.2",
     "jose": "^2.0.2",
     "jsonwebtoken": "^8.5.1",
     "prettier": "^2.0.5",
     "tap": "^16.0.0",
     "tsd": "^0.21.0",
-    "typescript": "^4.0.3"
+    "typescript": "^4.7.4"
   },
   "engines": {
     "node": "^18 || ^17 || ^16 || ^14 || ^12"

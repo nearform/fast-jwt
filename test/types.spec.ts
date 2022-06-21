@@ -1,4 +1,7 @@
+/* eslint-disable no-unused-expressions */
 /* eslint-disable @typescript-eslint/no-unused-expressions */
+/* eslint-disable @typescript-eslint/no-unused-vars */
+/* eslint-disable @typescript-eslint/no-empty-function */
 
 import { createDecoder, createSigner, createVerifier, JwtHeader, TokenError } from '..'
 import { expectAssignable, expectNotAssignable } from 'tsd'
