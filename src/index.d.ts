@@ -105,7 +105,7 @@ export interface VerifierOptions {
   clockTimestamp: number
   clockTolerance: number
   requiredClaims: Array<string>
-  checkTyp:string
+  checkTyp: string
 }
 
 export interface PrivateKey {
