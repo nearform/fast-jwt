@@ -38,7 +38,7 @@ decoder(Buffer.from('FOO'))
 
 // Verifying
 // String key, both async/callback styles
-const verifierSync = createVerifier({ key: 'KEY', algorithms: ['RS256'] })
+const verifierSync = createVerifier({ key: 'KEY', algorithms: ['RS256'], requiredClaims: ['aud'], checkTyp: 'JWT' })
 verifierSync('2134')
 
 const verifierAsync = createVerifier({ key: () => 'KEY', algorithms: ['RS256'] })

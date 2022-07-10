@@ -104,6 +104,8 @@ export interface VerifierOptions {
   maxAge: number
   clockTimestamp: number
   clockTolerance: number
+  requiredClaims: Array<string>
+  checkTyp: string
 }
 
 export interface PrivateKey {
