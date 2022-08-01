@@ -319,7 +319,7 @@ test('it uses the clockTimestamp option, if one is set', t => {
   t.end()
 })
 
-test('it adds a exp claim, overriding the payload one, only if the payload is a object', t => {
+test('it respects payload exp claim (if supplied), overriding the default expiresIn timeout', t => {
   t.equal(
     sign({ a: 1, iat: 100 }, { expiresIn: 1000 }),
     'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxLCJpYXQiOjEwMCwiZXhwIjoxMDF9.ULKqTsvUYm7iNOKA6bP5NXsa1A8vofgPIGiC182Vf_Q'
@@ -327,7 +327,7 @@ test('it adds a exp claim, overriding the payload one, only if the payload is a 
 
   t.equal(
     sign({ a: 1, iat: 100, exp: 200 }, { expiresIn: 1000 }),
-    'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxLCJpYXQiOjEwMCwiZXhwIjoxMDF9.ULKqTsvUYm7iNOKA6bP5NXsa1A8vofgPIGiC182Vf_Q'
+    'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxLCJpYXQiOjEwMCwiZXhwIjoyMDB9.RJbB3-VIjLIQr-VmZ1Kl42MrHr2pAU-CQuXK8jHMKR0'
   )
 
   t.end()
