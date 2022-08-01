@@ -100,7 +100,7 @@ function sign(
     ...payload,
     ...fixedPayload,
     iat: noTimestamp ? undefined : Math.floor(iat / 1000),
-    exp: expiresIn ? Math.floor((iat + expiresIn) / 1000) : payload.exp || undefined,
+    exp: payload.exp ? payload.exp : expiresIn ? Math.floor((iat + expiresIn) / 1000) : undefined,
     nbf: notBefore ? Math.floor((iat + notBefore) / 1000) : undefined
   }
 
