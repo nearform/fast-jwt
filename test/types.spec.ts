@@ -8,9 +8,18 @@ import { expectAssignable, expectNotAssignable } from 'tsd'
 const signerSync = createSigner({ key: Buffer.from('KEY'), algorithm: 'RS256' })
 signerSync({ key: '1' })
 
-const signerAsync = createSigner({ key: () => Buffer.from('KEY'), algorithm: 'RS256' })
-signerAsync({ key: '1' }).then(console.log, console.log)
-signerAsync({ key: '1' }, (_e: Error | null, _token?: string) => {})
+// Inline type
+signerSync<{ key: '1' }>({ key: '1' })
+
+// With specific payload type
+const signerAsyncTyped = createSigner<{ key: '1' }>({ key: () => Buffer.from('KEY'), algorithm: 'RS256' })
+signerAsyncTyped({ key: '1' }).then(console.log, console.log)
+signerAsyncTyped({ key: '1' }, (_e: Error | null, _token?: string) => {})
+
+// Without specific payload type
+const signerAsyncAny = createSigner({ key: () => Buffer.from('KEY'), algorithm: 'RS256' })
+signerAsyncAny({ key: '1', yek: '2' }).then(console.log, console.log)
+signerAsyncAny({ key: '1', yek: '2', eyk: '3' }).then(console.log, console.log)
 
 // Dynamic key in callback style
 createSigner({
@@ -31,7 +40,13 @@ createSigner({
 // Decoding
 const decoder = createDecoder({ checkTyp: 'true' })
 decoder('FOO')
-decoder(Buffer.from('FOO'))
+
+// Specify type inline
+const { key: _key }  = decoder<Record<'key', any>>(Buffer.from('FOO'))
+
+// Specify type in createDecoder
+const decoderTyped = createDecoder<{ sub: string }>({ checkTyp: 'true' })
+const { sub: _sub } = decoderTyped('FOO')
 
 // Verifying
 // String key, both async/callback styles
@@ -40,7 +55,17 @@ verifierSync('2134')
 
 const verifierAsync = createVerifier({ key: () => 'KEY', algorithms: ['RS256'] })
 verifierAsync('123').then(console.log, console.log)
-verifierAsync(Buffer.from('456'), (_e: Error | null, _token?: string) => {})
+verifierAsync(Buffer.from('456'), (_e: Error | null, _payload: any) => {})
+
+// Specify type inline
+verifierAsync<{ key: 'a' }>('123').then(({ key }) => console.log(key))
+
+// Specify type in createVerifier
+type TestType = { foo: 'bar' }
+const verifierAsyncTyped = createVerifier<TestType>({ key: () => 'KEY' })
+verifierAsyncTyped('123').then(({ foo }) => console.log(foo))
+verifierAsyncTyped('123', (_err: Error | TokenError | null, { foo }: TestType) => console.log(foo))
+
 
 // Dynamic key in callback style
 createVerifier({

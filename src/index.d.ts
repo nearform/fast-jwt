@@ -18,6 +18,7 @@ export type Algorithm =
 
 declare class TokenError extends Error {
   static wrap(originalError: Error, code: string, message: string): TokenError
+
   static codes: {
     invalidType: 'FAST_JWT_INVALID_TYPE'
     invalidOption: 'FAST_JWT_INVALID_OPTION'
@@ -36,7 +37,8 @@ declare class TokenError extends Error {
     verifyError: 'FAST_JWT_VERIFY_ERROR'
   }
 
-  code: string;
+  code: string
+
   [key: string]: any
 }
 
@@ -47,13 +49,13 @@ type KeyFetcher =
   | ((header: { [key: string]: any }) => Promise<string | Buffer>)
   | ((header: { [key: string]: any }, cb: (err: Error | TokenError | null, key: string | Buffer) => void) => void)
 
-declare function SignerSync(payload: string | Buffer | { [key: string]: any }): string
-declare function SignerAsync(payload: string | Buffer | { [key: string]: any }): Promise<string>
-declare function SignerAsync(payload: string | Buffer | { [key: string]: any }, cb: SignerCallback): void
+type Payload = string | Buffer | { [key: string]: any }
 
-declare function VerifierSync(token: string | Buffer): any
-declare function VerifierAsync(token: string | Buffer): Promise<any>
-declare function VerifierAsync(token: string | Buffer, cb: object): void
+type SignerSync<TPayload extends Payload = Payload> = <T = TPayload>(payload: T) => string
+type SignerAsync<TPayload extends Payload = Payload> = <T = TPayload, U extends SignerCallback | undefined = undefined>(payload: T, cb?: U) => U extends undefined ? Promise<string> : void
+
+type VerifierSync<TPayload = any> = <T = TPayload>(token: string | Buffer) => T
+type VerifierAsync<TPayload = any> = <T = TPayload, U extends VerifierCallback | undefined = undefined>(token: string | Buffer, cb?: U) => U extends undefined ? Promise<T> : void
 
 export interface JwtHeader {
   alg: string | Algorithm
@@ -111,10 +113,10 @@ export interface PrivateKey {
   passphrase: string | undefined
 }
 
-export function createSigner(
-  options?: Partial<SignerOptions & { key: string | Buffer | PrivateKey }>
-): typeof SignerSync
-export function createSigner(options?: Partial<SignerOptions & { key: KeyFetcher }>): typeof SignerAsync
-export function createDecoder(options?: Partial<DecoderOptions>): (token: string | Buffer) => any
-export function createVerifier(options?: Partial<VerifierOptions & { key: string | Buffer }>): typeof VerifierSync
-export function createVerifier(options?: Partial<VerifierOptions & { key: KeyFetcher }>): typeof VerifierAsync
+export function createSigner<T extends Payload = Payload>(options?: Partial<SignerOptions & { key: string | Buffer | PrivateKey }>): SignerSync<T>
+export function createSigner<T extends Payload = Payload>(options?: Partial<SignerOptions & { key: KeyFetcher }>): SignerAsync<T>
+
+export function createDecoder<T = any>(options?: Partial<DecoderOptions>): <TData = T>(token: string | Buffer) => TData
+
+export function createVerifier<T>(options?: Partial<VerifierOptions & { key: string | Buffer }>): VerifierSync<T>
+export function createVerifier<T>(options?: Partial<VerifierOptions & { key: KeyFetcher }>): VerifierAsync<T>
