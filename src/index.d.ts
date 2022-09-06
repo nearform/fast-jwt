@@ -74,7 +74,7 @@ export interface SignerOptions {
   expiresIn: number
   notBefore: number
   jti: string
-  aud: string
+  aud: string | string[]
   iss: string
   sub: string
   nonce: string
