@@ -17,4 +17,4 @@ jobs:
       pull-requests: write
       contents: write
     steps:
-      - uses: guilhermelimak/github-action-merge-dependabot@feat/use-fetch-metadata-action
+      - uses: fastify/github-action-merge-dependabot@v3
