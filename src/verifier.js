@@ -54,8 +54,8 @@ function ensureStringClaimMatcher(raw) {
   }
 
   return raw
-    .filter(r => r)
-    .map(r => {
+    .filter((r) => r)
+    .map((r) => {
       if (r && typeof r.test === 'function') {
         return r
       }
@@ -70,7 +70,18 @@ function createCache(rawSize) {
 }
 
 function cacheSet(
-  { cache, token, cacheTTL, payload, ignoreExpiration, ignoreNotBefore, maxAge, clockTimestamp, clockTolerance },
+  {
+    cache,
+    token,
+    cacheTTL,
+    payload,
+    ignoreExpiration,
+    ignoreNotBefore,
+    maxAge,
+    clockTimestamp,
+    clockTolerance,
+    errorCacheTTL
+  },
   value
 ) {
   if (!cache) {
@@ -78,11 +89,18 @@ function cacheSet(
   }
 
   const cacheValue = [value, 0, 0]
+
+  if (value instanceof TokenError) {
+    cacheValue[2] = errorCacheTTL
+    cache.set(hashToken(token), cacheValue)
+    return value
+  }
+
   const hasIat = payload && typeof payload.iat === 'number'
 
   // Add time range of the token
   if (hasIat) {
-    cacheValue[1] = !ignoreNotBefore && typeof payload.nbf === 'number' ? (payload.nbf * 1000 - clockTolerance) : 0
+    cacheValue[1] = !ignoreNotBefore && typeof payload.nbf === 'number' ? payload.nbf * 1000 - clockTolerance : 0
 
     if (!ignoreExpiration) {
       if (typeof payload.exp === 'number') {
@@ -140,7 +158,7 @@ function validateClaimType(values, claim, array, type) {
     ? `The ${claim} claim must be a ${type} or an array of ${type}s.`
     : `The ${claim} claim must be a ${type}.`
 
-  if (values.map(v => typeof v).some(t => t !== type)) {
+  if (values.map((v) => typeof v).some((t) => t !== type)) {
     throw new TokenError(TokenError.codes.invalidClaimType, typeFailureMessage)
   }
 }
@@ -150,7 +168,7 @@ function validateClaimValues(values, claim, allowed, arrayValue) {
     ? `None of ${claim} claim values are allowed.`
     : `The ${claim} claim value is not allowed.`
 
-  if (!values.some(v => allowed.some(a => a.test(v)))) {
+  if (!values.some((v) => allowed.some((a) => a.test(v)))) {
     throw new TokenError(TokenError.codes.invalidClaimValue, failureMessage)
   }
 }
@@ -233,7 +251,8 @@ function verify(
     validators,
     decode,
     cache,
-    requiredClaims
+    requiredClaims,
+    errorCacheTTL
   },
   token,
   cb
@@ -244,6 +263,7 @@ function verify(
     cache,
     token,
     cacheTTL,
+    errorCacheTTL,
     payload: undefined,
     ignoreExpiration,
     ignoreNotBefore,
@@ -258,9 +278,13 @@ function verify(
     const now = clockTimestamp || Date.now()
 
     // Validate time range
-    if (typeof value !== 'undefined' &&
-      (min === 0 || (now < min && value.code === 'FAST_JWT_INACTIVE') || (now >= min && value.code !== 'FAST_JWT_INACTIVE')) &&
-      (max === 0 || now <= max)) {
+    if (
+      typeof value !== 'undefined' &&
+      (min === 0 ||
+        (now < min && value.code === 'FAST_JWT_INACTIVE') ||
+        (now >= min && value.code !== 'FAST_JWT_INACTIVE')) &&
+      (max === 0 || now <= max)
+    ) {
       // Cache hit
       return handleCachedResult(value, callback, promise)
     }
@@ -349,6 +373,7 @@ module.exports = function createVerifier(options) {
     complete,
     cache: cacheSize,
     cacheTTL,
+    errorCacheTTL,
     checkTyp,
     clockTimestamp,
     clockTolerance,
@@ -361,7 +386,7 @@ module.exports = function createVerifier(options) {
     allowedSub,
     allowedNonce,
     requiredClaims
-  } = { cacheTTL: 600000, clockTolerance: 0, ...options }
+  } = { cacheTTL: 600000, clockTolerance: 0, errorCacheTTL: 0, ...options }
 
   // Validate options
   if (!Array.isArray(allowedAlgorithms)) {
@@ -401,6 +426,10 @@ module.exports = function createVerifier(options) {
     throw new TokenError(TokenError.codes.invalidOption, 'The cacheTTL option must be a positive number.')
   }
 
+  if (errorCacheTTL && (typeof errorCacheTTL !== 'number' || errorCacheTTL < 0)) {
+    throw new TokenError(TokenError.codes.invalidOption, 'The errorCacheTTL option must be a positive number.')
+  }
+
   if (requiredClaims && !Array.isArray(requiredClaims)) {
     throw new TokenError(TokenError.codes.invalidOption, 'The requiredClaims option must be an array.')
   }
@@ -409,11 +438,24 @@ module.exports = function createVerifier(options) {
   const validators = []
 
   if (!ignoreNotBefore) {
-    validators.push({ type: 'date', claim: 'nbf', errorCode: 'inactive', errorVerb: 'will be active', greater: true, modifier: -clockTolerance })
+    validators.push({
+      type: 'date',
+      claim: 'nbf',
+      errorCode: 'inactive',
+      errorVerb: 'will be active',
+      greater: true,
+      modifier: -clockTolerance
+    })
   }
 
   if (!ignoreExpiration) {
-    validators.push({ type: 'date', claim: 'exp', errorCode: 'expired', errorVerb: 'has expired', modifier: +clockTolerance })
+    validators.push({
+      type: 'date',
+      claim: 'exp',
+      errorCode: 'expired',
+      errorVerb: 'has expired',
+      modifier: +clockTolerance
+    })
   }
 
   if (typeof maxAge === 'number') {
@@ -450,6 +492,7 @@ module.exports = function createVerifier(options) {
     allowedAlgorithms,
     complete,
     cacheTTL,
+    errorCacheTTL,
     checkTyp: normalizedTyp,
     clockTimestamp,
     clockTolerance,

@@ -147,6 +147,8 @@ Create a verifier function by calling `createVerifier` and providing one or more
 
 - `cacheTTL`: The maximum time to live of a cache entry (in milliseconds). If the token has a earlier expiration or the verifier has a shorter `maxAge`, the earlier takes precedence. The default is `600000`, which is 10 minutes.
 
+- `errorCacheTTL`: The maximum time to live of a cache **error** entry (in milliseconds). Example: the `key` function fails or does not return a secret or public key. The default is `0`.
+
 - `allowedJti`: A string, a regular expression, an array of strings or an array of regular expressions containing allowed values for the id claim (`jti`). By default, all values are accepted.
 
 - `allowedAud`: A string, a regular expression, an array of strings or an array of regular expressions containing allowed values for the audience claim (`aud`). By default, all values are accepted.
@@ -235,7 +237,7 @@ fast-jwt supports caching of verified tokens.
 
 The cache layer, powered by [mnemonist](https://www.npmjs.com/package/mnemonist), is a LRU cache which dimension is controlled by the user, as described in the options list.
 
-When caching is enabled, verified tokens are always stored in cache. If the verification fails once, the error is cached as well and the operation is not retried.
+When caching is enabled, verified tokens are always stored in cache. If the verification fails once, the error is cached as well for the time set by `errorCacheTTL` and the operation is not retried.
 
 For verified tokens, caching considers the time sensitive claims of the token (`iat`, `nbf` and `exp`) and make sure the verification is retried after a token becomes valid or after a token becomes expired.
 
