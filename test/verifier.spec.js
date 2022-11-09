@@ -1298,7 +1298,7 @@ test('caching - should be able to consider clockTolerance on both nbf and exp fi
   const clock = fakeTime({ now: 100000 })
 
   const signer = createSigner({ key: 'secret', expiresIn: 400000, notBefore: 200000 })
-  const verifier = createVerifier({ key: 'secret', cache: true, clockTolerance: 60000, errorCacheTTL: 100000 })
+  const verifier = createVerifier({ key: 'secret', cache: true, clockTolerance: 60000 })
   const token = signer({ a: 1 })
 
   // At the beginning, the token is not active yet
@@ -1353,8 +1353,8 @@ test('caching - should ignore the nbf and exp when asked to', (t) => {
 
   const signer = createSigner({ key: 'secret', expiresIn: 400000, notBefore: 200000 })
   const verifier = createVerifier({ key: 'secret', cache: true, errorCacheTTL: 100000 })
-  const verifierNoNbf = createVerifier({ key: 'secret', cache: true, ignoreNotBefore: true, errorCacheTTL: 100000 })
-  const verifierNoExp = createVerifier({ key: 'secret', cache: true, ignoreExpiration: true, errorCacheTTL: 100000 })
+  const verifierNoNbf = createVerifier({ key: 'secret', cache: true, ignoreNotBefore: true })
+  const verifierNoExp = createVerifier({ key: 'secret', cache: true, ignoreExpiration: true })
   const token = signer({ a: 1 })
 
   // At the beginning, the token is not active yet
@@ -1415,22 +1415,26 @@ test('options validation - errorCacheTTL', (t) => {
 })
 
 test('default errorCacheTTL should not cache errors', async (t) => {
+  const clock = fakeTime({ now: 100000 })
   const token = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxfQ.57TF7smP9XDhIexBqPC-F1toZReYZLWb_YRU5tv0sxM'
   const verifier = createVerifier({
     key: async () => {
       throw new Error('invalid')
     },
-    cache: true
+    cache: true,
+    clockTolerance: 0
   })
 
   t.equal(verifier.cache.size, 0)
   await t.rejects(async () => verifier(token))
   t.equal(verifier.cache.size, 1)
-  t.strictSame(verifier.cache.get(hashToken(token))[2], 0)
+  t.strictSame(verifier.cache.get(hashToken(token))[2], 100000)
+  clock.uninstall()
   t.end()
 })
 
 test('errors should have ttl equal to errorCacheTTL', async (t) => {
+  const clock = fakeTime({ now: 100000 })
   const errorCacheTTL = 20000
   const token = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxfQ.57TF7smP9XDhIexBqPC-F1toZReYZLWb_YRU5tv0sxM'
   const verifier = createVerifier({
@@ -1438,6 +1442,28 @@ test('errors should have ttl equal to errorCacheTTL', async (t) => {
       throw new Error('invalid')
     },
     cache: true,
+    clockTolerance: 0,
+    errorCacheTTL
+  })
+
+  t.equal(verifier.cache.size, 0)
+  await t.rejects(async () => verifier(token))
+  t.equal(verifier.cache.size, 1)
+  t.strictSame(verifier.cache.get(hashToken(token))[2], 100000 + errorCacheTTL)
+  clock.uninstall()
+  t.end()
+})
+
+test('errors should have ttl equal to errorCacheTTL', async (t) => {
+  const clock = fakeTime({ now: 0 })
+  const errorCacheTTL = 20000
+  const token = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxfQ.57TF7smP9XDhIexBqPC-F1toZReYZLWb_YRU5tv0sxM'
+  const verifier = createVerifier({
+    key: async () => {
+      throw new Error('invalid')
+    },
+    cache: true,
+    clockTolerance: 0,
     errorCacheTTL
   })
 
@@ -1445,5 +1471,17 @@ test('errors should have ttl equal to errorCacheTTL', async (t) => {
   await t.rejects(async () => verifier(token))
   t.equal(verifier.cache.size, 1)
   t.strictSame(verifier.cache.get(hashToken(token))[2], errorCacheTTL)
+
+  clock.tick(1000)
+  // cache hit and ttl not changed
+  await t.rejects(async () => verifier(token))
+  t.strictSame(verifier.cache.get(hashToken(token))[2], errorCacheTTL)
+
+  clock.tick(errorCacheTTL)
+  // cache expired, request performed, new ttl
+  await t.rejects(async () => verifier(token))
+  t.strictSame(verifier.cache.get(hashToken(token))[2], errorCacheTTL + 1000 + errorCacheTTL)
+
+  clock.uninstall()
   t.end()
 })

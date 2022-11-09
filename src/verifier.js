@@ -91,7 +91,7 @@ function cacheSet(
   const cacheValue = [value, 0, 0]
 
   if (value instanceof Error) {
-    cacheValue[2] = errorCacheTTL
+    cacheValue[2] = (clockTimestamp || Date.now()) + clockTolerance + errorCacheTTL
     cache.set(hashToken(token), cacheValue)
     return value
   }
