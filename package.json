@@ -76,7 +76,7 @@
     "typescript": "^4.7.4"
   },
   "engines": {
-    "node": "^18 || ^17 || ^16 || ^14 || ^12"
+    "node": ">=14 <20"
   },
   "tsd": {
     "directory": "test"
