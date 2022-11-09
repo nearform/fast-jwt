@@ -10,8 +10,6 @@ jobs:
     with:
       strategy-fail-fast: true
       test-command: npm run test:ci
-      include: |
-        - node-version: v19.0.0
   automerge:
     needs: build
     runs-on: ubuntu-latest
