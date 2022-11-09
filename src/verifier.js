@@ -279,6 +279,7 @@ function verify(
 
     // Validate time range
     if (
+      /* istanbul ignore next */
       typeof value !== 'undefined' &&
       (min === 0 ||
         (now < min && value.code === 'FAST_JWT_INACTIVE') ||

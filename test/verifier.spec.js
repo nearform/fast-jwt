@@ -1204,7 +1204,7 @@ test('caching - should correctly expire not yet cached token using the nbf claim
   const clock = fakeTime({ now: 100000 })
 
   const signer = createSigner({ key: 'secret', notBefore: 200000 })
-  const verifier = createVerifier({ key: 'secret', cache: true, errorCacheTTL: 100000 })
+  const verifier = createVerifier({ key: 'secret', cache: true })
   const token = signer({ a: 1 })
 
   // First of all, make a token and verify it's cached and rejected
@@ -1232,7 +1232,7 @@ test('caching - should correctly expire not yet cached token using the nbf claim
   const clock = fakeTime({ now: 100000 })
 
   const signer = createSigner({ key: 'secret', notBefore: 200000 })
-  const verifier = createVerifier({ key: 'secret', cache: true, errorCacheTTL: 100000 })
+  const verifier = createVerifier({ key: 'secret', cache: true })
   const token = signer({ a: 1 })
 
   // First of all, make a token and verify it's cached and rejected
@@ -1260,7 +1260,7 @@ test('caching - should be able to consider both nbf and exp field at the same ti
   const clock = fakeTime({ now: 100000 })
 
   const signer = createSigner({ key: 'secret', expiresIn: 400000, notBefore: 200000 })
-  const verifier = createVerifier({ key: 'secret', cache: true, errorCacheTTL: 100000 })
+  const verifier = createVerifier({ key: 'secret', cache: true })
   const token = signer({ a: 1 })
 
   // At the beginning, the token is not active yet
@@ -1352,7 +1352,7 @@ test('caching - should ignore the nbf and exp when asked to', (t) => {
   const clock = fakeTime({ now: 100000 })
 
   const signer = createSigner({ key: 'secret', expiresIn: 400000, notBefore: 200000 })
-  const verifier = createVerifier({ key: 'secret', cache: true, errorCacheTTL: 100000 })
+  const verifier = createVerifier({ key: 'secret', cache: true })
   const verifierNoNbf = createVerifier({ key: 'secret', cache: true, ignoreNotBefore: true })
   const verifierNoExp = createVerifier({ key: 'secret', cache: true, ignoreExpiration: true })
   const token = signer({ a: 1 })
@@ -1484,4 +1484,17 @@ test('errors should have ttl equal to errorCacheTTL', async (t) => {
 
   clock.uninstall()
   t.end()
+})
+
+test('external key returns undefined', async (t) => {
+  const token = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxfQ.57TF7smP9XDhIexBqPC-F1toZReYZLWb_YRU5tv0sxM'
+  const verifier = createVerifier({
+    key: async () => {
+      return undefined
+    },
+    cache: true
+  })
+
+  t.equal(verifier.cache.size, 0)
+  await t.rejects(async () => verifier(token))
 })
