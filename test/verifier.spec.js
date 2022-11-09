@@ -1414,29 +1414,36 @@ test('options validation - errorCacheTTL', (t) => {
   t.end()
 })
 
-test('default errorCacheTTL should not cache errors', (t) => {
+test('default errorCacheTTL should not cache errors', async (t) => {
+  const token = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxfQ.57TF7smP9XDhIexBqPC-F1toZReYZLWb_YRU5tv0sxM'
   const verifier = createVerifier({
-    key: () => {
-      throw new Error('failed')
+    key: async () => {
+      throw new Error('invalid')
     },
     cache: true
   })
+
   t.equal(verifier.cache.size, 0)
-  t.throws(() => verifier({ a: 1 }))
-  t.equal(verifier.cache.size, 0)
+  await t.rejects(async () => verifier(token))
+  t.equal(verifier.cache.size, 1)
+  t.strictSame(verifier.cache.get(hashToken(token))[2], 0)
   t.end()
 })
 
-test('errorCacheTTL should cache errors', (t) => {
+test('errors should have ttl equal to errorCacheTTL', async (t) => {
+  const errorCacheTTL = 20000
+  const token = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxfQ.57TF7smP9XDhIexBqPC-F1toZReYZLWb_YRU5tv0sxM'
   const verifier = createVerifier({
-    key: () => {
-      throw new Error('failed')
+    key: async () => {
+      throw new Error('invalid')
     },
     cache: true,
-    errorCacheTTL: 50000
+    errorCacheTTL
   })
+
   t.equal(verifier.cache.size, 0)
-  t.throws(() => verifier({ a: 1 }))
+  await t.rejects(async () => verifier(token))
   t.equal(verifier.cache.size, 1)
+  t.strictSame(verifier.cache.get(hashToken(token))[2], errorCacheTTL)
   t.end()
 })
