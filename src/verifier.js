@@ -90,8 +90,9 @@ function cacheSet(
 
   const cacheValue = [value, 0, 0]
 
-  if (value instanceof Error) {
-    cacheValue[2] = (clockTimestamp || Date.now()) + clockTolerance + errorCacheTTL
+  if (value instanceof TokenError) {
+    const ttl = typeof errorCacheTTL === 'function' ? errorCacheTTL(value) : errorCacheTTL
+    cacheValue[2] = (clockTimestamp || Date.now()) + clockTolerance + ttl
     cache.set(hashToken(token), cacheValue)
     return value
   }
@@ -427,8 +428,14 @@ module.exports = function createVerifier(options) {
     throw new TokenError(TokenError.codes.invalidOption, 'The cacheTTL option must be a positive number.')
   }
 
-  if (errorCacheTTL && (typeof errorCacheTTL !== 'number' || errorCacheTTL < 0)) {
-    throw new TokenError(TokenError.codes.invalidOption, 'The errorCacheTTL option must be a positive number.')
+  if (
+    (errorCacheTTL && typeof errorCacheTTL !== 'function' && typeof errorCacheTTL !== 'number') ||
+    errorCacheTTL < 0
+  ) {
+    throw new TokenError(
+      TokenError.codes.invalidOption,
+      'The errorCacheTTL option must be a positive number or a function.'
+    )
   }
 
   if (requiredClaims && !Array.isArray(requiredClaims)) {

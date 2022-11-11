@@ -94,7 +94,7 @@ export interface VerifierOptions {
   complete: boolean
   cache: boolean | number
   cacheTTL: number
-  errorCacheTTL: number
+  errorCacheTTL: number | ((tokenError: TokenError) => number)
   allowedJti: string | RegExp | Array<string | RegExp>
   allowedAud: string | RegExp | Array<string | RegExp>
   allowedIss: string | RegExp | Array<string | RegExp>

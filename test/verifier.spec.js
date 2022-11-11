@@ -1404,18 +1404,18 @@ test('caching - should ignore the nbf and exp when asked to', (t) => {
 
 test('options validation - errorCacheTTL', (t) => {
   t.throws(() => createVerifier({ key: 'secret', errorCacheTTL: '123' }), {
-    message: 'The errorCacheTTL option must be a positive number.'
+    message: 'The errorCacheTTL option must be a positive number or a function.'
   })
 
   t.throws(() => createVerifier({ key: 'secret', errorCacheTTL: -1 }), {
-    message: 'The errorCacheTTL option must be a positive number.'
+    message: 'The errorCacheTTL option must be a positive number or a function.'
   })
 
   t.end()
 })
 
 test('default errorCacheTTL should not cache errors', async (t) => {
-  const clock = fakeTime({ now: 100000 })
+  const clock = fakeTime({ now: 0 })
   const token = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxfQ.57TF7smP9XDhIexBqPC-F1toZReYZLWb_YRU5tv0sxM'
   const verifier = createVerifier({
     key: async () => {
@@ -1428,13 +1428,13 @@ test('default errorCacheTTL should not cache errors', async (t) => {
   t.equal(verifier.cache.size, 0)
   await t.rejects(async () => verifier(token))
   t.equal(verifier.cache.size, 1)
-  t.strictSame(verifier.cache.get(hashToken(token))[2], 100000)
+  t.strictSame(verifier.cache.get(hashToken(token))[2], 0)
   clock.uninstall()
   t.end()
 })
 
 test('errors should have ttl equal to errorCacheTTL', async (t) => {
-  const clock = fakeTime({ now: 100000 })
+  const clock = fakeTime({ now: 0 })
   const errorCacheTTL = 20000
   const token = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxfQ.57TF7smP9XDhIexBqPC-F1toZReYZLWb_YRU5tv0sxM'
   const verifier = createVerifier({
@@ -1449,7 +1449,7 @@ test('errors should have ttl equal to errorCacheTTL', async (t) => {
   t.equal(verifier.cache.size, 0)
   await t.rejects(async () => verifier(token))
   t.equal(verifier.cache.size, 1)
-  t.strictSame(verifier.cache.get(hashToken(token))[2], 100000 + errorCacheTTL)
+  t.strictSame(verifier.cache.get(hashToken(token))[2], errorCacheTTL)
   clock.uninstall()
   t.end()
 })
@@ -1486,15 +1486,57 @@ test('errors should have ttl equal to errorCacheTTL', async (t) => {
   t.end()
 })
 
-test('external key returns undefined', async (t) => {
+test('errors should have ttl equal to errorCacheTTL as function', async (t) => {
+  const clock = fakeTime({ now: 0 })
+
+  const fetchKeyErrorTTL = 2000
+  const errorCacheTTL = (tokenError) => {
+    if (tokenError?.code === 'FAST_JWT_KEY_FETCHING_ERROR') {
+      return fetchKeyErrorTTL
+    }
+    return 1000
+  }
+
   const token = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxfQ.57TF7smP9XDhIexBqPC-F1toZReYZLWb_YRU5tv0sxM'
   const verifier = createVerifier({
     key: async () => {
-      return undefined
+      throw new Error('error fetching key')
     },
-    cache: true
+    cache: true,
+    clockTolerance: 0,
+    errorCacheTTL
   })
 
   t.equal(verifier.cache.size, 0)
   await t.rejects(async () => verifier(token))
+  t.equal(verifier.cache.size, 1)
+  t.strictSame(verifier.cache.get(hashToken(token))[2], fetchKeyErrorTTL)
+
+  clock.uninstall()
+  t.end()
+})
+
+test('invalid errorCacheTTL function should be handle ', async (t) => {
+  const clock = fakeTime({ now: 0 })
+
+  const errorCacheTTL = () => {
+    throw new Error('invalid errorCacheTTL function')
+  }
+
+  const token = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxfQ.57TF7smP9XDhIexBqPC-F1toZReYZLWb_YRU5tv0sxM'
+  const verifier = createVerifier({
+    key: () => {
+      throw new Error('invalid')
+    },
+    cache: true,
+    clockTolerance: 0,
+    errorCacheTTL
+  })
+
+  t.equal(verifier.cache.size, 0)
+  t.throws(() => verifier(token))
+  t.equal(verifier.cache.size, 0)
+
+  clock.uninstall()
+  t.end()
 })

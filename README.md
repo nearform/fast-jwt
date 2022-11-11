@@ -56,6 +56,7 @@ The payload must be an object.
 If the `key` option is a function, the signer will also accept a Node style callback and will return a promise, supporting therefore both callback and async/await styles.
 
 If the `key` is a passphrase protected private key, the `algorithm` option must be provided and must be either a `RS*` or `ES*` encoded key and the `key` option must be an object with the following structure:
+
 ```js
 {
   key: '<YOUR_RSA_ENCRYPTED_PRIVATE_KEY>',
@@ -147,7 +148,7 @@ Create a verifier function by calling `createVerifier` and providing one or more
 
 - `cacheTTL`: The maximum time to live of a cache entry (in milliseconds). If the token has a earlier expiration or the verifier has a shorter `maxAge`, the earlier takes precedence. The default is `600000`, which is 10 minutes.
 
-- `errorCacheTTL`: The maximum time to live of a cache **error** entry (in milliseconds). Example: the `key` function fails or does not return a secret or public key. The default is `0`.
+- `errorCacheTTL`: A number or function `function (tokenError) => number` that represents the maximum time to live of a cache **error** entry (in milliseconds).Example: the `key` function fails or does not return a secret or public key. The default is `0`.
 
 - `allowedJti`: A string, a regular expression, an array of strings or an array of regular expressions containing allowed values for the id claim (`jti`). By default, all values are accepted.
 
@@ -208,6 +209,19 @@ async function test() {
   const payload = await verifyWithPromise(token)
   // => { a: 1, b: 2, c: 3, iat: 1579521212 }
 }
+
+// custom errorCacheTTL verifier
+const verifier = createVerifier({
+  key: 'secret',
+  cache: true,
+  errorCacheTTL: (tokenError) => {
+    // customize the ttl based on the error code
+    if (tokenError?.code === 'FAST_JWT_KEY_FETCHING_ERROR') {
+      return 1000
+    }
+    return 2000
+  }
+})
 ```
 
 ## Algorithms supported
