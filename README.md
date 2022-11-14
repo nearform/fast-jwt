@@ -228,7 +228,22 @@ const verifier = createVerifier({
 
 This is the lisf of currently supported algorithms:
 
-https://github.com/nearform/fast-jwt/blob/31209b3e1f5493e89a5c009e6527a4de973f3763/src/error.js#L17-L36
+| Name    | Description                                                             |
+| ------- | ----------------------------------------------------------------------- |
+| `none`  | Empty algorithm - The token signature section will be empty             |
+| `HS256` | HMAC using SHA-256 hash algorithm                                       |
+| `HS384` | HMAC using SHA-384 hash algorithm                                       |
+| `HS512` | HMAC using SHA-512 hash algorithm                                       |
+| `ES256` | ECDSA using P-256 curve and SHA-256 hash algorithm                      |
+| `ES384` | ECDSA using P-384 curve and SHA-384 hash algorithm                      |
+| `ES512` | ECDSA using P-521 curve and SHA-512 hash algorithm                      |
+| `RS256` | RSASSA-PKCS1-v1_5 using SHA-256 hash algorithm                          |
+| `RS384` | RSASSA-PKCS1-v1_5 using SHA-384 hash algorithm                          |
+| `RS512` | RSASSA-PKCS1-v1_5 using SHA-512 hash algorithm                          |
+| `PS256` | RSASSA-PSS using SHA-256 hash algorithm                                 |
+| `PS384` | RSASSA-PSS using SHA-384 hash algorithm                                 |
+| `PS512` | RSASSA-PSS using SHA-512 hash algorithm                                 |
+| `EdDSA` | EdDSA tokens using Ed25519 or Ed448 keys, only supported on Node.js 12+ |
 
 ## Caching
 
@@ -248,25 +263,7 @@ Performances improvements varies by uses cases and by the type of the operation 
 
 This is the lisf of the error codes exported by `TOKEN_ERROR_CODES`:
 
-| Code                              | Description                                                 |
-| --------------------------------- | ----------------------------------------------------------- |
-| `FAST_JWT_INVALID_TYPE`           | Invalid token type                                          |
-| `FAST_JWT_INVALID_OPTION`         | The option object is not valid                              |
-| `FAST_JWT_INVALID_ALGORITHM`      | The token algorithm is invalid                              |
-| `FAST_JWT_INVALID_CLAIM_TYPE`     | The claim value is not supported                            |
-| `FAST_JWT_INVALID_CLAIM_VALUE`    | The claim type is not a positive integer or an number array |
-| `FAST_JWT_INVALID_KEY`            | The key is not a string or a buffer or is unsupported       |
-| `FAST_JWT_INVALID_SIGNATURE`      | The token signature is invalid                              |
-| `FAST_JWT_INVALID_PAYLOAD`        | The payload to be decoded must be an object                 |
-| `FAST_JWT_MALFORMED`              | The token is malformed                                      |
-| `FAST_JWT_INACTIVE`               | The token is not valid yet                                  |
-| `FAST_JWT_EXPIRED`                | The token is expired                                        |
-| `FAST_JWT_MISSING_KEY`            | The key option is missing                                   |
-| `FAST_JWT_KEY_FETCHING_ERROR`     | Could not retrieve the key                                  |
-| `FAST_JWT_SIGN_ERROR`             | Cannot create the signature                                 |
-| `FAST_JWT_VERIFY_ERROR`           | Cannot verify the signature                                 |
-| `FAST_JWT_MISSING_REQUIRED_CLAIM` | A required claim is missing                                 |
-| `FAST_JWT_MISSING_SIGNATURE`      | The token signature is missing                              |
+https://github.com/nearform/fast-jwt/blob/31209b3e1f5493e89a5c009e6527a4de973f3763/src/error.js#L17-L36
 
 ## JWKS
 
