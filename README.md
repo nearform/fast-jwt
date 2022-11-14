@@ -261,9 +261,7 @@ Performances improvements varies by uses cases and by the type of the operation 
 
 ## Token Error Codes
 
-This is the lisf of the error codes exported by `TOKEN_ERROR_CODES`:
-
-https://github.com/nearform/fast-jwt/blob/31209b3e1f5493e89a5c009e6527a4de973f3763/src/error.js#L1-L22
+[Error codes](https://github.com/nearform/fast-jwt/blob/master/src/error.js) exported by `TOKEN_ERROR_CODES`.
 
 ## JWKS
 
