@@ -1491,7 +1491,7 @@ test('errors should have ttl equal to errorCacheTTL as function', async t => {
 
   const fetchKeyErrorTTL = 2000
   const errorCacheTTL = tokenError => {
-    if (tokenError?.code === 'FAST_JWT_KEY_FETCHING_ERROR') {
+    if (tokenError.code === 'FAST_JWT_KEY_FETCHING_ERROR') {
       return fetchKeyErrorTTL
     }
     return 1000
