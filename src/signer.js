@@ -11,7 +11,7 @@ const {
   detectPrivateKeyAlgorithm,
   createSignature
 } = require('./crypto')
-const TokenError = require('./error')
+const { TokenError } = require('./error')
 const { getAsyncKey, ensurePromiseCallback } = require('./utils')
 const { createPrivateKey, createSecretKey } = require('crypto')
 

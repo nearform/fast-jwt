@@ -1,21 +1,6 @@
 'use strict'
 
-class TokenError extends Error {
-  constructor(code, message, additional) {
-    super(message)
-    Error.captureStackTrace(this, this.constructor)
-
-    this.code = code
-
-    if (additional) {
-      for (const k in additional) {
-        this[k] = additional[k]
-      }
-    }
-  }
-}
-
-TokenError.codes = {
+const TOKEN_ERROR_CODES = {
   invalidType: 'FAST_JWT_INVALID_TYPE',
   invalidOption: 'FAST_JWT_INVALID_OPTION',
   invalidAlgorithm: 'FAST_JWT_INVALID_ALGORITHM',
@@ -31,10 +16,28 @@ TokenError.codes = {
   keyFetchingError: 'FAST_JWT_KEY_FETCHING_ERROR',
   signError: 'FAST_JWT_SIGN_ERROR',
   verifyError: 'FAST_JWT_VERIFY_ERROR',
-  missingRequiredClaim: 'FAST_JWT_MISSING_REQUIRED_CLAIM'
+  missingRequiredClaim: 'FAST_JWT_MISSING_REQUIRED_CLAIM',
+  missingSignature: 'FAST_JWT_MISSING_SIGNATURE'
 }
 
-TokenError.wrap = function(originalError, code, message) {
+class TokenError extends Error {
+  constructor(code, message, additional) {
+    super(message)
+    Error.captureStackTrace(this, this.constructor)
+
+    this.code = code
+
+    if (additional) {
+      for (const k in additional) {
+        this[k] = additional[k]
+      }
+    }
+  }
+}
+
+TokenError.codes = TOKEN_ERROR_CODES
+
+TokenError.wrap = function (originalError, code, message) {
   if (originalError instanceof TokenError) {
     return originalError
   }
@@ -42,4 +45,7 @@ TokenError.wrap = function(originalError, code, message) {
   return new TokenError(code, message, { originalError })
 }
 
-module.exports = TokenError
+module.exports = {
+  TokenError,
+  TOKEN_ERROR_CODES
+}

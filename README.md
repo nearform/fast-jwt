@@ -179,7 +179,7 @@ If the `key` option is a function, the signer will also accept a Node style call
 #### Examples
 
 ```javascript
-const { createVerifier } = require('fast-jwt')
+const { createVerifier, TOKEN_ERROR_CODES } = require('fast-jwt')
 const token =
   'eyJhbGciOiJIUzUxMiIsInR5cCI6IkpXVCJ9.eyJhIjoxLCJiIjoyLCJjIjozLCJpYXQiOjE1Nzk1MjEyMTJ9.mIcxteEVjbh2MnKQ3EQlojZojGSyA_guqRBYHQURcfnCSSBTT2OShF8lo9_ogjAv-5oECgmCur_cDWB7x3X53g'
 
@@ -189,7 +189,7 @@ const payload = verifySync(token)
 // => { a: 1, b: 2, c: 3, iat: 1579521212 }
 
 // Callback style with complete return
-const verifyWithCallback = createVerifier({ key: (callback) => callback(null, 'secret'), complete: true })
+const verifyWithCallback = createVerifier({ key: callback => callback(null, 'secret'), complete: true })
 
 verifyWithCallback(token, (err, sections) => {
   /*
@@ -214,9 +214,9 @@ async function test() {
 const verifier = createVerifier({
   key: 'secret',
   cache: true,
-  errorCacheTTL: (tokenError) => {
+  errorCacheTTL: tokenError => {
     // customize the ttl based on the error code
-    if (tokenError?.code === 'FAST_JWT_KEY_FETCHING_ERROR') {
+    if (tokenError?.code === TOKEN_ERROR_CODES.invalidKey) {
       return 1000
     }
     return 2000
@@ -256,6 +256,30 @@ When caching is enabled, verified tokens are always stored in cache. If the veri
 For verified tokens, caching considers the time sensitive claims of the token (`iat`, `nbf` and `exp`) and make sure the verification is retried after a token becomes valid or after a token becomes expired.
 
 Performances improvements varies by uses cases and by the type of the operation performed and the algorithm used.
+
+## Token Error Codes
+
+This is the lisf of the error codes exported by `TOKEN_ERROR_CODES`:
+
+| Code                              | Description                                                 |
+| --------------------------------- | ----------------------------------------------------------- |
+| `FAST_JWT_INVALID_TYPE`           | Invalid token type                                          |
+| `FAST_JWT_INVALID_OPTION`         | The option object is not valid                              |
+| `FAST_JWT_INVALID_ALGORITHM`      | The token algorithm is invalid                              |
+| `FAST_JWT_INVALID_CLAIM_TYPE`     | The claim value is not supported                            |
+| `FAST_JWT_INVALID_CLAIM_VALUE`    | The claim type is not a positive integer or an number array |
+| `FAST_JWT_INVALID_KEY`            | The key is not a string or a buffer or is unsupported       |
+| `FAST_JWT_INVALID_SIGNATURE`      | The token signature is invalid                              |
+| `FAST_JWT_INVALID_PAYLOAD`        | The payload to be decoded must be an object                 |
+| `FAST_JWT_MALFORMED`              | The token is malformed                                      |
+| `FAST_JWT_INACTIVE`               | The token is not valid yet                                  |
+| `FAST_JWT_EXPIRED`                | The token is expired                                        |
+| `FAST_JWT_MISSING_KEY`            | The key option is missing                                   |
+| `FAST_JWT_KEY_FETCHING_ERROR`     | Could not retrieve the key                                  |
+| `FAST_JWT_SIGN_ERROR`             | Cannot create the signature                                 |
+| `FAST_JWT_VERIFY_ERROR`           | Cannot verify the signature                                 |
+| `FAST_JWT_MISSING_REQUIRED_CLAIM` | A required claim is missing                                 |
+| `FAST_JWT_MISSING_SIGNATURE`      | The token signature is missing                              |
 
 ## JWKS
 

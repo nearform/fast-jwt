@@ -5,7 +5,7 @@ const Cache = require('mnemonist/lru-cache')
 
 const { useNewCrypto, hsAlgorithms, verifySignature, detectPublicKeyAlgorithms } = require('./crypto')
 const createDecoder = require('./decoder')
-const TokenError = require('./error')
+const { TokenError } = require('./error')
 const { getAsyncKey, ensurePromiseCallback, hashToken } = require('./utils')
 
 const defaultCacheSize = 1000
