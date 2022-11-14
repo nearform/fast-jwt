@@ -62,8 +62,8 @@ createVerifier({
 })('456').then(console.log, console.log)
 
 // Errors
-const wrapped = TokenError.wrap(new Error('ORIGINAL'), 'CODE', 'MESSAGE')
-wrapped.code === 'CODE'
+const wrapped = TokenError.wrap(new Error('ORIGINAL'), 'FAST_JWT_INVALID_TYPE', 'MESSAGE')
+wrapped.code === 'FAST_JWT_INVALID_TYPE'
 wrapped.message === 'MESSAGE'
 Array.isArray(wrapped.stack)
 wrapped.originalError.message === 'ORIGINAL'

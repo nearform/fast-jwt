@@ -1,6 +1,6 @@
 'use strict'
 
-const TokenError = require('./error')
+const { TokenError } = require('./error')
 
 function decode({ complete, checkTyp }, token) {
   // Make sure the token is a string or a Buffer - Other cases make no sense to even try to validate

@@ -18,7 +18,7 @@ const {
 let { sign: directSign, verify: directVerify } = require('crypto')
 const { joseToDer, derToJose } = require('ecdsa-sig-formatter')
 const Cache = require('mnemonist/lru-cache')
-const TokenError = require('./error')
+const { TokenError } = require('./error')
 
 const useNewCrypto = typeof directSign === 'function'
 

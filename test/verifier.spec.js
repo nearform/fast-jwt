@@ -66,18 +66,17 @@ test('it correctly verifies a token - sync', t => {
   )
 
   t.strictSame(
-    verify('eyJhbGciOiJIUzI1NiIsInR5cCI6ImFwcGxpY2F0aW9uL2p3dCJ9.eyJhIjoxfQ.1ptuaNj5R0owE-5663LpMknK3eRgZVDHkMkOKkxlteM', {
-      checkTyp: 'jwt'
-    }),
+    verify(
+      'eyJhbGciOiJIUzI1NiIsInR5cCI6ImFwcGxpY2F0aW9uL2p3dCJ9.eyJhIjoxfQ.1ptuaNj5R0owE-5663LpMknK3eRgZVDHkMkOKkxlteM',
+      {
+        checkTyp: 'jwt'
+      }
+    ),
     { a: 1 }
   )
 
   t.throws(
-    () =>
-      verify(
-        'eyJhbGciOiJIUzI1NiJ9.eyJhIjoxfQ.LrlPmSL4FxrzAHJSYbKzsA997COXdYCeFKlt3zt5DIY',
-        { checkTyp: 'test' }
-      ),
+    () => verify('eyJhbGciOiJIUzI1NiJ9.eyJhIjoxfQ.LrlPmSL4FxrzAHJSYbKzsA997COXdYCeFKlt3zt5DIY', { checkTyp: 'test' }),
     {
       message: 'Invalid typ.'
     }
@@ -85,10 +84,9 @@ test('it correctly verifies a token - sync', t => {
 
   t.throws(
     () =>
-      verify(
-        'eyJhbGciOiJIUzI1NiIsInR5cCI6MX0.eyJhIjoxfQ.V6I7eoKYlMG7ipqpsWoZcNZaGOVGPom0rnztq1q2tS4',
-        { checkTyp: 'JWT' }
-      ),
+      verify('eyJhbGciOiJIUzI1NiIsInR5cCI6MX0.eyJhIjoxfQ.V6I7eoKYlMG7ipqpsWoZcNZaGOVGPom0rnztq1q2tS4', {
+        checkTyp: 'JWT'
+      }),
     {
       message: 'Invalid typ.'
     }
@@ -339,7 +337,21 @@ test('it validates if the token is using one of the allowed algorithm - sync ', 
   t.strictSame(
     verify('eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxfQ.57TF7smP9XDhIexBqPC-F1toZReYZLWb_YRU5tv0sxM', {
       noTimestamp: true,
-      algorithms: ['RS256', 'RS384', 'RS512', 'HS256', 'HS384', 'HS512', 'ES256', 'ES384', 'ES512', 'PS256', 'PS384', 'PS512', 'EdDSA']
+      algorithms: [
+        'RS256',
+        'RS384',
+        'RS512',
+        'HS256',
+        'HS384',
+        'HS512',
+        'ES256',
+        'ES384',
+        'ES512',
+        'PS256',
+        'PS384',
+        'PS512',
+        'EdDSA'
+      ]
     }),
     { a: 1 }
   )
@@ -349,7 +361,8 @@ test('it validates if the token is using one of the allowed algorithm - sync ', 
 
 test('it validates if the token can be verified with X509 public key certificate ', t => {
   t.strictSame(
-    verify('eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxfQ.daq6gJpUPB2daOBWB3SdhMZsXiFfeCflJ36uztKVAzQu0apv-RRewfCFL2-M8iAu1ndAc-a57pG4TkRZjYw4UXD28hFZYjc4fBteoXyFWySkuqlFVCOph8gKkiFszLutE5sAJEoiGD_wnPw38pYj3d0sqsnDUezzNvEDK5Oa2_PYTnsQJi0JGupy2oE1RX7CuVVLBRnI8HOruMagn25FLShjjiiGw90yKq5AYk_Jlv8XFt4rypZj_O1JaGHVp3MTzrJ-Ku95BPDuhH4awBy8MSpPBtCoRPAUuP6jTetpCsRhmWlqf0OrmEMF81ZXlmS4LcbborwSTZ8cZvgc4OwIVU2I19fYLwDRqgL3GQy5GS8WGPTNbvwouvyTFr-omZtSeHUbguLTib5WYZlI1Sq9IPIG5dUDAlfWflPgOInZaE2n4kgGj2iKmUKWiGfuABSdsPgw2a1vTwQ5HZsljV0gHaz7WeCGJ8MZOMa7nvb3pDWfPjTBdcTZWvpzQWagRqVxCMK0gvSOaFLuvk89NFS-jr3eFkLVSAu07YWpPc80_QDcCMCqWU9JcW-FSUV3XHB5U6Yl8zDO6QKT4V-nWxLt8q1He3xHf27-7UoczzDC0-H-uIRjx-dPV_1B-b5axibEcQeNTEjOQv6KTrUOXVwyimLGUkoNUl9bKWyCfZ0QF8Q',
+    verify(
+      'eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxfQ.daq6gJpUPB2daOBWB3SdhMZsXiFfeCflJ36uztKVAzQu0apv-RRewfCFL2-M8iAu1ndAc-a57pG4TkRZjYw4UXD28hFZYjc4fBteoXyFWySkuqlFVCOph8gKkiFszLutE5sAJEoiGD_wnPw38pYj3d0sqsnDUezzNvEDK5Oa2_PYTnsQJi0JGupy2oE1RX7CuVVLBRnI8HOruMagn25FLShjjiiGw90yKq5AYk_Jlv8XFt4rypZj_O1JaGHVp3MTzrJ-Ku95BPDuhH4awBy8MSpPBtCoRPAUuP6jTetpCsRhmWlqf0OrmEMF81ZXlmS4LcbborwSTZ8cZvgc4OwIVU2I19fYLwDRqgL3GQy5GS8WGPTNbvwouvyTFr-omZtSeHUbguLTib5WYZlI1Sq9IPIG5dUDAlfWflPgOInZaE2n4kgGj2iKmUKWiGfuABSdsPgw2a1vTwQ5HZsljV0gHaz7WeCGJ8MZOMa7nvb3pDWfPjTBdcTZWvpzQWagRqVxCMK0gvSOaFLuvk89NFS-jr3eFkLVSAu07YWpPc80_QDcCMCqWU9JcW-FSUV3XHB5U6Yl8zDO6QKT4V-nWxLt8q1He3xHf27-7UoczzDC0-H-uIRjx-dPV_1B-b5axibEcQeNTEjOQv6KTrUOXVwyimLGUkoNUl9bKWyCfZ0QF8Q',
       {
         noTimestamp: true,
         key: publicKeys.RSX509
@@ -405,12 +418,9 @@ test('it validates if the token is active including the clock tolerance', t => {
   const token = createSigner({ key: 'secret', clockTimestamp, notBefore })({ a: 1 })
 
   t.strictSame(
-    verify(
-      token,
-      {
-        clockTolerance: 5000
-      }
-    ),
+    verify(token, {
+      clockTolerance: 5000
+    }),
     {
       a: 1,
       iat: Math.floor(clockTimestamp / 1000),
@@ -469,12 +479,9 @@ test('it validates if the token has not expired including the clock tolerance', 
   const token = createSigner({ key: 'secret', clockTimestamp, expiresIn })({ a: 1 })
 
   t.strictSame(
-    verify(
-      token,
-      {
-        clockTolerance: 5000
-      }
-    ),
+    verify(token, {
+      clockTolerance: 5000
+    }),
     {
       a: 1,
       iat: Math.floor(clockTimestamp / 1000),
@@ -919,20 +926,11 @@ test('it validates whether a required claim is present in the payload or not', t
   // Token payload: { "iss": "ISS"}
   const token = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJJU1MifQ.FKjJd2A-T8ufN7Y0LpjMR23P7CwEQ3Y-LBIYd2Vh_Rs'
 
-  t.strictSame(
-    verify(
-      token,
-      { allowedIss: 'ISS', requiredClaims: ['iss'] }
-    ),
-    { iss: 'ISS' }
-  )
+  t.strictSame(verify(token, { allowedIss: 'ISS', requiredClaims: ['iss'] }), { iss: 'ISS' })
 
   t.throws(
     () => {
-      return verify(
-        token,
-        { allowedSub: 'SUB', requiredClaims: ['sub'] }
-      )
+      return verify(token, { allowedSub: 'SUB', requiredClaims: ['sub'] })
     },
     { message: 'The sub claim is required.' }
   )
@@ -940,17 +938,11 @@ test('it validates whether a required claim is present in the payload or not', t
   t.end()
 })
 
-test('it skips validation when an allowed claim isn\'t present in the payload', t => {
+test("it skips validation when an allowed claim isn't present in the payload", t => {
   // Token payload: { "iss": "ISS"}
   const token = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJJU1MifQ.FKjJd2A-T8ufN7Y0LpjMR23P7CwEQ3Y-LBIYd2Vh_Rs'
 
-  t.strictSame(
-    verify(
-      token,
-      { allowedIss: 'ISS', allowedAud: 'AUD' }
-    ),
-    { iss: 'ISS' }
-  )
+  t.strictSame(verify(token, { allowedIss: 'ISS', allowedAud: 'AUD' }), { iss: 'ISS' })
 
   t.end()
 })
@@ -1070,9 +1062,7 @@ for (const type of ['HS', 'ES', 'RS', 'PS']) {
       const verifier = createVerifier({ algorithm, key: publicKey, cache: true })
       const token = signer({ a: 1 })
 
-      const hash = createHash(`sha${bits}`)
-        .update(token)
-        .digest('hex')
+      const hash = createHash(`sha${bits}`).update(token).digest('hex')
 
       t.strictSame(verifier(token), { a: 1 })
       t.equal(verifier.cache.size, 1)
@@ -1088,9 +1078,7 @@ if (useNewCrypto) {
     const signer = createSigner({ algorithm: 'EdDSA', key: privateKeys.Ed25519, noTimestamp: 1 })
     const verifier = createVerifier({ key: publicKeys.Ed25519, cache: true })
     const token = signer({ a: 1 })
-    const hash = createHash('sha512')
-      .update(token)
-      .digest('hex')
+    const hash = createHash('sha512').update(token).digest('hex')
 
     t.strictSame(verifier(token), { a: 1 })
     t.equal(verifier.cache.size, 1)
@@ -1108,9 +1096,7 @@ if (useNewCrypto) {
     })
     const verifier = createVerifier({ key: publicKeys.Ed448, cache: true })
     const token = signer({ a: 1 })
-    const hash = createHash('shake256', { outputLength: 114 })
-      .update(token)
-      .digest('hex')
+    const hash = createHash('shake256', { outputLength: 114 }).update(token).digest('hex')
 
     t.strictSame(verifier(token), { a: 1 })
     t.equal(verifier.cache.size, 1)
@@ -1410,11 +1396,146 @@ test('caching - should ignore the nbf and exp when asked to', t => {
   t.equal(verifierNoExp.cache.size, 1)
   t.strictSame(verifierNoExp(token), { a: 1, iat: 100, nbf: 300, exp: 500 })
   t.equal(verifierNoExp.cache.size, 1)
-  t.strictSame(verifierNoExp.cache.get(hashToken(token)), [
-    { a: 1, iat: 100, nbf: 300, exp: 500 },
-    300000,
-    1110000
-  ])
+  t.strictSame(verifierNoExp.cache.get(hashToken(token)), [{ a: 1, iat: 100, nbf: 300, exp: 500 }, 300000, 1110000])
+
+  clock.uninstall()
+  t.end()
+})
+
+test('options validation - errorCacheTTL', t => {
+  t.throws(() => createVerifier({ key: 'secret', errorCacheTTL: '123' }), {
+    message: 'The errorCacheTTL option must be a positive number or a function.'
+  })
+
+  t.throws(() => createVerifier({ key: 'secret', errorCacheTTL: -1 }), {
+    message: 'The errorCacheTTL option must be a positive number or a function.'
+  })
+
+  t.end()
+})
+
+test('default errorCacheTTL should not cache errors', async t => {
+  const clock = fakeTime({ now: 0 })
+  const token = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxfQ.57TF7smP9XDhIexBqPC-F1toZReYZLWb_YRU5tv0sxM'
+  const verifier = createVerifier({
+    key: async () => {
+      throw new Error('invalid')
+    },
+    cache: true,
+    clockTolerance: 0
+  })
+
+  t.equal(verifier.cache.size, 0)
+  await t.rejects(async () => verifier(token))
+  t.equal(verifier.cache.size, 1)
+  t.strictSame(verifier.cache.get(hashToken(token))[2], 0)
+  clock.uninstall()
+  t.end()
+})
+
+test('errors should have ttl equal to errorCacheTTL', async t => {
+  const clock = fakeTime({ now: 0 })
+  const errorCacheTTL = 20000
+  const token = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxfQ.57TF7smP9XDhIexBqPC-F1toZReYZLWb_YRU5tv0sxM'
+  const verifier = createVerifier({
+    key: async () => {
+      throw new Error('invalid')
+    },
+    cache: true,
+    clockTolerance: 0,
+    errorCacheTTL
+  })
+
+  t.equal(verifier.cache.size, 0)
+  await t.rejects(async () => verifier(token))
+  t.equal(verifier.cache.size, 1)
+  t.strictSame(verifier.cache.get(hashToken(token))[2], errorCacheTTL)
+  clock.uninstall()
+  t.end()
+})
+
+test('errors should have ttl equal to errorCacheTTL', async t => {
+  const clock = fakeTime({ now: 0 })
+  const errorCacheTTL = 20000
+  const token = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxfQ.57TF7smP9XDhIexBqPC-F1toZReYZLWb_YRU5tv0sxM'
+  const verifier = createVerifier({
+    key: async () => {
+      throw new Error('invalid')
+    },
+    cache: true,
+    clockTolerance: 0,
+    errorCacheTTL
+  })
+
+  t.equal(verifier.cache.size, 0)
+  await t.rejects(async () => verifier(token))
+  t.equal(verifier.cache.size, 1)
+  t.strictSame(verifier.cache.get(hashToken(token))[2], errorCacheTTL)
+
+  clock.tick(1000)
+  // cache hit and ttl not changed
+  await t.rejects(async () => verifier(token))
+  t.strictSame(verifier.cache.get(hashToken(token))[2], errorCacheTTL)
+
+  clock.tick(errorCacheTTL)
+  // cache expired, request performed, new ttl
+  await t.rejects(async () => verifier(token))
+  t.strictSame(verifier.cache.get(hashToken(token))[2], errorCacheTTL + 1000 + errorCacheTTL)
+
+  clock.uninstall()
+  t.end()
+})
+
+test('errors should have ttl equal to errorCacheTTL as function', async t => {
+  const clock = fakeTime({ now: 0 })
+
+  const fetchKeyErrorTTL = 2000
+  const errorCacheTTL = tokenError => {
+    if (tokenError.code === 'FAST_JWT_KEY_FETCHING_ERROR') {
+      return fetchKeyErrorTTL
+    }
+    return 1000
+  }
+
+  const token = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxfQ.57TF7smP9XDhIexBqPC-F1toZReYZLWb_YRU5tv0sxM'
+  const verifier = createVerifier({
+    key: async () => {
+      throw new Error('error fetching key')
+    },
+    cache: true,
+    clockTolerance: 0,
+    errorCacheTTL
+  })
+
+  t.equal(verifier.cache.size, 0)
+  await t.rejects(async () => verifier(token))
+  t.equal(verifier.cache.size, 1)
+  t.strictSame(verifier.cache.get(hashToken(token))[2], fetchKeyErrorTTL)
+
+  clock.uninstall()
+  t.end()
+})
+
+test('invalid errorCacheTTL function should be handle ', async t => {
+  const clock = fakeTime({ now: 0 })
+
+  const errorCacheTTL = () => {
+    throw new Error('invalid errorCacheTTL function')
+  }
+
+  const token = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxfQ.57TF7smP9XDhIexBqPC-F1toZReYZLWb_YRU5tv0sxM'
+  const verifier = createVerifier({
+    key: () => {
+      throw new Error('invalid')
+    },
+    cache: true,
+    clockTolerance: 0,
+    errorCacheTTL
+  })
+
+  t.equal(verifier.cache.size, 0)
+  t.throws(() => verifier(token))
+  t.equal(verifier.cache.size, 0)
 
   clock.uninstall()
   t.end()

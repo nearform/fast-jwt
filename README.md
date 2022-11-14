@@ -56,6 +56,7 @@ The payload must be an object.
 If the `key` option is a function, the signer will also accept a Node style callback and will return a promise, supporting therefore both callback and async/await styles.
 
 If the `key` is a passphrase protected private key, the `algorithm` option must be provided and must be either a `RS*` or `ES*` encoded key and the `key` option must be an object with the following structure:
+
 ```js
 {
   key: '<YOUR_RSA_ENCRYPTED_PRIVATE_KEY>',
@@ -147,6 +148,8 @@ Create a verifier function by calling `createVerifier` and providing one or more
 
 - `cacheTTL`: The maximum time to live of a cache entry (in milliseconds). If the token has a earlier expiration or the verifier has a shorter `maxAge`, the earlier takes precedence. The default is `600000`, which is 10 minutes.
 
+- `errorCacheTTL`: A number or function `function (tokenError) => number` that represents the maximum time to live of a cache error entry (in milliseconds). Example: the `key` function fails or does not return a secret or public key. By default **errors are not cached**, the `errorCacheTTL` default value is `0`.
+
 - `allowedJti`: A string, a regular expression, an array of strings or an array of regular expressions containing allowed values for the id claim (`jti`). By default, all values are accepted.
 
 - `allowedAud`: A string, a regular expression, an array of strings or an array of regular expressions containing allowed values for the audience claim (`aud`). By default, all values are accepted.
@@ -176,7 +179,7 @@ If the `key` option is a function, the signer will also accept a Node style call
 #### Examples
 
 ```javascript
-const { createVerifier } = require('fast-jwt')
+const { createVerifier, TOKEN_ERROR_CODES } = require('fast-jwt')
 const token =
   'eyJhbGciOiJIUzUxMiIsInR5cCI6IkpXVCJ9.eyJhIjoxLCJiIjoyLCJjIjozLCJpYXQiOjE1Nzk1MjEyMTJ9.mIcxteEVjbh2MnKQ3EQlojZojGSyA_guqRBYHQURcfnCSSBTT2OShF8lo9_ogjAv-5oECgmCur_cDWB7x3X53g'
 
@@ -186,7 +189,7 @@ const payload = verifySync(token)
 // => { a: 1, b: 2, c: 3, iat: 1579521212 }
 
 // Callback style with complete return
-const verifyWithCallback = createVerifier({ key: (callback) => callback(null, 'secret'), complete: true })
+const verifyWithCallback = createVerifier({ key: callback => callback(null, 'secret'), complete: true })
 
 verifyWithCallback(token, (err, sections) => {
   /*
@@ -206,6 +209,19 @@ async function test() {
   const payload = await verifyWithPromise(token)
   // => { a: 1, b: 2, c: 3, iat: 1579521212 }
 }
+
+// custom errorCacheTTL verifier
+const verifier = createVerifier({
+  key: 'secret',
+  cache: true,
+  errorCacheTTL: tokenError => {
+    // customize the ttl based on the error code
+    if (tokenError.code === TOKEN_ERROR_CODES.invalidKey) {
+      return 1000
+    }
+    return 2000
+  }
+})
 ```
 
 ## Algorithms supported
@@ -235,11 +251,17 @@ fast-jwt supports caching of verified tokens.
 
 The cache layer, powered by [mnemonist](https://www.npmjs.com/package/mnemonist), is a LRU cache which dimension is controlled by the user, as described in the options list.
 
-When caching is enabled, verified tokens are always stored in cache. If the verification fails once, the error is cached as well and the operation is not retried.
+When caching is enabled, verified tokens are always stored in cache. If the verification fails once, the error is cached as well for the time set by `errorCacheTTL` and the operation is not retried.
 
 For verified tokens, caching considers the time sensitive claims of the token (`iat`, `nbf` and `exp`) and make sure the verification is retried after a token becomes valid or after a token becomes expired.
 
 Performances improvements varies by uses cases and by the type of the operation performed and the algorithm used.
+
+> **_Note:_** Errors are not cached by default, to change this behaviour use the `errorCacheTTL` option.
+
+## Token Error Codes
+
+[Error codes](https://github.com/nearform/fast-jwt/blob/master/src/error.js) exported by `TOKEN_ERROR_CODES`.
 
 ## JWKS
 

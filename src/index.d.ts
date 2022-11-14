@@ -16,8 +16,26 @@ export type Algorithm =
   | 'PS512'
   | 'EdDSA'
 
+export type TokenValidationErrorCode =
+  | 'FAST_JWT_INVALID_TYPE'
+  | 'FAST_JWT_INVALID_OPTION'
+  | 'FAST_JWT_INVALID_ALGORITHM'
+  | 'FAST_JWT_INVALID_CLAIM_TYPE'
+  | 'FAST_JWT_INVALID_CLAIM_VALUE'
+  | 'FAST_JWT_INVALID_KEY'
+  | 'FAST_JWT_INVALID_SIGNATURE'
+  | 'FAST_JWT_INVALID_PAYLOAD'
+  | 'FAST_JWT_MALFORMED'
+  | 'FAST_JWT_INACTIVE'
+  | 'FAST_JWT_EXPIRED'
+  | 'FAST_JWT_MISSING_KEY'
+  | 'FAST_JWT_KEY_FETCHING_ERROR'
+  | 'FAST_JWT_SIGN_ERROR'
+  | 'FAST_JWT_VERIFY_ERROR'
+  | 'FAST_JWT_MISSING_SIGNATURE'
+
 declare class TokenError extends Error {
-  static wrap(originalError: Error, code: string, message: string): TokenError
+  static wrap(originalError: Error, code: TokenValidationErrorCode, message: string): TokenError
   static codes: {
     invalidType: 'FAST_JWT_INVALID_TYPE'
     invalidOption: 'FAST_JWT_INVALID_OPTION'
@@ -34,9 +52,10 @@ declare class TokenError extends Error {
     keyFetchingError: 'FAST_JWT_KEY_FETCHING_ERROR'
     signError: 'FAST_JWT_SIGN_ERROR'
     verifyError: 'FAST_JWT_VERIFY_ERROR'
+    missingSignature: 'FAST_JWT_MISSING_SIGNATURE'
   }
 
-  code: string;
+  code: TokenValidationErrorCode;
   [key: string]: any
 }
 
@@ -94,6 +113,7 @@ export interface VerifierOptions {
   complete: boolean
   cache: boolean | number
   cacheTTL: number
+  errorCacheTTL: number | ((tokenError: TokenError) => number)
   allowedJti: string | RegExp | Array<string | RegExp>
   allowedAud: string | RegExp | Array<string | RegExp>
   allowedIss: string | RegExp | Array<string | RegExp>
