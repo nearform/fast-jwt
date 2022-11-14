@@ -242,6 +242,8 @@ For verified tokens, caching considers the time sensitive claims of the token (`
 
 Performances improvements varies by uses cases and by the type of the operation performed and the algorithm used.
 
+> **_Note:_** Errors are not cached by default, to change this behaviour use the `errorCacheTTL` option.
+
 ## Token Error Codes
 
 This is the lisf of the error codes exported by `TOKEN_ERROR_CODES`:
