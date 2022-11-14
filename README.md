@@ -216,7 +216,7 @@ const verifier = createVerifier({
   cache: true,
   errorCacheTTL: tokenError => {
     // customize the ttl based on the error code
-    if (tokenError?.code === TOKEN_ERROR_CODES.invalidKey) {
+    if (tokenError.code === TOKEN_ERROR_CODES.invalidKey) {
       return 1000
     }
     return 2000
