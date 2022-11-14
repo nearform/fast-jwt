@@ -148,7 +148,7 @@ Create a verifier function by calling `createVerifier` and providing one or more
 
 - `cacheTTL`: The maximum time to live of a cache entry (in milliseconds). If the token has a earlier expiration or the verifier has a shorter `maxAge`, the earlier takes precedence. The default is `600000`, which is 10 minutes.
 
-- `errorCacheTTL`: A number or function `function (tokenError) => number` that represents the maximum time to live of a cache **error** entry (in milliseconds).Example: the `key` function fails or does not return a secret or public key. The default is `0`.
+- `errorCacheTTL`: A number or function `function (tokenError) => number` that represents the maximum time to live of a cache error entry (in milliseconds). Example: the `key` function fails or does not return a secret or public key. By default **errors are not cached**, the `errorCacheTTL` default value is `0`.
 
 - `allowedJti`: A string, a regular expression, an array of strings or an array of regular expressions containing allowed values for the id claim (`jti`). By default, all values are accepted.
 
@@ -228,22 +228,7 @@ const verifier = createVerifier({
 
 This is the lisf of currently supported algorithms:
 
-| Name    | Description                                                             |
-| ------- | ----------------------------------------------------------------------- |
-| `none`  | Empty algorithm - The token signature section will be empty             |
-| `HS256` | HMAC using SHA-256 hash algorithm                                       |
-| `HS384` | HMAC using SHA-384 hash algorithm                                       |
-| `HS512` | HMAC using SHA-512 hash algorithm                                       |
-| `ES256` | ECDSA using P-256 curve and SHA-256 hash algorithm                      |
-| `ES384` | ECDSA using P-384 curve and SHA-384 hash algorithm                      |
-| `ES512` | ECDSA using P-521 curve and SHA-512 hash algorithm                      |
-| `RS256` | RSASSA-PKCS1-v1_5 using SHA-256 hash algorithm                          |
-| `RS384` | RSASSA-PKCS1-v1_5 using SHA-384 hash algorithm                          |
-| `RS512` | RSASSA-PKCS1-v1_5 using SHA-512 hash algorithm                          |
-| `PS256` | RSASSA-PSS using SHA-256 hash algorithm                                 |
-| `PS384` | RSASSA-PSS using SHA-384 hash algorithm                                 |
-| `PS512` | RSASSA-PSS using SHA-512 hash algorithm                                 |
-| `EdDSA` | EdDSA tokens using Ed25519 or Ed448 keys, only supported on Node.js 12+ |
+https://github.com/nearform/fast-jwt/blob/31209b3e1f5493e89a5c009e6527a4de973f3763/src/error.js#L17-L36
 
 ## Caching
 
