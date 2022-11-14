@@ -54,8 +54,8 @@ function ensureStringClaimMatcher(raw) {
   }
 
   return raw
-    .filter((r) => r)
-    .map((r) => {
+    .filter(r => r)
+    .map(r => {
       if (r && typeof r.test === 'function') {
         return r
       }
@@ -159,7 +159,7 @@ function validateClaimType(values, claim, array, type) {
     ? `The ${claim} claim must be a ${type} or an array of ${type}s.`
     : `The ${claim} claim must be a ${type}.`
 
-  if (values.map((v) => typeof v).some((t) => t !== type)) {
+  if (values.map(v => typeof v).some(t => t !== type)) {
     throw new TokenError(TokenError.codes.invalidClaimType, typeFailureMessage)
   }
 }
@@ -169,7 +169,7 @@ function validateClaimValues(values, claim, allowed, arrayValue) {
     ? `None of ${claim} claim values are allowed.`
     : `The ${claim} claim value is not allowed.`
 
-  if (!values.some((v) => allowed.some((a) => a.test(v)))) {
+  if (!values.some(v => allowed.some(a => a.test(v)))) {
     throw new TokenError(TokenError.codes.invalidClaimValue, failureMessage)
   }
 }

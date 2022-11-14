@@ -41,7 +41,7 @@ function verify(token, options, callback) {
   return verifier(token, callback)
 }
 
-test('it correctly verifies a token - sync', (t) => {
+test('it correctly verifies a token - sync', t => {
   t.strictSame(
     verify('eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxfQ.57TF7smP9XDhIexBqPC-F1toZReYZLWb_YRU5tv0sxM', {
       noTimestamp: true
@@ -131,7 +131,7 @@ test('it correctly verifies a token - sync', (t) => {
   t.end()
 })
 
-test('it correctly verifies a token - async - key with callback', async (t) => {
+test('it correctly verifies a token - async - key with callback', async t => {
   t.strictSame(
     await verify('eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxfQ.57TF7smP9XDhIexBqPC-F1toZReYZLWb_YRU5tv0sxM', {
       key: (_h, callback) => setTimeout(() => callback(null, 'secret'), 10),
@@ -155,7 +155,7 @@ test('it correctly verifies a token - async - key with callback', async (t) => {
   )
 })
 
-test('it correctly verifies a token - async - key as promise', async (t) => {
+test('it correctly verifies a token - async - key as promise', async t => {
   t.strictSame(
     await verify('eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxfQ.57TF7smP9XDhIexBqPC-F1toZReYZLWb_YRU5tv0sxM', {
       key: async () => Buffer.from('secret', 'utf-8'),
@@ -165,7 +165,7 @@ test('it correctly verifies a token - async - key as promise', async (t) => {
   )
 })
 
-test('it correctly verifies a token - async - static key', async (t) => {
+test('it correctly verifies a token - async - static key', async t => {
   t.strictSame(
     await verify('eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxfQ.57TF7smP9XDhIexBqPC-F1toZReYZLWb_YRU5tv0sxM', {
       noTimestamp: true
@@ -174,7 +174,7 @@ test('it correctly verifies a token - async - static key', async (t) => {
   )
 })
 
-test('it correctly verifies a token - callback - key as promise', (t) => {
+test('it correctly verifies a token - callback - key as promise', t => {
   verify(
     'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxfQ.57TF7smP9XDhIexBqPC-F1toZReYZLWb_YRU5tv0sxM',
     { key: async () => Buffer.from('secret', 'utf-8'), noTimestamp: true },
@@ -186,7 +186,7 @@ test('it correctly verifies a token - callback - key as promise', (t) => {
   )
 })
 
-test('it correctly verifies a token - token signed with encrypted private key', async (t) => {
+test('it correctly verifies a token - token signed with encrypted private key', async t => {
   const payload = verify(
     'eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxLCJpYXQiOjE2MzU0MjY2OTl9.c5VeTRDL43sMxEk4pV7AV6nGJeRbJYw6tdKGfzq6bvjT-ai29gQc7baTAmoo16EuboUwBHoz_OEOtwsePetoc0wKtDoXY7t6dBWznV2Z4_7YSrnt2U62FZrlVDoLPYJRRHhB6sR2YyidoUWzfs821_SpeTeT4Ls-tlqWjIGkpUDktZiPKYIt9LkLFgZDaCBeQr39BMCagD3p0yGYIWZJNsIQKNvvUHjtF4Io9buPwKKA6FAfYgM5c1aTAkhhnRjZSjW0vu-Osxlbu-XO0-IF-0c4eGgf2LAh_jGM4bF1nQmExKI9Q0IpvbPD8pSzcIPndiHdgGxrJy7X9GktN6Vi2DQazcIXtjBIaBNO4VKew5GNIbSb-lHyeO7WBENE3WrVImS_9_i3z81M-F0w1C6MqmnKZ3qKLna3OG1pYU4mVQ2rvBNdHuVOrtJyE0IiCDQS-RKaKM0lOprHy_B6_TNRp_Y9oBCVOY1Kr8fczigfArwSlPai051AncK-zfHZwvP7_uBKitncmNDjr19xiLa79Fbm6mkSA8tZindDvBml1ZF9apNF51CCdO-ce9yqj3Aem2n1VXHLuq9sdIk_mlSZn9aLDOPUI22DcdhcSsySdKdWSf9F7dj5c1J9ppwxTxK3LHjIeiaCJWCmKvfu73j_rpKzbFzzwotQ3bsRave8gdY',
     { key: publicKeys.PPRS }
@@ -194,7 +194,7 @@ test('it correctly verifies a token - token signed with encrypted private key', 
   t.strictSame(payload.a, 1)
 })
 
-test('it rejects invalid tokens', async (t) => {
+test('it rejects invalid tokens', async t => {
   t.throws(() => verify('eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxfQ.57TF7smP9XDhIexBqPC-aaa', {}), {
     message: 'The token signature is invalid.'
   })
@@ -209,7 +209,7 @@ test('it rejects invalid tokens', async (t) => {
   )
 })
 
-test('it requires a signature or a key', async (t) => {
+test('it requires a signature or a key', async t => {
   t.throws(() => verify('eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxfQ.', {}), {
     message: 'The token signature is missing.'
   })
@@ -223,7 +223,7 @@ test('it requires a signature or a key', async (t) => {
   )
 })
 
-test('it correctly handle errors - async callback', async (t) => {
+test('it correctly handle errors - async callback', async t => {
   await t.rejects(
     verify('eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxfQ.57TF7smP9XDhIexBqPC-F1toZReYZLWb_YRU5tv0sxM', {
       key: async () => {
@@ -243,7 +243,7 @@ test('it correctly handle errors - async callback', async (t) => {
   )
 })
 
-test('it correctly handle errors - callback', (t) => {
+test('it correctly handle errors - callback', t => {
   verify(
     'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxfQ.57TF7smP9XDhIexBqPC-F1toZReYZLWb_YRU5tv0sxM',
     {
@@ -260,7 +260,7 @@ test('it correctly handle errors - callback', (t) => {
   )
 })
 
-test('it correctly handle errors - evented callback', (t) => {
+test('it correctly handle errors - evented callback', t => {
   verify(
     'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxfQ.57TF7smP9XDhIexBqPC-F1toZReYZLWb_YRU5tv0sxM',
     {
@@ -277,7 +277,7 @@ test('it correctly handle errors - evented callback', (t) => {
   )
 })
 
-test('it handles decoding errors', async (t) => {
+test('it handles decoding errors', async t => {
   t.throws(() => verify('TOKEN', { algorithms: ['HS256'], key: 'secret' }), {
     message: 'The token is malformed.'
   })
@@ -287,7 +287,7 @@ test('it handles decoding errors', async (t) => {
   })
 })
 
-test('it validates if the token is not using an allowed algorithm - sync ', (t) => {
+test('it validates if the token is not using an allowed algorithm - sync ', t => {
   t.throws(
     () => {
       return verify(
@@ -301,7 +301,7 @@ test('it validates if the token is not using an allowed algorithm - sync ', (t) 
   t.end()
 })
 
-test('it validates if the token is using one of the allowed algorithm - sync ', (t) => {
+test('it validates if the token is using one of the allowed algorithm - sync ', t => {
   t.strictSame(
     verify('eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxfQ.57TF7smP9XDhIexBqPC-F1toZReYZLWb_YRU5tv0sxM', {
       noTimestamp: true
@@ -359,7 +359,7 @@ test('it validates if the token is using one of the allowed algorithm - sync ', 
   t.end()
 })
 
-test('it validates if the token can be verified with X509 public key certificate ', (t) => {
+test('it validates if the token can be verified with X509 public key certificate ', t => {
   t.strictSame(
     verify(
       'eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxfQ.daq6gJpUPB2daOBWB3SdhMZsXiFfeCflJ36uztKVAzQu0apv-RRewfCFL2-M8iAu1ndAc-a57pG4TkRZjYw4UXD28hFZYjc4fBteoXyFWySkuqlFVCOph8gKkiFszLutE5sAJEoiGD_wnPw38pYj3d0sqsnDUezzNvEDK5Oa2_PYTnsQJi0JGupy2oE1RX7CuVVLBRnI8HOruMagn25FLShjjiiGw90yKq5AYk_Jlv8XFt4rypZj_O1JaGHVp3MTzrJ-Ku95BPDuhH4awBy8MSpPBtCoRPAUuP6jTetpCsRhmWlqf0OrmEMF81ZXlmS4LcbborwSTZ8cZvgc4OwIVU2I19fYLwDRqgL3GQy5GS8WGPTNbvwouvyTFr-omZtSeHUbguLTib5WYZlI1Sq9IPIG5dUDAlfWflPgOInZaE2n4kgGj2iKmUKWiGfuABSdsPgw2a1vTwQ5HZsljV0gHaz7WeCGJ8MZOMa7nvb3pDWfPjTBdcTZWvpzQWagRqVxCMK0gvSOaFLuvk89NFS-jr3eFkLVSAu07YWpPc80_QDcCMCqWU9JcW-FSUV3XHB5U6Yl8zDO6QKT4V-nWxLt8q1He3xHf27-7UoczzDC0-H-uIRjx-dPV_1B-b5axibEcQeNTEjOQv6KTrUOXVwyimLGUkoNUl9bKWyCfZ0QF8Q',
@@ -374,7 +374,7 @@ test('it validates if the token can be verified with X509 public key certificate
   t.end()
 })
 
-test('it validates if the public key is consistent with the allowed algorithms - sync ', (t) => {
+test('it validates if the public key is consistent with the allowed algorithms - sync ', t => {
   t.throws(
     () => {
       return verify(
@@ -388,7 +388,7 @@ test('it validates if the public key is consistent with the allowed algorithms -
   t.end()
 })
 
-test('it validates if the token is active unless explicitily disabled', (t) => {
+test('it validates if the token is active unless explicitily disabled', t => {
   t.throws(
     () => {
       return verify(
@@ -412,7 +412,7 @@ test('it validates if the token is active unless explicitily disabled', (t) => {
   t.end()
 })
 
-test('it validates if the token is active including the clock tolerance', (t) => {
+test('it validates if the token is active including the clock tolerance', t => {
   const clockTimestamp = Date.now()
   const notBefore = 1000
   const token = createSigner({ key: 'secret', clockTimestamp, notBefore })({ a: 1 })
@@ -430,7 +430,7 @@ test('it validates if the token is active including the clock tolerance', (t) =>
   t.end()
 })
 
-test('it validates if the token has not expired (via exp) unless explicitily disabled', (t) => {
+test('it validates if the token has not expired (via exp) unless explicitily disabled', t => {
   t.throws(
     () => {
       return verify(
@@ -454,7 +454,7 @@ test('it validates if the token has not expired (via exp) unless explicitily dis
   t.end()
 })
 
-test('it validates if the token has not expired (via maxAge) only if explicitily enabled', (t) => {
+test('it validates if the token has not expired (via maxAge) only if explicitily enabled', t => {
   t.throws(
     () => {
       return verify(
@@ -473,7 +473,7 @@ test('it validates if the token has not expired (via maxAge) only if explicitily
   t.end()
 })
 
-test('it validates if the token has not expired including the clock tolerance', (t) => {
+test('it validates if the token has not expired including the clock tolerance', t => {
   const clockTimestamp = Date.now() - 5000
   const expiresIn = 1000
   const token = createSigner({ key: 'secret', clockTimestamp, expiresIn })({ a: 1 })
@@ -491,7 +491,7 @@ test('it validates if the token has not expired including the clock tolerance', 
   t.end()
 })
 
-test('it validates the jti claim only if explicitily enabled', (t) => {
+test('it validates the jti claim only if explicitily enabled', t => {
   t.throws(
     () => {
       return verify(
@@ -570,7 +570,7 @@ test('it validates the jti claim only if explicitily enabled', (t) => {
   t.end()
 })
 
-test('it validates the aud claim only if explicitily enabled', (t) => {
+test('it validates the aud claim only if explicitily enabled', t => {
   t.throws(
     () => {
       return verify(
@@ -659,7 +659,7 @@ test('it validates the aud claim only if explicitily enabled', (t) => {
   t.end()
 })
 
-test('it validates the iss claim only if explicitily enabled', (t) => {
+test('it validates the iss claim only if explicitily enabled', t => {
   t.throws(
     () => {
       return verify(
@@ -738,7 +738,7 @@ test('it validates the iss claim only if explicitily enabled', (t) => {
   t.end()
 })
 
-test('it validates the sub claim only if explicitily enabled', (t) => {
+test('it validates the sub claim only if explicitily enabled', t => {
   t.throws(
     () => {
       return verify(
@@ -817,7 +817,7 @@ test('it validates the sub claim only if explicitily enabled', (t) => {
   t.end()
 })
 
-test('it validates the nonce claim only if explicitily enabled', (t) => {
+test('it validates the nonce claim only if explicitily enabled', t => {
   t.throws(
     () => {
       return verify(
@@ -896,7 +896,7 @@ test('it validates the nonce claim only if explicitily enabled', (t) => {
   t.end()
 })
 
-test('it validates allowed claims values using equality when appropriate', (t) => {
+test('it validates allowed claims values using equality when appropriate', t => {
   // The iss claim in the token starts with ISS
   t.throws(
     () => {
@@ -922,7 +922,7 @@ test('it validates allowed claims values using equality when appropriate', (t) =
   t.end()
 })
 
-test('it validates whether a required claim is present in the payload or not', (t) => {
+test('it validates whether a required claim is present in the payload or not', t => {
   // Token payload: { "iss": "ISS"}
   const token = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJJU1MifQ.FKjJd2A-T8ufN7Y0LpjMR23P7CwEQ3Y-LBIYd2Vh_Rs'
 
@@ -938,7 +938,7 @@ test('it validates whether a required claim is present in the payload or not', (
   t.end()
 })
 
-test("it skips validation when an allowed claim isn't present in the payload", (t) => {
+test("it skips validation when an allowed claim isn't present in the payload", t => {
   // Token payload: { "iss": "ISS"}
   const token = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJJU1MifQ.FKjJd2A-T8ufN7Y0LpjMR23P7CwEQ3Y-LBIYd2Vh_Rs'
 
@@ -947,7 +947,7 @@ test("it skips validation when an allowed claim isn't present in the payload", (
   t.end()
 })
 
-test('token type validation', (t) => {
+test('token type validation', t => {
   t.throws(() => createVerifier({ key: 'secret' })(123), {
     message: 'The token must be a string or a buffer.'
   })
@@ -955,7 +955,7 @@ test('token type validation', (t) => {
   t.end()
 })
 
-test('options validation - key', (t) => {
+test('options validation - key', t => {
   t.throws(() => createVerifier({ key: 123 }), {
     message: 'The key option must be a string, a buffer or a function returning the algorithm secret or public key.'
   })
@@ -963,7 +963,7 @@ test('options validation - key', (t) => {
   t.end()
 })
 
-test('options validation - clockTimestamp', (t) => {
+test('options validation - clockTimestamp', t => {
   t.throws(() => createVerifier({ key: 'secret', clockTimestamp: '123' }), {
     message: 'The clockTimestamp option must be a positive number.'
   })
@@ -975,7 +975,7 @@ test('options validation - clockTimestamp', (t) => {
   t.end()
 })
 
-test('options validation - clockTolerance', (t) => {
+test('options validation - clockTolerance', t => {
   t.throws(() => createVerifier({ key: 'secret', clockTolerance: '123' }), {
     message: 'The clockTolerance option must be a positive number.'
   })
@@ -987,7 +987,7 @@ test('options validation - clockTolerance', (t) => {
   t.end()
 })
 
-test('options validation - cacheTTL', (t) => {
+test('options validation - cacheTTL', t => {
   t.throws(() => createVerifier({ key: 'secret', cacheTTL: '123' }), {
     message: 'The cacheTTL option must be a positive number.'
   })
@@ -999,7 +999,7 @@ test('options validation - cacheTTL', (t) => {
   t.end()
 })
 
-test('options validation - requiredClaims', (t) => {
+test('options validation - requiredClaims', t => {
   t.throws(() => createVerifier({ key: 'secret', requiredClaims: 'ISS' }), {
     message: 'The requiredClaims option must be an array.'
   })
@@ -1007,7 +1007,7 @@ test('options validation - requiredClaims', (t) => {
   t.end()
 })
 
-test('caching - sync', (t) => {
+test('caching - sync', t => {
   const token = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxfQ.57TF7smP9XDhIexBqPC-F1toZReYZLWb_YRU5tv0sxM'
   const invalidToken = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxfQ.aaa'
 
@@ -1030,7 +1030,7 @@ test('caching - sync', (t) => {
   t.end()
 })
 
-test('caching - async', async (t) => {
+test('caching - async', async t => {
   const token = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxfQ.57TF7smP9XDhIexBqPC-F1toZReYZLWb_YRU5tv0sxM'
   const invalidToken = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxfQ.aaa'
 
@@ -1057,7 +1057,7 @@ for (const type of ['HS', 'ES', 'RS', 'PS']) {
     const privateKey = privateKeys[type === 'ES' ? algorithm : type]
     const publicKey = publicKeys[type === 'ES' ? algorithm : type]
 
-    test(`caching - should use the right hash method for storing values - ${algorithm}`, (t) => {
+    test(`caching - should use the right hash method for storing values - ${algorithm}`, t => {
       const signer = createSigner({ algorithm, key: privateKey, noTimestamp: 1 })
       const verifier = createVerifier({ algorithm, key: publicKey, cache: true })
       const token = signer({ a: 1 })
@@ -1074,7 +1074,7 @@ for (const type of ['HS', 'ES', 'RS', 'PS']) {
 }
 
 if (useNewCrypto) {
-  test('caching - should use the right hash method for storing values - EdDSA with Ed25519', (t) => {
+  test('caching - should use the right hash method for storing values - EdDSA with Ed25519', t => {
     const signer = createSigner({ algorithm: 'EdDSA', key: privateKeys.Ed25519, noTimestamp: 1 })
     const verifier = createVerifier({ key: publicKeys.Ed25519, cache: true })
     const token = signer({ a: 1 })
@@ -1087,7 +1087,7 @@ if (useNewCrypto) {
     t.end()
   })
 
-  test('caching - should use the right hash method for storing values - EdDSA with Ed448', (t) => {
+  test('caching - should use the right hash method for storing values - EdDSA with Ed448', t => {
     const signer = createSigner({
       algorithm: 'EdDSA',
       key: privateKeys.Ed448,
@@ -1106,7 +1106,7 @@ if (useNewCrypto) {
   })
 }
 
-test('caching - should be able to manipulate cache directy', (t) => {
+test('caching - should be able to manipulate cache directy', t => {
   const clock = fakeTime({ now: 100000 })
 
   const signer = createSigner({ key: 'secret', expiresIn: 100000 })
@@ -1129,7 +1129,7 @@ test('caching - should be able to manipulate cache directy', (t) => {
   t.end()
 })
 
-test('caching - should correctly expire cached token using the exp claim', (t) => {
+test('caching - should correctly expire cached token using the exp claim', t => {
   const clock = fakeTime({ now: 100000 })
 
   const signer = createSigner({ key: 'secret', expiresIn: 100000 })
@@ -1171,7 +1171,7 @@ test('caching - should correctly expire cached token using the exp claim', (t) =
   t.end()
 })
 
-test('caching - should correctly expire cached token using the maxAge claim', (t) => {
+test('caching - should correctly expire cached token using the maxAge claim', t => {
   const clock = fakeTime({ now: 100000 })
 
   const signer = createSigner({ key: 'secret' })
@@ -1200,7 +1200,7 @@ test('caching - should correctly expire cached token using the maxAge claim', (t
   t.end()
 })
 
-test('caching - should correctly expire not yet cached token using the nbf claim at exact notBefore time', (t) => {
+test('caching - should correctly expire not yet cached token using the nbf claim at exact notBefore time', t => {
   const clock = fakeTime({ now: 100000 })
 
   const signer = createSigner({ key: 'secret', notBefore: 200000 })
@@ -1228,7 +1228,7 @@ test('caching - should correctly expire not yet cached token using the nbf claim
   t.end()
 })
 
-test('caching - should correctly expire not yet cached token using the nbf claim while checking after expiry period', (t) => {
+test('caching - should correctly expire not yet cached token using the nbf claim while checking after expiry period', t => {
   const clock = fakeTime({ now: 100000 })
 
   const signer = createSigner({ key: 'secret', notBefore: 200000 })
@@ -1256,7 +1256,7 @@ test('caching - should correctly expire not yet cached token using the nbf claim
   t.end()
 })
 
-test('caching - should be able to consider both nbf and exp field at the same time', (t) => {
+test('caching - should be able to consider both nbf and exp field at the same time', t => {
   const clock = fakeTime({ now: 100000 })
 
   const signer = createSigner({ key: 'secret', expiresIn: 400000, notBefore: 200000 })
@@ -1294,7 +1294,7 @@ test('caching - should be able to consider both nbf and exp field at the same ti
   t.end()
 })
 
-test('caching - should be able to consider clockTolerance on both nbf and exp field', (t) => {
+test('caching - should be able to consider clockTolerance on both nbf and exp field', t => {
   const clock = fakeTime({ now: 100000 })
 
   const signer = createSigner({ key: 'secret', expiresIn: 400000, notBefore: 200000 })
@@ -1348,7 +1348,7 @@ test('caching - should be able to consider clockTolerance on both nbf and exp fi
   t.end()
 })
 
-test('caching - should ignore the nbf and exp when asked to', (t) => {
+test('caching - should ignore the nbf and exp when asked to', t => {
   const clock = fakeTime({ now: 100000 })
 
   const signer = createSigner({ key: 'secret', expiresIn: 400000, notBefore: 200000 })
@@ -1402,7 +1402,7 @@ test('caching - should ignore the nbf and exp when asked to', (t) => {
   t.end()
 })
 
-test('options validation - errorCacheTTL', (t) => {
+test('options validation - errorCacheTTL', t => {
   t.throws(() => createVerifier({ key: 'secret', errorCacheTTL: '123' }), {
     message: 'The errorCacheTTL option must be a positive number or a function.'
   })
@@ -1414,7 +1414,7 @@ test('options validation - errorCacheTTL', (t) => {
   t.end()
 })
 
-test('default errorCacheTTL should not cache errors', async (t) => {
+test('default errorCacheTTL should not cache errors', async t => {
   const clock = fakeTime({ now: 0 })
   const token = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxfQ.57TF7smP9XDhIexBqPC-F1toZReYZLWb_YRU5tv0sxM'
   const verifier = createVerifier({
@@ -1433,7 +1433,7 @@ test('default errorCacheTTL should not cache errors', async (t) => {
   t.end()
 })
 
-test('errors should have ttl equal to errorCacheTTL', async (t) => {
+test('errors should have ttl equal to errorCacheTTL', async t => {
   const clock = fakeTime({ now: 0 })
   const errorCacheTTL = 20000
   const token = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxfQ.57TF7smP9XDhIexBqPC-F1toZReYZLWb_YRU5tv0sxM'
@@ -1454,7 +1454,7 @@ test('errors should have ttl equal to errorCacheTTL', async (t) => {
   t.end()
 })
 
-test('errors should have ttl equal to errorCacheTTL', async (t) => {
+test('errors should have ttl equal to errorCacheTTL', async t => {
   const clock = fakeTime({ now: 0 })
   const errorCacheTTL = 20000
   const token = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxfQ.57TF7smP9XDhIexBqPC-F1toZReYZLWb_YRU5tv0sxM'
@@ -1486,11 +1486,11 @@ test('errors should have ttl equal to errorCacheTTL', async (t) => {
   t.end()
 })
 
-test('errors should have ttl equal to errorCacheTTL as function', async (t) => {
+test('errors should have ttl equal to errorCacheTTL as function', async t => {
   const clock = fakeTime({ now: 0 })
 
   const fetchKeyErrorTTL = 2000
-  const errorCacheTTL = (tokenError) => {
+  const errorCacheTTL = tokenError => {
     if (tokenError?.code === 'FAST_JWT_KEY_FETCHING_ERROR') {
       return fetchKeyErrorTTL
     }
@@ -1516,7 +1516,7 @@ test('errors should have ttl equal to errorCacheTTL as function', async (t) => {
   t.end()
 })
 
-test('invalid errorCacheTTL function should be handle ', async (t) => {
+test('invalid errorCacheTTL function should be handle ', async t => {
   const clock = fakeTime({ now: 0 })
 
   const errorCacheTTL = () => {
