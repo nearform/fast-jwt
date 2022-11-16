@@ -285,7 +285,7 @@ function verify(
       (min === 0 ||
         (now < min && value.code === 'FAST_JWT_INACTIVE') ||
         (now >= min && value.code !== 'FAST_JWT_INACTIVE')) &&
-      (max === 0 || now < max)
+      (max === 0 || now <= max)
     ) {
       // Cache hit
       return handleCachedResult(value, callback, promise)
