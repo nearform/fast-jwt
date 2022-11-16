@@ -285,7 +285,7 @@ function verify(
       (min === 0 ||
         (now < min && value.code === 'FAST_JWT_INACTIVE') ||
         (now >= min && value.code !== 'FAST_JWT_INACTIVE')) &&
-      (max === 0 || now <= max)
+      (max === 0 || now < max)
     ) {
       // Cache hit
       return handleCachedResult(value, callback, promise)
@@ -388,7 +388,7 @@ module.exports = function createVerifier(options) {
     allowedSub,
     allowedNonce,
     requiredClaims
-  } = { cacheTTL: 600000, clockTolerance: 0, errorCacheTTL: 0, ...options }
+  } = { cacheTTL: 600000, clockTolerance: 0, errorCacheTTL: -1, ...options }
 
   // Validate options
   if (!Array.isArray(allowedAlgorithms)) {
@@ -430,11 +430,11 @@ module.exports = function createVerifier(options) {
 
   if (
     (errorCacheTTL && typeof errorCacheTTL !== 'function' && typeof errorCacheTTL !== 'number') ||
-    errorCacheTTL < 0
+    errorCacheTTL < -1
   ) {
     throw new TokenError(
       TokenError.codes.invalidOption,
-      'The errorCacheTTL option must be a positive number or a function.'
+      'The errorCacheTTL option must be a number greater than -1 or a function.'
     )
   }
 
