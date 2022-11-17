@@ -1404,11 +1404,11 @@ test('caching - should ignore the nbf and exp when asked to', t => {
 
 test('options validation - errorCacheTTL', t => {
   t.throws(() => createVerifier({ key: 'secret', errorCacheTTL: '123' }), {
-    message: 'The errorCacheTTL option must be a positive number or a function.'
+    message: 'The errorCacheTTL option must be a number greater than -1 or a function.'
   })
 
-  t.throws(() => createVerifier({ key: 'secret', errorCacheTTL: -1 }), {
-    message: 'The errorCacheTTL option must be a positive number or a function.'
+  t.throws(() => createVerifier({ key: 'secret', errorCacheTTL: -2 }), {
+    message: 'The errorCacheTTL option must be a number greater than -1 or a function.'
   })
 
   t.end()
@@ -1428,7 +1428,7 @@ test('default errorCacheTTL should not cache errors', async t => {
   t.equal(verifier.cache.size, 0)
   await t.rejects(async () => verifier(token))
   t.equal(verifier.cache.size, 1)
-  t.strictSame(verifier.cache.get(hashToken(token))[2], 0)
+  t.strictSame(verifier.cache.get(hashToken(token))[2], -1)
   clock.uninstall()
   t.end()
 })
@@ -1539,4 +1539,29 @@ test('invalid errorCacheTTL function should be handle ', async t => {
 
   clock.uninstall()
   t.end()
+})
+
+test('default errorCacheTTL should not cache errors when sub millisecond execution', async t => {
+  const clock = fakeTime({ now: 0 })
+
+  const token = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxfQ.57TF7smP9XDhIexBqPC-F1toZReYZLWb_YRU5tv0sxM'
+  const verifier = createVerifier({
+    key: async () => {
+      throw new Error('invalid')
+    },
+    cache: true
+  })
+  const checkToken = 'check'
+  t.equal(verifier.cache.size, 0)
+  await t.rejects(async () => verifier(token))
+  t.equal(verifier.cache.size, 1)
+
+  // change cache to check if hits
+  verifier.cache.set(hashToken(token), [checkToken, 0, -1])
+
+  await t.rejects(async () => verifier(token))
+
+  t.notSame(verifier.cache.get(hashToken(token))[0], checkToken)
+
+  clock.uninstall()
 })
