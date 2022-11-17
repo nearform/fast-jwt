@@ -1564,5 +1564,4 @@ test('default errorCacheTTL should not cache errors when sub millisecond executi
   t.notSame(verifier.cache.get(hashToken(token))[0], checkToken)
 
   clock.uninstall()
-  t.end()
 })
