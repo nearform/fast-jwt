@@ -76,7 +76,7 @@
     "typescript": "^5.0.2"
   },
   "engines": {
-    "node": ">=14 <20"
+    "node": ">=14 <22"
   },
   "tsd": {
     "directory": "test"
