@@ -6,7 +6,7 @@ on:
       - master
 jobs:
   build:
-    uses: pkgjs/action/.github/workflows/node-test.yaml@v0
+    uses: pkgjs/action/.github/workflows/node-test.yaml@v0.1.6
     with:
       strategy-fail-fast: true
       test-command: npm run test:ci
