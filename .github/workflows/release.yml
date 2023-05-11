@@ -20,6 +20,7 @@ jobs:
       contents: write
       issues: write
       pull-requests: write
+      id-token: write
     runs-on: ubuntu-latest
     steps:
       - uses: nearform-actions/optic-release-automation-action@v4
@@ -34,3 +35,4 @@ jobs:
           semver: ${{ github.event.inputs.semver }}
           build-command: |
             npm install
+          provenance: true
