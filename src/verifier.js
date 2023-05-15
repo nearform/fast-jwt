@@ -324,7 +324,7 @@ function verify(
   }
 
   // Get the key asynchronously
-  getAsyncKey(key, header, (err, currentKey) => {
+  getAsyncKey(key, { header, payload, signature }, (err, currentKey) => {
     if (err) {
       return callback(
         cacheSet(cacheContext, TokenError.wrap(err, TokenError.codes.keyFetchingError, 'Cannot fetch key.'))
