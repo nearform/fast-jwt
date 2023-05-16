@@ -1,5 +1,6 @@
 package-lock.json
 yarn.lock
+pnpm-lock.yaml
 
 .clinic
 .nyc_output
