@@ -281,8 +281,11 @@ module.exports = function createSigner(options) {
   }
 
   const fpo = { jti, aud, iss, sub, nonce }
-  const fixedPayload = Object.keys(fpo).reduce((obj, key) => {
-    return fpo[key] !== undefined ? Object.assign(obj, { [key]: fpo[key] }) : obj
+  const fixedPayload = Object.entries(fpo).reduce((obj, [key, value]) => {
+    if (value !== undefined) {
+      obj[key] = value
+    }
+    return obj
   }, {})
 
   // Return the signer
