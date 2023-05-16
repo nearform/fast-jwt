@@ -41,6 +41,25 @@ function verify(token, options, callback) {
   return verifier(token, callback)
 }
 
+test('it gets the correct decoded jwt token as argument on the key callback', async t => {
+  verify('eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxfQ.57TF7smP9XDhIexBqPC-F1toZReYZLWb_YRU5tv0sxM', {
+    key: async decoded => {
+      t.strictSame(
+        decoded,
+        {
+          header: { typ: 'JWT', alg: 'HS256' },
+          payload: { a: 1 },
+          signature: '57TF7smP9XDhIexBqPC-F1toZReYZLWb_YRU5tv0sxM'
+        }
+      )
+
+      return Buffer.from('secret', 'utf-8')
+    },
+    noTimestamp: true,
+    complete: true
+  })
+})
+
 test('it correctly verifies a token - sync', t => {
   t.strictSame(
     verify('eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxfQ.57TF7smP9XDhIexBqPC-F1toZReYZLWb_YRU5tv0sxM', {
@@ -134,7 +153,7 @@ test('it correctly verifies a token - sync', t => {
 test('it correctly verifies a token - async - key with callback', async t => {
   t.strictSame(
     await verify('eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxfQ.57TF7smP9XDhIexBqPC-F1toZReYZLWb_YRU5tv0sxM', {
-      key: (_h, callback) => setTimeout(() => callback(null, 'secret'), 10),
+      key: (_decodedJwt, callback) => setTimeout(() => callback(null, 'secret'), 10),
       noTimestamp: true
     }),
     { a: 1 }
@@ -143,7 +162,7 @@ test('it correctly verifies a token - async - key with callback', async t => {
   t.strictSame(
     await verify('eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxfQ.57TF7smP9XDhIexBqPC-F1toZReYZLWb_YRU5tv0sxM', {
       algorithms: ['HS256'],
-      key: (_h, callback) => setTimeout(() => callback(null, 'secret'), 10),
+      key: (_decodedJwt, callback) => setTimeout(() => callback(null, 'secret'), 10),
       noTimestamp: true,
       complete: true
     }),
@@ -247,7 +266,7 @@ test('it correctly handle errors - callback', t => {
   verify(
     'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxfQ.57TF7smP9XDhIexBqPC-F1toZReYZLWb_YRU5tv0sxM',
     {
-      key: (_decoded, callback) => {
+      key: (_decodedJwt, callback) => {
         callback(new Error('FAILED'))
       }
     },
@@ -264,7 +283,7 @@ test('it correctly handle errors - evented callback', t => {
   verify(
     'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxfQ.57TF7smP9XDhIexBqPC-F1toZReYZLWb_YRU5tv0sxM',
     {
-      key: (_decoded, callback) => {
+      key: (_decodedJwt, callback) => {
         process.nextTick(() => callback(null, 'FAILED'))
       }
     },

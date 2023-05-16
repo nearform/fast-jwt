@@ -3,7 +3,7 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable @typescript-eslint/no-empty-function */
 
-import { createDecoder, createSigner, createVerifier, JwtHeader, TokenError } from '..'
+import { createDecoder, createSigner, createVerifier, DecodedJwt, JwtHeader, TokenError } from '..'
 import { expectAssignable, expectNotAssignable } from 'tsd'
 
 // Signing
@@ -18,7 +18,7 @@ signerAsync({ key: '1' }, (_e: Error | null, _token?: string) => {})
 // Dynamic key in callback style
 createSigner({
   clockTimestamp: 10,
-  key(_header: { [key: string]: any }, cb: (e: Error | null, key: string) => void): void {
+  key(_decodedJwt: DecodedJwt, cb: (e: Error | null, key: string) => void): void {
     cb(null, 'KEY')
   }
 })({ key: 1 }).then(console.log, console.log)
@@ -26,7 +26,7 @@ createSigner({
 // Dynamic key in async style
 createSigner({
   clockTimestamp: 10,
-  async key(_header: { [key: string]: any }) {
+  async key(_decodedJwt: DecodedJwt) {
     return 'KEY'
   }
 })({ key: 1 }).then(console.log, console.log)
@@ -48,7 +48,7 @@ verifierAsync(Buffer.from('456'), (_e: Error | null, _token?: string) => {})
 // Dynamic key in callback style
 createVerifier({
   clockTimestamp: 10,
-  key(_header: { [key: string]: any }, cb: (e: Error | null, key: string) => void): void {
+  key(_decodedJwt: DecodedJwt, cb: (e: Error | null, key: string) => void): void {
     cb(null, 'KEY')
   }
 })('123').then(console.log, console.log)
@@ -56,7 +56,7 @@ createVerifier({
 // Dynamic key in async style
 createVerifier({
   clockTimestamp: 10,
-  async key(_header: { [key: string]: any }) {
+  async key(_decodedJwt: DecodedJwt) {
     return 'KEY'
   }
 })('456').then(console.log, console.log)
