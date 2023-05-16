@@ -15,9 +15,9 @@ const { TokenError } = require('./error')
 const { getAsyncKey, ensurePromiseCallback } = require('./utils')
 const { createPrivateKey, createSecretKey } = require('crypto')
 
-const supportedAlgorithms = Array.from(
-  new Set([...hsAlgorithms, ...esAlgorithms, ...rsaAlgorithms, ...edAlgorithms, 'none'])
-).join(', ')
+const supportedAlgorithms = new Set([...hsAlgorithms, ...esAlgorithms, ...rsaAlgorithms, ...edAlgorithms, 'none'])
+
+const supportedAlgorithmsList = Array.from(supportedAlgorithms).join(', ')
 
 function checkIsCompatibleAlgorithm(expected, actual) {
   const expectedType = expected.slice(0, 2)
@@ -193,15 +193,11 @@ module.exports = function createSigner(options) {
   // Validate options
   if (
     algorithm &&
-    algorithm !== 'none' &&
-    !hsAlgorithms.includes(algorithm) &&
-    !esAlgorithms.includes(algorithm) &&
-    !rsaAlgorithms.includes(algorithm) &&
-    !edAlgorithms.includes(algorithm)
+    !supportedAlgorithms.has(algorithm)
   ) {
     throw new TokenError(
       TokenError.codes.invalidOption,
-      `The algorithm option must be one of the following values: ${supportedAlgorithms}.`
+      `The algorithm option must be one of the following values: ${supportedAlgorithmsList}.`
     )
   }
 
