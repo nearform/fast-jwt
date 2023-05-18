@@ -125,7 +125,7 @@ function sign(
   }
 
   // Get the key asynchronously
-  getAsyncKey(key, header, (err, currentKey) => {
+  getAsyncKey(key, { header, payload }, (err, currentKey) => {
     if (err) {
       const error = TokenError.wrap(err, TokenError.codes.keyFetchingError, 'Cannot fetch key.')
       return callback(error)

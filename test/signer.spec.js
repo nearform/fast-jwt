@@ -44,6 +44,25 @@ function sign(payload, options, callback) {
   return signer(payload, callback)
 }
 
+test('it passes the correct decoded jwt token to the key callback', async t => {
+  sign(
+    { a: 1 },
+    {
+      noTimestamp: true,
+      key: decodedJwt => {
+        t.strictSame(decodedJwt, {
+          payload: { a: 1 },
+          header: {
+            alg: undefined,
+            typ: 'JWT',
+            kid: undefined
+          }
+        })
+      }
+    }
+  )
+})
+
 test('it correctly returns a token - sync', t => {
   t.equal(
     sign({ a: 1 }, { noTimestamp: true }),
@@ -79,7 +98,10 @@ test('it correctly returns a token - sync', t => {
 
 test('it correctly returns a token - async - key with callback', async t => {
   t.equal(
-    await sign({ a: 1 }, { key: (_h, callback) => setTimeout(() => callback(null, 'secret'), 10), noTimestamp: true }),
+    await sign(
+      { a: 1 },
+      { key: (_decodedJwt, callback) => setTimeout(() => callback(null, 'secret'), 10), noTimestamp: true }
+    ),
     'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxfQ.57TF7smP9XDhIexBqPC-F1toZReYZLWb_YRU5tv0sxM'
   )
 })
@@ -513,7 +535,7 @@ test('it correctly handle errors - callback', t => {
   sign(
     { a: 1 },
     {
-      key: (header, callback) => {
+      key: (_decodedJwt, callback) => {
         callback(new Error('FAILED'))
       },
       noTimestamp: true
@@ -531,7 +553,7 @@ test('it correctly validates the key received from the callback', t => {
   sign(
     { a: 1 },
     {
-      key: (header, callback) => {
+      key: (_decodedJwt, callback) => {
         callback(null, 123)
       },
       noTimestamp: true
@@ -552,7 +574,7 @@ test('it correctly handle errors - evented callback', t => {
   sign(
     { a: 1 },
     {
-      key: (header, callback) => {
+      key: (_decodedJwt, callback) => {
         process.nextTick(() => callback(null, 'FAILED'))
       },
       noTimestamp: true,

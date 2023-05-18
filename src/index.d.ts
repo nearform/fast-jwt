@@ -62,9 +62,15 @@ declare class TokenError extends Error {
 type SignerCallback = (e: Error | TokenError | null, token: string) => void
 type VerifierCallback = (e: Error | TokenError | null, payload: any) => void
 
+type DecodedJwt = {
+  header: { [key: string]: any },
+  payload: string,
+  signature: string
+}
+
 type KeyFetcher =
-  | ((header: { [key: string]: any }) => Promise<string | Buffer>)
-  | ((header: { [key: string]: any }, cb: (err: Error | TokenError | null, key: string | Buffer) => void) => void)
+  | ((DecodedJwt: DecodedJwt) => Promise<string | Buffer>)
+  | ((DecodedJwt: DecodedJwt, cb: (err: Error | TokenError | null, key: string | Buffer) => void) => void)
 
 declare function SignerSync(payload: string | Buffer | { [key: string]: any }): string
 declare function SignerAsync(payload: string | Buffer | { [key: string]: any }): Promise<string>

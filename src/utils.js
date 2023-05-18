@@ -5,8 +5,8 @@ const algorithmMatcher = /"alg"\s*:\s*"[HERP]S(256|384)"/m
 const edAlgorithmMatcher = /"alg"\s*:\s*"EdDSA"/m
 const ed448CurveMatcher = /"crv"\s*:\s*"Ed448"/m
 
-function getAsyncKey(handler, header, callback) {
-  const result = handler(header, callback)
+function getAsyncKey(handler, decoded, callback) {
+  const result = handler(decoded, callback)
 
   if (result && typeof result.then === 'function') {
     result
@@ -31,7 +31,7 @@ function ensurePromiseCallback(callback) {
   })
 
   return [
-    function(err, token) {
+    function (err, token) {
       if (err) {
         return promiseReject(err)
       }
