@@ -1,21 +1,22 @@
 'use strict'
 
+import nodeRsJwt, { Algorithm } from '@node-rs/jsonwebtoken'
 import cronometro from 'cronometro'
 import { readFileSync } from 'fs'
 import { mkdir, writeFile } from 'fs/promises'
-import { resolve, dirname } from 'path'
+import { dirname, resolve } from 'path'
 import { fileURLToPath } from 'url'
 
 import jwt from 'jsonwebtoken'
 
 import {
-  JWT as JWTJose,
-  JWK as JWKJose
+  JWK as JWKJose,
+  JWT as JWTJose
 } from 'jose'
 
 import {
-  createSigner,
   createDecoder,
+  createSigner,
   createVerifier
 } from '../src/index.js'
 
@@ -26,6 +27,12 @@ const {
   decode: jsonwebtokenDecode,
   verify: jsonwebtokenVerify
 } = jwt
+
+const {
+  sign: nodeRsSign,
+  signSync: nodeRsSignSync,
+  verifySync: nodeRsVerifySync
+} = nodeRsJwt
 
 const { sign: joseSign, verify: joseVerify, decode: joseDecode } = JWTJose
 const { asKey } = JWKJose
@@ -160,6 +167,7 @@ export async function compareSigning(payload, algorithm, privateKey, publicKey) 
   if ((process.env.NODE_DEBUG || '').includes('fast-jwt')) {
     const fastjwtGenerated = fastjwtSign(payload)
     const joseGenerated = joseSign(payload, josePrivateKey, joseOptions)
+    const nodeRsGenerated = nodeRsSignSync({ data: payload, exp: Date.now() }, privateKey, { algorithm: Algorithm[algorithm.toUpperCase()] })
     const jsonwebtokenGenerated = isEdDSA
       ? null
       : jsonwebtokenSign(payload, privateKey, { algorithm, noTimestamp: true })
@@ -167,16 +175,18 @@ export async function compareSigning(payload, algorithm, privateKey, publicKey) 
     log('-------')
     log(`Generated ${algorithm} tokens:`)
     if (!isEdDSA) {
-      log(`  jsonwebtoken: ${JSON.stringify(jsonwebtokenGenerated)}`)
+      log(`         jsonwebtoken: ${JSON.stringify(jsonwebtokenGenerated)}`)
     }
-    log(`          jose: ${JSON.stringify(joseGenerated)}`)
-    log(`       fastjwt: ${JSON.stringify(fastjwtSign(payload))}`)
+    log(`                 jose: ${JSON.stringify(joseGenerated)}`)
+    log(`              fastjwt: ${JSON.stringify(fastjwtGenerated)}`)
+    log(`@node-rs/jsonwebtoken: ${JSON.stringify(nodeRsGenerated)}`)
     log('Generated tokens verification:')
     if (!isEdDSA) {
-      log(`  jsonwebtoken: ${JSON.stringify(jsonwebtokenVerify(jsonwebtokenGenerated, publicKey))}`)
+      log(`         jsonwebtoken: ${JSON.stringify(jsonwebtokenVerify(jsonwebtokenGenerated, publicKey))}`)
     }
-    log(`          jose: ${JSON.stringify(joseVerify(joseGenerated, asKey(publicKey)))}`)
-    log(`       fastjwt: ${JSON.stringify(fastjwtVerify(fastjwtGenerated))}`)
+    log(`                 jose: ${JSON.stringify(joseVerify(joseGenerated, asKey(publicKey)))}`)
+    log(`              fastjwt: ${JSON.stringify(fastjwtVerify(fastjwtGenerated))}`)
+    log(`@node-rs/jsonwebtoken: ${JSON.stringify(nodeRsVerifySync(nodeRsGenerated, publicKey, { algorithms: [Algorithm[algorithm.toUpperCase()]] }))}`)
     log('-------')
   }
 
@@ -203,6 +213,15 @@ export async function compareSigning(payload, algorithm, privateKey, publicKey) 
     },
     [`${algorithm} - fast-jwt (async)`]: function(done) {
       fastjwtSignAsync(payload, done)
+    }
+  })
+
+  Object.assign(tests, {
+    [`${algorithm} - @node-rs/jsonwebtoken (sync)`]: function() {
+      nodeRsSignSync({ data: payload }, privateKey, { algorithm: Algorithm[algorithm.toUpperCase()] })
+    },
+    [`${algorithm} - @node-rs/jsonwebtoken (async)`]: function(done) {
+      nodeRsSign({ data: payload }, privateKey, { algorithm: Algorithm[algorithm.toUpperCase()] }).then(() => done())
     }
   })
 
