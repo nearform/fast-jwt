@@ -57,6 +57,7 @@
     "mnemonist": "^0.39.5"
   },
   "devDependencies": {
+    "@node-rs/jsonwebtoken": "^0.2.0",
     "@sinonjs/fake-timers": "^10.0.2",
     "@types/node": "^20.0.0",
     "@typescript-eslint/eslint-plugin": "^5.49.0",
