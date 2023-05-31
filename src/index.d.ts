@@ -94,44 +94,44 @@ export interface JwtHeader {
 }
 
 export interface SignerOptions {
-  algorithm: Algorithm
-  mutatePayload: boolean
-  expiresIn: number
-  notBefore: number
-  jti: string
-  aud: string | string[]
-  iss: string
-  sub: string
-  nonce: string
-  kid: string
-  header: JwtHeader
-  noTimestamp: boolean
-  clockTimestamp: number
+  algorithm?: Algorithm
+  mutatePayload?: boolean
+  expiresIn?: number
+  notBefore?: number
+  jti?: string
+  aud?: string | string[]
+  iss?: string
+  sub?: string
+  nonce?: string
+  kid?: string
+  header?: JwtHeader
+  noTimestamp?: boolean
+  clockTimestamp?: number
 }
 
 export interface DecoderOptions {
-  complete: boolean
-  checkTyp: string
+  complete?: boolean
+  checkTyp?: string
 }
 
 export interface VerifierOptions {
-  algorithms: Algorithm[]
-  complete: boolean
-  cache: boolean | number
-  cacheTTL: number
-  errorCacheTTL: number | ((tokenError: TokenError) => number)
-  allowedJti: string | RegExp | Array<string | RegExp>
-  allowedAud: string | RegExp | Array<string | RegExp>
-  allowedIss: string | RegExp | Array<string | RegExp>
-  allowedSub: string | RegExp | Array<string | RegExp>
-  allowedNonce: string | RegExp | Array<string | RegExp>
-  ignoreExpiration: boolean
-  ignoreNotBefore: boolean
-  maxAge: number
-  clockTimestamp: number
-  clockTolerance: number
-  requiredClaims: Array<string>
-  checkTyp: string
+  algorithms?: Algorithm[]
+  complete?: boolean
+  cache?: boolean | number
+  cacheTTL?: number
+  errorCacheTTL?: number | ((tokenError: TokenError) => number)
+  allowedJti?: string | RegExp | Array<string | RegExp>
+  allowedAud?: string | RegExp | Array<string | RegExp>
+  allowedIss?: string | RegExp | Array<string | RegExp>
+  allowedSub?: string | RegExp | Array<string | RegExp>
+  allowedNonce?: string | RegExp | Array<string | RegExp>
+  ignoreExpiration?: boolean
+  ignoreNotBefore?: boolean
+  maxAge?: number
+  clockTimestamp?: number
+  clockTolerance?: number
+  requiredClaims?: Array<string>
+  checkTyp?: string
 }
 
 export interface PrivateKey {
