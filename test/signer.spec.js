@@ -63,7 +63,7 @@ test('it passes the correct decoded jwt token to the key callback', async t => {
   )
 })
 
-test('it correctly returns a token - sync', t => {
+test('it correctly returns a token - sync', async t => {
   t.equal(
     sign({ a: 1 }, { noTimestamp: true }),
     'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxfQ.57TF7smP9XDhIexBqPC-F1toZReYZLWb_YRU5tv0sxM'
@@ -92,8 +92,6 @@ test('it correctly returns a token - sync', t => {
       }
     })
   }
-
-  t.end()
 })
 
 test('it correctly returns a token - async - key with callback', async t => {
@@ -303,45 +301,37 @@ test('it correctly autodetects the algorithm depending on the secret provided', 
   }
 })
 
-test('it correctly set a timestamp', t => {
+test('it correctly set a timestamp', async t => {
   const ts = [100000, 200000]
   const originalNow = Date.now
 
   Date.now = () => ts.shift()
   t.not(sign({ a: 1 }, {}), sign({ a: 1 }, {}))
   Date.now = originalNow
-
-  t.end()
 })
 
-test('it respect the payload iat, if one is set', t => {
+test('it respect the payload iat, if one is set', async t => {
   t.equal(
     sign({ a: 1, iat: 123 }, {}),
     'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxLCJpYXQiOjEyM30.J-5nCdVMKQ0yqIIkKTPBuQf46vPXcbwdLpAcYBZ9EqU'
   )
-
-  t.end()
 })
 
-test('it respect the payload sub, if one is set', t => {
+test('it respect the payload sub, if one is set', async t => {
   t.equal(
     sign({ a: 1, sub: 'SUB' }, { noTimestamp: true }),
     'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxLCJzdWIiOiJTVUIifQ.wweP9vNGt77bBGwZ_PLXfPxy2qcx2mnjUa0AWVA5bEM'
   )
-
-  t.end()
 })
 
-test('it uses the clockTimestamp option, if one is set', t => {
+test('it uses the clockTimestamp option, if one is set', async t => {
   t.equal(
     sign({ a: 1 }, { clockTimestamp: 123000 }),
     'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxLCJpYXQiOjEyM30.J-5nCdVMKQ0yqIIkKTPBuQf46vPXcbwdLpAcYBZ9EqU'
   )
-
-  t.end()
 })
 
-test('it respects payload exp claim (if supplied), overriding the default expiresIn timeout', t => {
+test('it respects payload exp claim (if supplied), overriding the default expiresIn timeout', async t => {
   t.equal(
     sign({ a: 1, iat: 100 }, { expiresIn: 1000 }),
     'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxLCJpYXQiOjEwMCwiZXhwIjoxMDF9.ULKqTsvUYm7iNOKA6bP5NXsa1A8vofgPIGiC182Vf_Q'
@@ -351,11 +341,9 @@ test('it respects payload exp claim (if supplied), overriding the default expire
     sign({ a: 1, iat: 100, exp: 200 }, { expiresIn: 1000 }),
     'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxLCJpYXQiOjEwMCwiZXhwIjoyMDB9.RJbB3-VIjLIQr-VmZ1Kl42MrHr2pAU-CQuXK8jHMKR0'
   )
-
-  t.end()
 })
 
-test('it supports expiresIn as a string', t => {
+test('it supports expiresIn as a string', async t => {
   t.equal(
     sign({ a: 1, iat: 100 }, { expiresIn: '1000' }),
     'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxLCJpYXQiOjEwMCwiZXhwIjoxMDF9.ULKqTsvUYm7iNOKA6bP5NXsa1A8vofgPIGiC182Vf_Q'
@@ -365,20 +353,16 @@ test('it supports expiresIn as a string', t => {
     sign({ a: 1, iat: 100 }, { expiresIn: '1s' }),
     'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxLCJpYXQiOjEwMCwiZXhwIjoxMDF9.ULKqTsvUYm7iNOKA6bP5NXsa1A8vofgPIGiC182Vf_Q'
   )
-
-  t.end()
 })
 
-test('it adds the payload exp claim', t => {
+test('it adds the payload exp claim', async t => {
   t.equal(
     sign({ a: 1, iat: 100, exp: 200 }, {}),
     'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxLCJpYXQiOjEwMCwiZXhwIjoyMDB9.RJbB3-VIjLIQr-VmZ1Kl42MrHr2pAU-CQuXK8jHMKR0'
   )
-
-  t.end()
 })
 
-test('it ignores invalid exp claim', t => {
+test('it ignores invalid exp claim', async t => {
   t.equal(
     sign({ a: 1, iat: 100, exp: Number.NaN }, {}),
     'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxLCJpYXQiOjEwMH0.5V5yFNSqmn0w6yDR1vUbykF36WwdQmADMTLJwiJtx8w'
@@ -393,11 +377,9 @@ test('it ignores invalid exp claim', t => {
     sign({ a: 1, iat: 100, exp: undefined }, {}),
     'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxLCJpYXQiOjEwMH0.5V5yFNSqmn0w6yDR1vUbykF36WwdQmADMTLJwiJtx8w'
   )
-
-  t.end()
 })
 
-test('it adds a nbf claim, overriding the payload one, only if the payload is a object', t => {
+test('it adds a nbf claim, overriding the payload one, only if the payload is a object', async t => {
   t.equal(
     sign({ a: 1, iat: 100 }, { notBefore: 1000 }),
     'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxLCJpYXQiOjEwMCwibmJmIjoxMDF9.WhZeNowse7q1s5FSlcMcs_4KcxXpSdQ4yqv0xrGB3sU'
@@ -407,11 +389,9 @@ test('it adds a nbf claim, overriding the payload one, only if the payload is a 
     sign({ a: 1, iat: 100, nbf: 200 }, { notBefore: 1000 }),
     'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxLCJpYXQiOjEwMCwibmJmIjoxMDF9.WhZeNowse7q1s5FSlcMcs_4KcxXpSdQ4yqv0xrGB3sU'
   )
-
-  t.end()
 })
 
-test('it supports notBefore as a string', t => {
+test('it supports notBefore as a string', async t => {
   t.equal(
     sign({ a: 1, iat: 100 }, { notBefore: '1000' }),
     'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxLCJpYXQiOjEwMCwibmJmIjoxMDF9.WhZeNowse7q1s5FSlcMcs_4KcxXpSdQ4yqv0xrGB3sU'
@@ -421,11 +401,9 @@ test('it supports notBefore as a string', t => {
     sign({ a: 1, iat: 100 }, { notBefore: '1s' }),
     'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxLCJpYXQiOjEwMCwibmJmIjoxMDF9.WhZeNowse7q1s5FSlcMcs_4KcxXpSdQ4yqv0xrGB3sU'
   )
-
-  t.end()
 })
 
-test('it adds a jti claim, overriding the payload one, only if the payload is a object', t => {
+test('it adds a jti claim, overriding the payload one, only if the payload is a object', async t => {
   t.equal(
     sign({ a: 1 }, { jti: 'JTI', noTimestamp: true }),
     'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxLCJqdGkiOiJKVEkifQ.Ew1eS3Pn9R0hqV0JCA5AECTSvaEm9glggxWlmq0cYl4'
@@ -435,11 +413,9 @@ test('it adds a jti claim, overriding the payload one, only if the payload is a 
     sign({ a: 1, jti: 'original' }, { jti: 'JTI', noTimestamp: true }),
     'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxLCJqdGkiOiJKVEkifQ.Ew1eS3Pn9R0hqV0JCA5AECTSvaEm9glggxWlmq0cYl4'
   )
-
-  t.end()
 })
 
-test('it adds a aud claim, overriding the payload one, only if the payload is a object', t => {
+test('it adds a aud claim, overriding the payload one, only if the payload is a object', async t => {
   t.equal(
     sign({ a: 1 }, { aud: 'AUD1', noTimestamp: true }),
     'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxLCJhdWQiOiJBVUQxIn0.fplBCKNjVH2jjpk-hFQZ9jnG96nVFZqOeU-C97AvKAI'
@@ -454,11 +430,9 @@ test('it adds a aud claim, overriding the payload one, only if the payload is a 
     sign({ a: 1, aud: 'original' }, { aud: ['AUD1', 'AUD2'], noTimestamp: true }),
     'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxLCJhdWQiOlsiQVVEMSIsIkFVRDIiXX0.zRcmqvl1hRzaWa8qX_ge7mHeJNSH-Th-TLu0-62jFxc'
   )
-
-  t.end()
 })
 
-test('it adds a iss claim, overriding the payload one, only if the payload is a object', t => {
+test('it adds a iss claim, overriding the payload one, only if the payload is a object', async t => {
   t.equal(
     sign({ a: 1 }, { iss: 'ISS', noTimestamp: true }),
     'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxLCJpc3MiOiJJU1MifQ.YLEisGRTlJL9Y7KLHbIahXr1Zqu0of5w1mJf4aGphTE'
@@ -468,11 +442,9 @@ test('it adds a iss claim, overriding the payload one, only if the payload is a 
     sign({ a: 1, iss: 'original' }, { iss: 'ISS', noTimestamp: true }),
     'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxLCJpc3MiOiJJU1MifQ.YLEisGRTlJL9Y7KLHbIahXr1Zqu0of5w1mJf4aGphTE'
   )
-
-  t.end()
 })
 
-test('it adds a sub claim, overriding the payload one, only if the payload is a object', t => {
+test('it adds a sub claim, overriding the payload one, only if the payload is a object', async t => {
   t.equal(
     sign({ a: 1 }, { sub: 'SUB', noTimestamp: true }),
     'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxLCJzdWIiOiJTVUIifQ.wweP9vNGt77bBGwZ_PLXfPxy2qcx2mnjUa0AWVA5bEM'
@@ -482,11 +454,9 @@ test('it adds a sub claim, overriding the payload one, only if the payload is a 
     sign({ a: 1, sub: 'original' }, { sub: 'SUB', noTimestamp: true }),
     'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxLCJzdWIiOiJTVUIifQ.wweP9vNGt77bBGwZ_PLXfPxy2qcx2mnjUa0AWVA5bEM'
   )
-
-  t.end()
 })
 
-test('it adds a nonce claim, overriding the payload one, only if the payload is a object', t => {
+test('it adds a nonce claim, overriding the payload one, only if the payload is a object', async t => {
   t.equal(
     sign({ a: 1 }, { nonce: 'NONCE', noTimestamp: true }),
     'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxLCJub25jZSI6Ik5PTkNFIn0.NvCriFYuVDq0fTSf5t_92EwbxnwgjZVMBEMfW-RVl_k'
@@ -496,29 +466,23 @@ test('it adds a nonce claim, overriding the payload one, only if the payload is 
     sign({ a: 1, nonce: 'original' }, { nonce: 'NONCE', noTimestamp: true }),
     'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxLCJub25jZSI6Ik5PTkNFIn0.NvCriFYuVDq0fTSf5t_92EwbxnwgjZVMBEMfW-RVl_k'
   )
-
-  t.end()
 })
 
-test('it adds a kid to the header', t => {
+test('it adds a kid to the header', async t => {
   t.equal(
     sign({ a: 1 }, { kid: '123', noTimestamp: true }),
     'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCIsImtpZCI6IjEyMyJ9.eyJhIjoxfQ.7tQHnTc72lr2wAQeb7n-bDesok0WUHXCDGyNfOMA8CA'
   )
-
-  t.end()
 })
 
-test('it adds additional arbitrary fields to the header', t => {
+test('it adds additional arbitrary fields to the header', async t => {
   t.equal(
     sign({ a: 1 }, { header: { b: 2, c: 3 }, noTimestamp: true }),
     'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCIsImIiOjIsImMiOjN9.eyJhIjoxfQ.pfoXZ4zIsYNDmvhFy7pX6dUaK7SV6NfwxTTISwqeFeY'
   )
-
-  t.end()
 })
 
-test('it mutates the payload if asked to', t => {
+test('it mutates the payload if asked to', async t => {
   const payload = { a: 1, iat: 100 }
 
   t.equal(
@@ -527,8 +491,6 @@ test('it mutates the payload if asked to', t => {
   )
 
   t.equal(payload.exp, 101)
-
-  t.end()
 })
 
 test('it correctly handle errors - async callback', async t => {
@@ -617,22 +579,20 @@ test('it correctly handle errors - evented callback', t => {
   )
 })
 
-test('returns a promise according to key option', t => {
+test('returns a promise according to key option', async t => {
   const s1 = createSigner({ key: 'secret' })({ a: 'PAYLOAD' })
   const s2 = createSigner({ key: async () => 'secret' })({ a: 'PAYLOAD' })
 
   t.ok(typeof s1.then === 'undefined')
   t.ok(typeof s2.then === 'function')
 
-  s2.then(
+  await s2.then(
     () => false,
     () => false
   )
-
-  t.end()
 })
 
-test('payload validation', t => {
+test('payload validation', async t => {
   t.throws(() => createSigner({ key: 'secret' })(123), {
     message: 'The payload must be an object.'
   })
@@ -640,11 +600,9 @@ test('payload validation', t => {
   t.rejects(async () => createSigner({ key: () => 'secret' })(123), {
     message: 'The payload must be an object.'
   })
-
-  t.end()
 })
 
-test('exp claim validation', t => {
+test('exp claim validation', async t => {
   t.throws(() => createSigner({ key: 'secret' })({ exp: 'exp' }), {
     message: 'The exp claim must be a positive integer.'
   })
@@ -652,22 +610,18 @@ test('exp claim validation', t => {
   t.throws(() => createSigner({ key: 'secret' })({ exp: -1 }), {
     message: 'The exp claim must be a positive integer.'
   })
-
-  t.end()
 })
 
-test('options validation - algorithm', t => {
+test('options validation - algorithm', async t => {
   createSigner({ key: 'secret' })
 
   t.throws(() => createSigner({ key: 'secret', algorithm: 'FOO' }), {
     message:
       'The algorithm option must be one of the following values: HS256, HS384, HS512, ES256, ES384, ES512, RS256, RS384, RS512, PS256, PS384, PS512, EdDSA, none.'
   })
-
-  t.end()
 })
 
-test('options validation - key', t => {
+test('options validation - key', async t => {
   t.throws(() => createSigner({ key: 123 }), {
     message: 'The key option must be a string, a buffer, an object containing key/passphrase properties or a function returning the algorithm secret or private key.'
   })
@@ -683,11 +637,9 @@ test('options validation - key', t => {
   t.throws(() => createSigner({ algorithm: 'none', key: 123 }), {
     message: 'The key option must not be provided when the algorithm option is "none".'
   })
-
-  t.end()
 })
 
-test('options validation - clockTimestamp', t => {
+test('options validation - clockTimestamp', async t => {
   t.throws(() => createSigner({ key: 'secret', clockTimestamp: '123' }), {
     message: 'The clockTimestamp option must be a positive number.'
   })
@@ -695,11 +647,9 @@ test('options validation - clockTimestamp', t => {
   t.throws(() => createSigner({ key: 'secret', clockTimestamp: -1 }), {
     message: 'The clockTimestamp option must be a positive number.'
   })
-
-  t.end()
 })
 
-test('options validation - expiresIn', t => {
+test('options validation - expiresIn', async t => {
   t.throws(() => createSigner({ key: 'secret', expiresIn: true }), {
     message: 'The expiresIn option must be a positive number or a valid string.'
   })
@@ -711,11 +661,9 @@ test('options validation - expiresIn', t => {
   t.throws(() => createSigner({ key: 'secret', expiresIn: -1 }), {
     message: 'The expiresIn option must be a positive number or a valid string'
   })
-
-  t.end()
 })
 
-test('options validation - notBefore', t => {
+test('options validation - notBefore', async t => {
   t.throws(() => createSigner({ key: 'secret', notBefore: true }), {
     message: 'The notBefore option must be a positive number or a valid string.'
   })
@@ -727,32 +675,24 @@ test('options validation - notBefore', t => {
   t.throws(() => createSigner({ key: 'secret', notBefore: -1 }), {
     message: 'The notBefore option must be a positive number or a valid string.'
   })
-
-  t.end()
 })
 
-test('options validation - aud', t => {
+test('options validation - aud', async t => {
   t.throws(() => createSigner({ key: 'secret', aud: 123 }), {
     message: 'The aud option must be a string or an array of strings.'
   })
-
-  t.end()
 })
 
 for (const option of ['jti', 'iss', 'sub', 'nonce', 'kid']) {
-  test(`options validation - ${option}`, t => {
+  test(`options validation - ${option}`, async t => {
     t.throws(() => createSigner({ key: 'secret', [option]: 123 }), {
       message: `The ${option} option must be a string.`
     })
-
-    t.end()
   })
 }
 
-test('options validation - header', t => {
+test('options validation - header', async t => {
   t.throws(() => createSigner({ key: 'secret', header: 123 }), {
     message: 'The header option must be a object.'
   })
-
-  t.end()
 })
