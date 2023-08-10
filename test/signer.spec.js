@@ -355,6 +355,20 @@ test('it respects payload exp claim (if supplied), overriding the default expire
   t.end()
 })
 
+test('it supports expiresIn as a string', t => {
+  t.equal(
+    sign({ a: 1, iat: 100 }, { expiresIn: '1000' }),
+    'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxLCJpYXQiOjEwMCwiZXhwIjoxMDF9.ULKqTsvUYm7iNOKA6bP5NXsa1A8vofgPIGiC182Vf_Q'
+  )
+
+  t.equal(
+    sign({ a: 1, iat: 100 }, { expiresIn: '1s' }),
+    'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxLCJpYXQiOjEwMCwiZXhwIjoxMDF9.ULKqTsvUYm7iNOKA6bP5NXsa1A8vofgPIGiC182Vf_Q'
+  )
+
+  t.end()
+})
+
 test('it adds the payload exp claim', t => {
   t.equal(
     sign({ a: 1, iat: 100, exp: 200 }, {}),
@@ -391,6 +405,20 @@ test('it adds a nbf claim, overriding the payload one, only if the payload is a 
 
   t.equal(
     sign({ a: 1, iat: 100, nbf: 200 }, { notBefore: 1000 }),
+    'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxLCJpYXQiOjEwMCwibmJmIjoxMDF9.WhZeNowse7q1s5FSlcMcs_4KcxXpSdQ4yqv0xrGB3sU'
+  )
+
+  t.end()
+})
+
+test('it supports notBefore as a string', t => {
+  t.equal(
+    sign({ a: 1, iat: 100 }, { notBefore: '1000' }),
+    'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxLCJpYXQiOjEwMCwibmJmIjoxMDF9.WhZeNowse7q1s5FSlcMcs_4KcxXpSdQ4yqv0xrGB3sU'
+  )
+
+  t.equal(
+    sign({ a: 1, iat: 100 }, { notBefore: '1s' }),
     'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxLCJpYXQiOjEwMCwibmJmIjoxMDF9.WhZeNowse7q1s5FSlcMcs_4KcxXpSdQ4yqv0xrGB3sU'
   )
 
@@ -672,24 +700,32 @@ test('options validation - clockTimestamp', t => {
 })
 
 test('options validation - expiresIn', t => {
-  t.throws(() => createSigner({ key: 'secret', expiresIn: '123' }), {
-    message: 'The expiresIn option must be a positive number.'
+  t.throws(() => createSigner({ key: 'secret', expiresIn: true }), {
+    message: 'The expiresIn option must be a positive number or a valid string.'
+  })
+
+  t.throws(() => createSigner({ key: 'secret', expiresIn: 'invalid string' }), {
+    message: 'The expiresIn option must be a positive number or a valid string'
   })
 
   t.throws(() => createSigner({ key: 'secret', expiresIn: -1 }), {
-    message: 'The expiresIn option must be a positive number.'
+    message: 'The expiresIn option must be a positive number or a valid string'
   })
 
   t.end()
 })
 
 test('options validation - notBefore', t => {
-  t.throws(() => createSigner({ key: 'secret', notBefore: '123' }), {
-    message: 'The notBefore option must be a positive number.'
+  t.throws(() => createSigner({ key: 'secret', notBefore: true }), {
+    message: 'The notBefore option must be a positive number or a valid string.'
+  })
+
+  t.throws(() => createSigner({ key: 'secret', notBefore: 'invalid string' }), {
+    message: 'The notBefore option must be a positive number or a valid string.'
   })
 
   t.throws(() => createSigner({ key: 'secret', notBefore: -1 }), {
-    message: 'The notBefore option must be a positive number.'
+    message: 'The notBefore option must be a positive number or a valid string.'
   })
 
   t.end()
