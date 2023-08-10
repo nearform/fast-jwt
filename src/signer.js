@@ -14,6 +14,7 @@ const {
 const { TokenError } = require('./error')
 const { getAsyncKey, ensurePromiseCallback } = require('./utils')
 const { createPrivateKey, createSecretKey } = require('crypto')
+const { parse: parseMs } = require('@lukeed/ms')
 
 const supportedAlgorithms = new Set([...hsAlgorithms, ...esAlgorithms, ...rsaAlgorithms, ...edAlgorithms, 'none'])
 
@@ -240,12 +241,22 @@ module.exports = function createSigner(options) {
     key = prepareKeyOrSecret(key, algorithm)
   }
 
-  if (expiresIn && (typeof expiresIn !== 'number' || expiresIn < 0)) {
-    throw new TokenError(TokenError.codes.invalidOption, 'The expiresIn option must be a positive number.')
+  if (expiresIn) {
+    if (typeof expiresIn === 'string') {
+      expiresIn = parseMs(expiresIn)
+    }
+    if (typeof expiresIn !== 'number' || expiresIn < 0) {
+      throw new TokenError(TokenError.codes.invalidOption, 'The expiresIn option must be a positive number or a valid string.')
+    }
   }
 
-  if (notBefore && (typeof notBefore !== 'number' || notBefore < 0)) {
-    throw new TokenError(TokenError.codes.invalidOption, 'The notBefore option must be a positive number.')
+  if (notBefore) {
+    if (typeof notBefore === 'string') {
+      notBefore = parseMs(notBefore)
+    }
+    if (typeof notBefore !== 'number' || notBefore < 0) {
+      throw new TokenError(TokenError.codes.invalidOption, 'The notBefore option must be a positive number or a valid string.')
+    }
   }
 
   if (clockTimestamp && (typeof clockTimestamp !== 'number' || clockTimestamp < 0)) {
