@@ -1,6 +1,6 @@
 'use strict'
 
-const { createPublicKey, createSecretKey } = require('crypto')
+const { createPublicKey, createSecretKey } = require('node:crypto')
 const Cache = require('mnemonist/lru-cache')
 
 const { useNewCrypto, hsAlgorithms, verifySignature, detectPublicKeyAlgorithms } = require('./crypto')

@@ -1,8 +1,8 @@
 'use strict'
 
-const { createHash } = require('crypto')
-const { readFileSync } = require('fs')
-const { resolve } = require('path')
+const { createHash } = require('node:crypto')
+const { readFileSync } = require('node:fs')
+const { resolve } = require('node:path')
 const { test } = require('tap')
 const { install: fakeTime } = require('@sinonjs/fake-timers')
 

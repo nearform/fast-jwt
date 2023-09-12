@@ -13,7 +13,7 @@ const {
 } = require('./crypto')
 const { TokenError } = require('./error')
 const { getAsyncKey, ensurePromiseCallback } = require('./utils')
-const { createPrivateKey, createSecretKey } = require('crypto')
+const { createPrivateKey, createSecretKey } = require('node:crypto')
 const { parse: parseMs } = require('@lukeed/ms')
 
 const supportedAlgorithms = new Set([...hsAlgorithms, ...esAlgorithms, ...rsaAlgorithms, ...edAlgorithms, 'none'])

@@ -1,12 +1,12 @@
 'use strict'
 
-const { readFileSync } = require('fs')
+const { readFileSync } = require('node:fs')
 const { sign: jsonwebtokenSign, verify: jsonwebtokenVerify } = require('jsonwebtoken')
 const {
   JWT: { sign: joseSign, verify: joseVerify },
   JWK: { asKey }
 } = require('jose')
-const { resolve } = require('path')
+const { resolve } = require('node:path')
 const { test } = require('tap')
 
 const { createSigner, createVerifier } = require('../src')
