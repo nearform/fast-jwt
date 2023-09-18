@@ -96,7 +96,7 @@ export interface JwtHeader {
 export interface SignerOptions {
   algorithm?: Algorithm
   mutatePayload?: boolean
-  expiresIn?: number
+  expiresIn?: number | string
   notBefore?: number
   jti?: string
   aud?: string | string[]
