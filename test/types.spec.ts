@@ -31,6 +31,13 @@ createSigner({
   }
 })({ key: 1 }).then(console.log, console.log)
 
+// expiresIn as a string
+createSigner({
+  expiresIn: '10min',
+  key: Buffer.from('KEY'),
+  algorithm: 'RS256'
+})
+
 // Decoding
 const decoder = createDecoder({ checkTyp: 'true' })
 decoder('FOO')
