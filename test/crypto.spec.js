@@ -1,8 +1,8 @@
 'use strict'
 
 const { test } = require('tap')
-const { readFileSync } = require('fs')
-const { resolve } = require('path')
+const { readFileSync } = require('node:fs')
+const { resolve } = require('node:path')
 
 const { createVerifier, createSigner } = require('../src')
 const {

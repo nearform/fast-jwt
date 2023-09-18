@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 
-const { generateKeyPair } = require('crypto')
-const { writeFileSync } = require('fs')
-const { resolve } = require('path')
+const { generateKeyPair } = require('node:crypto')
+const { writeFileSync } = require('node:fs')
+const { resolve } = require('node:path')
 
 const passProtectedKeyPassphrase = 'secret'
 const configurations = {

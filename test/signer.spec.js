@@ -1,7 +1,7 @@
 'use strict'
 
-const { readFileSync } = require('fs')
-const { resolve } = require('path')
+const { readFileSync } = require('node:fs')
+const { resolve } = require('node:path')
 const { test } = require('tap')
 
 const { createSigner, createVerifier, TokenError, createDecoder } = require('../src')

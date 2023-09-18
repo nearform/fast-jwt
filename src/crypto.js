@@ -14,8 +14,8 @@ const {
     RSA_PSS_SALTLEN_MAX_SIGN,
     RSA_PSS_SALTLEN_AUTO
   }
-} = require('crypto')
-let { sign: directSign, verify: directVerify } = require('crypto')
+} = require('node:crypto')
+let { sign: directSign, verify: directVerify } = require('node:crypto')
 const { joseToDer, derToJose } = require('ecdsa-sig-formatter')
 const Cache = require('mnemonist/lru-cache')
 const { TokenError } = require('./error')

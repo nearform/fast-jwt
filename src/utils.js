@@ -1,6 +1,6 @@
 'use strict'
 
-const { createHash } = require('crypto')
+const { createHash } = require('node:crypto')
 const algorithmMatcher = /"alg"\s*:\s*"[HERP]S(256|384)"/m
 const edAlgorithmMatcher = /"alg"\s*:\s*"EdDSA"/m
 const ed448CurveMatcher = /"crv"\s*:\s*"Ed448"/m
