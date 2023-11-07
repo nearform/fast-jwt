@@ -3,8 +3,8 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable @typescript-eslint/no-empty-function */
 
-import { createDecoder, createSigner, createVerifier, DecodedJwt, JwtHeader, TokenError } from '..'
-import { expectAssignable, expectNotAssignable } from 'tsd'
+import { createDecoder, createSigner, createVerifier, DecodedJwt, JwtHeader, TokenError, TokenValidationErrorCode } from '..'
+import { expectAssignable, expectNotAssignable, expectType } from 'tsd'
 
 // Signing
 // Buffer key, both async/callback styles
@@ -105,3 +105,6 @@ const signerOptionsNoAlg = {
   }
 }
 expectNotAssignable<JwtHeader>(signerOptionsNoAlg.header)
+
+// Check all errors are typed correctly
+expectType<TokenValidationErrorCode[]>(Object.values(TokenError.codes))

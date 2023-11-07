@@ -32,6 +32,7 @@ export type TokenValidationErrorCode =
   | 'FAST_JWT_KEY_FETCHING_ERROR'
   | 'FAST_JWT_SIGN_ERROR'
   | 'FAST_JWT_VERIFY_ERROR'
+  | 'FAST_JWT_MISSING_REQUIRED_CLAIM'
   | 'FAST_JWT_MISSING_SIGNATURE'
 
 declare class TokenError extends Error {
@@ -52,6 +53,7 @@ declare class TokenError extends Error {
     keyFetchingError: 'FAST_JWT_KEY_FETCHING_ERROR'
     signError: 'FAST_JWT_SIGN_ERROR'
     verifyError: 'FAST_JWT_VERIFY_ERROR'
+    missingRequiredClaim: 'FAST_JWT_MISSING_REQUIRED_CLAIM'
     missingSignature: 'FAST_JWT_MISSING_SIGNATURE'
   }
 
