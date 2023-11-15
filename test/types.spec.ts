@@ -48,7 +48,7 @@ decoder(Buffer.from('FOO'))
 const verifierSync = createVerifier({ key: 'KEY', algorithms: ['RS256'], requiredClaims: ['aud'], checkTyp: 'JWT' })
 verifierSync('2134')
 
-const verifierAsync = createVerifier({ key: ((_decodedJwt: DecodedJwt) => 'KEY', algorithms: ['RS256'] })
+const verifierAsync = createVerifier({ key: (_decodedJwt: DecodedJwt) => 'KEY', algorithms: ['RS256'] })
 verifierAsync('123').then(console.log, console.log)
 verifierAsync(Buffer.from('456'), (_e: Error | null, _token?: string) => {})
 
