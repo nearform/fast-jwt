@@ -63,7 +63,10 @@ createVerifier({
 // Dynamic key in async style
 createVerifier({
   clockTimestamp: 10,
-  async key(_decodedJwt: DecodedJwt) {
+  async key(decodedJwt: DecodedJwt) {
+    if (decodedJwt.payload.iss) {
+      return 'ISS_KEY'
+    }
     return 'KEY'
   }
 })('456').then(console.log, console.log)
