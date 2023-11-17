@@ -61,16 +61,16 @@ declare class TokenError extends Error {
   [key: string]: any
 }
 
-export type SignerCallback = (e: Error | TokenError | null, token: string) => void
-export type VerifierCallback = (e: Error | TokenError | null, payload: any) => void
+type SignerCallback = (e: Error | TokenError | null, token: string) => void
+type VerifierCallback = (e: Error | TokenError | null, payload: any) => void
 
-export type DecodedJwt = {
-  header: Record<string, any>,
+type DecodedJwt = {
+  header: { key[string]: any },
   payload: any,
   signature: string
 }
 
-export type KeyFetcher =
+type KeyFetcher =
   | ((DecodedJwt: DecodedJwt) => Promise<string | Buffer>)
   | ((DecodedJwt: DecodedJwt, cb: (err: Error | TokenError | null, key: string | Buffer) => void) => void)
 
