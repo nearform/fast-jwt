@@ -26,7 +26,7 @@ const base64UrlMatcher = /[=+/]/g
 const encoderMap = { '=': '', '+': '-', '/': '_' }
 
 const privateKeyPemMatcher = /^-----BEGIN(?: (RSA|EC|ENCRYPTED))? PRIVATE KEY-----/
-const publicKeyPemMatcher = '-----BEGIN PUBLIC KEY-----'
+const publicKeyPemMatcher = /^-----BEGIN( RSA)? PUBLIC KEY-----/
 const publicKeyX509CertMatcher = '-----BEGIN CERTIFICATE-----'
 const privateKeysCache = new Cache(1000)
 const publicKeysCache = new Cache(1000)
@@ -44,7 +44,7 @@ const ecCurves = {
 
 /* istanbul ignore next */
 if (!useNewCrypto) {
-  directSign = function(alg, data, options) {
+  directSign = function (alg, data, options) {
     if (typeof alg === 'undefined') {
       throw new TokenError(TokenError.codes.signError, 'EdDSA algorithms are not supported by your Node.js version.')
     }
@@ -55,7 +55,7 @@ if (!useNewCrypto) {
   }
 }
 
-const PrivateKey = asn.define('PrivateKey', function() {
+const PrivateKey = asn.define('PrivateKey', function () {
   this.seq().obj(
     this.key('version').int(),
     this.key('algorithm')
@@ -69,7 +69,7 @@ const PrivateKey = asn.define('PrivateKey', function() {
   )
 })
 
-const PublicKey = asn.define('PublicKey', function() {
+const PublicKey = asn.define('PublicKey', function () {
   this.seq().obj(
     this.key('algorithm')
       .seq()
@@ -82,7 +82,7 @@ const PublicKey = asn.define('PublicKey', function() {
   )
 })
 
-const ECPrivateKey = asn.define('ECPrivateKey', function() {
+const ECPrivateKey = asn.define('ECPrivateKey', function () {
   this.seq().obj(
     this.key('version').int(),
     this.key('privateKey').octstr(),
@@ -103,7 +103,7 @@ function cacheSet(cache, key, value, error) {
 }
 
 function performDetectPrivateKeyAlgorithm(key) {
-  if (key.includes(publicKeyPemMatcher) || key.includes(publicKeyX509CertMatcher)) {
+  if (key.match(publicKeyPemMatcher) || key.includes(publicKeyX509CertMatcher)) {
     throw new TokenError(TokenError.codes.invalidKey, 'Public keys are not supported for signing.')
   }
 
@@ -157,7 +157,7 @@ function performDetectPrivateKeyAlgorithm(key) {
 function performDetectPublicKeyAlgorithms(key) {
   if (key.match(privateKeyPemMatcher)) {
     throw new TokenError(TokenError.codes.invalidKey, 'Private keys are not supported for verifying.')
-  } else if (!key.includes(publicKeyPemMatcher) && !key.includes(publicKeyX509CertMatcher)) {
+  } else if (!key.match(publicKeyPemMatcher) && !key.includes(publicKeyX509CertMatcher)) {
     // Not a PEM, assume a plain secret
     return hsAlgorithms
   }
@@ -226,7 +226,6 @@ function detectPublicKeyAlgorithms(key) {
   if (!key) {
     return 'none'
   }
-
   // Check cache first
   const [cached, error] = publicKeysCache.get(key) || []
 
@@ -243,7 +242,6 @@ function detectPublicKeyAlgorithms(key) {
     } else if (typeof key !== 'string') {
       throw new TokenError(TokenError.codes.invalidKey, 'The public key must be a string or a buffer.')
     }
-
     return cacheSet(publicKeysCache, key, performDetectPublicKeyAlgorithms(key))
   } catch (e) {
     throw cacheSet(

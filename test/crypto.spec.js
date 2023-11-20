@@ -43,8 +43,7 @@ const detectedAlgorithms = {
   PS: rsaAlgorithms
 }
 
-const invalidPrivatePKCS8 = `
------BEGIN PRIVATE KEY-----
+const invalidPrivatePKCS8 = `-----BEGIN PRIVATE KEY-----
 MIIBSwIBADCCASsGByqGSM44BAEwggEeAoGBAMGxOb7Tft3j9ibDnbRQmSzNFVWI
 zXgZuKcImr0hfaTHiCezcafkUCydrdlE+UddkS7i8I2USopaAC8qXm9MakL7aTLa
 PdCJIPBjmcMSXfxqngeIko1mGySNRVCc2QxGHvMSkjTrY7TEzvgI4cJDg9ykZGU1
@@ -55,16 +54,14 @@ sZjIEvC33/YIQaP8Gvw0zKIQFS9vMwQXAhUAxRK28V19J5W4jfBY+3L3Zy/XbIo=
 -----END PRIVATE KEY-----
 `
 
-const invalidPrivateCurve = `
------BEGIN EC PRIVATE KEY-----
+const invalidPrivateCurve = `-----BEGIN EC PRIVATE KEY-----
 MHECAQEEHgMIJ+JtbK1h1Hr+VuYfQD/lWlBSRo2Fx4+10MljjKAKBggqhkjOPQMA
 DaFAAz4ABH2YBzIol9aAQrQERTRHF31ztVeZ6dr8T8qJiitVoAFKep39qV9n/7sV
 NspwxJ55TbI7tJiW6tcF2/MdOw==
 -----END EC PRIVATE KEY-----
 `
 
-const invalidPublicPKCS8 = `
------BEGIN PUBLIC KEY-----
+const invalidPublicPKCS8 = `-----BEGIN PUBLIC KEY-----
 MIIBtzCCASwGByqGSM44BAEwggEfAoGBALqI31HbMCIw1QPaf2nGT6z7DaYu/NRV
 sdQ8cBkQSvegBXOTbAS+hxNq3rMcwm240ukBKnpvdEB3gyegsmNK2UVjrBgdl6Xs
 0H9TK5Utnv5HspziTKgCy6Zf5IrAsiitrwnb+fBYLJrVGRAJErNmVVTXo6wiDHhW
@@ -78,8 +75,7 @@ dceK/5cqXl02B+Q=
 -----END PUBLIC KEY-----
 `
 
-const invalidPublicCurve = `
------BEGIN PUBLIC KEY-----
+const invalidPublicCurve = `-----BEGIN PUBLIC KEY-----
 MFUwEwYHKoZIzj0CAQYIKoZIzj0DAA0DPgAEBaKDc/7IW3cMDxat8ivVjqDq1TZ+
 T7r5sAUIWaF0Q5uk5NYmLOnCFxoP8Ua16sraCbAozdvg0wfvT7Cq
 -----END PUBLIC KEY-----
