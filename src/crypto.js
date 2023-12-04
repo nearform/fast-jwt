@@ -26,7 +26,7 @@ const base64UrlMatcher = /[=+/]/g
 const encoderMap = { '=': '', '+': '-', '/': '_' }
 
 const privateKeyPemMatcher = /^-----BEGIN(?: (RSA|EC|ENCRYPTED))? PRIVATE KEY-----/
-const publicKeyPemMatcher = /^-----BEGIN( RSA)? PUBLIC KEY-----/
+const publicKeyPemMatcher = /^-----BEGIN(?: (RSA))? PUBLIC KEY-----/
 const publicKeyX509CertMatcher = '-----BEGIN CERTIFICATE-----'
 const privateKeysCache = new Cache(1000)
 const publicKeysCache = new Cache(1000)
@@ -155,9 +155,14 @@ function performDetectPrivateKeyAlgorithm(key) {
 }
 
 function performDetectPublicKeyAlgorithms(key) {
+  const publicKeyPemMatch = key.match(publicKeyPemMatcher)
+
   if (key.match(privateKeyPemMatcher)) {
     throw new TokenError(TokenError.codes.invalidKey, 'Private keys are not supported for verifying.')
-  } else if (!key.match(publicKeyPemMatcher) && !key.includes(publicKeyX509CertMatcher)) {
+  } else if (publicKeyPemMatch && publicKeyPemMatch[1] === 'RSA') {
+    // pkcs1 format - Can only be RSA key
+    return rsaAlgorithms
+  } else if (!publicKeyPemMatch && !key.includes(publicKeyX509CertMatcher)) {
     // Not a PEM, assume a plain secret
     return hsAlgorithms
   }

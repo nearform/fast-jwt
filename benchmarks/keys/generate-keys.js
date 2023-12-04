@@ -46,8 +46,11 @@ for (const [prefix, configuration] of Object.entries(configurations)) {
       let type = 'pkcs8'
       let format = 'pem'
 
+      let publicKeyType = 'spki'
+
       if (prefix === 'ps') {
         type = 'pkcs1'
+        publicKeyType = 'pkcs1'
         format = 'der'
       } else if (prefix === 'es' && bits === '256') {
         type = 'sec1'
@@ -60,7 +63,7 @@ for (const [prefix, configuration] of Object.entries(configurations)) {
           modulusLength: 4096,
           namedCurve,
           publicKeyEncoding: {
-            type: 'spki',
+            type: publicKeyType,
             format: 'pem'
           },
           privateKeyEncoding: {
