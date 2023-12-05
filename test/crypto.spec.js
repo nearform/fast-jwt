@@ -241,7 +241,7 @@ test('detectPublicKeyAlgorithms - malformed PEM files should be rejected', t => 
   t.end()
 })
 
-test('detectPublicKeyAlgorithms - public keys should be rejected', t => {
+test('detectPublicKeyAlgorithms - private keys should be rejected', t => {
   t.throws(() => detectPublicKeyAlgorithms(privateKeys.RS), {
     message: 'Private keys are not supported for verifying.'
   })
