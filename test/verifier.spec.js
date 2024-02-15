@@ -44,14 +44,11 @@ function verify(token, options, callback) {
 test('it gets the correct decoded jwt token as argument on the key callback', async t => {
   verify('eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxfQ.57TF7smP9XDhIexBqPC-F1toZReYZLWb_YRU5tv0sxM', {
     key: async decoded => {
-      t.strictSame(
-        decoded,
-        {
-          header: { typ: 'JWT', alg: 'HS256' },
-          payload: { a: 1 },
-          signature: '57TF7smP9XDhIexBqPC-F1toZReYZLWb_YRU5tv0sxM'
-        }
-      )
+      t.strictSame(decoded, {
+        header: { typ: 'JWT', alg: 'HS256' },
+        payload: { a: 1 },
+        signature: '57TF7smP9XDhIexBqPC-F1toZReYZLWb_YRU5tv0sxM'
+      })
 
       return Buffer.from('secret', 'utf-8')
     },
@@ -952,6 +949,36 @@ test('it validates whether a required claim is present in the payload or not', t
       return verify(token, { allowedSub: 'SUB', requiredClaims: ['sub'] })
     },
     { message: 'The sub claim is required.' }
+  )
+
+  t.end()
+})
+
+test('it validates whether a required custom claim is present in the payload or not', t => {
+  // Token payload: {"iss": "ISS", "custom": "custom", "iat": 1708023956}
+  const token =
+    'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJJU1MiLCJjdXN0b20iOiJjdXN0b20iLCJpYXQiOjE3MDgwMjQxMTh9.rD9GaHxuSB7mPkVQ2shj4yqPsvEuXWByMDNhMoch0xY'
+
+  t.strictSame(verify(token, { requiredClaims: ['iss', 'custom'] }), {
+    iss: 'ISS',
+    custom: 'custom',
+    iat: 1708024118
+  })
+
+  // Standard claim not covered by other validators
+  t.throws(
+    () => {
+      return verify(token, { requiredClaims: ['kid'] })
+    },
+    { message: 'The kid claim is required.' }
+  )
+
+  // Custom claim
+  t.throws(
+    () => {
+      return verify(token, { requiredClaims: ['customTwo'] })
+    },
+    { message: 'The customTwo claim is required.' }
   )
 
   t.end()
