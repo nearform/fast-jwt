@@ -210,18 +210,23 @@ function verifyToken(
   // Verify the payload
   const now = clockTimestamp || Date.now()
 
+  if (requiredClaims) {
+    for (const claim of requiredClaims) {
+      if (!(claim in payload)) {
+        throw new TokenError(TokenError.codes.missingRequiredClaim, `The ${claim} claim is required.`)
+      }
+    }
+  }
+
   for (const validator of validators) {
     const { type, claim, allowed, array, modifier, greater, errorCode, errorVerb } = validator
     const value = payload[claim]
     const arrayValue = Array.isArray(value)
     const values = arrayValue ? value : [value]
 
-    // Check if the claim is marked as required before skipping it
+    // We have already checked above that all required claims are present
+    // Therefore we can skip this validator if the claim is not present
     if (!(claim in payload)) {
-      if (requiredClaims && requiredClaims.includes(claim)) {
-        throw new TokenError(TokenError.codes.missingRequiredClaim, `The ${claim} claim is required.`)
-      }
-
       continue
     }
 
