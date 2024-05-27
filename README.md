@@ -228,6 +228,19 @@ const verifier = createVerifier({
 })
 ```
 
+## Creating a certificate
+
+Many different algorithms are supported and appropriate certificates can be created through various external applications. Here is one example to create RSA certificates with `openssl`.
+
+```bash
+PRIVATE_PEM="./jwt-private.pem"
+PUBLIC_PEM="./jwt-public.pem"
+
+ssh-keygen -t rsa -b 2048 -m PEM -f "$PRIVATE_PEM" -q -N ""
+openssl rsa -in "$PRIVATE_PEM" -pubout -outform PEM -out "$PUBLIC_PEM" 2>/dev/null
+rm "$PRIVATE_PEM.pub"
+```
+
 ## Algorithms supported
 
 This is the lisf of currently supported algorithms:
