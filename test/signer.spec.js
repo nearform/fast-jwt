@@ -382,12 +382,14 @@ test('it ignores invalid exp claim', async t => {
 test('it adds a nbf claim, overriding the payload one, only if the payload is a object', async t => {
   t.equal(
     sign({ a: 1, iat: 100 }, { notBefore: 1000 }),
+    // jwt that contains nbf claim to be 1000
     'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxLCJpYXQiOjEwMCwibmJmIjoxMDF9.WhZeNowse7q1s5FSlcMcs_4KcxXpSdQ4yqv0xrGB3sU'
   )
 
   t.equal(
     sign({ a: 1, iat: 100, nbf: 200 }, { notBefore: 1000 }),
-    'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxLCJpYXQiOjEwMCwibmJmIjoxMDF9.WhZeNowse7q1s5FSlcMcs_4KcxXpSdQ4yqv0xrGB3sU'
+    // jwt that contains nbf claim to be 200
+    'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxLCJpYXQiOjEwMCwibmJmIjoyMDB9.HmHmbH-pOTlpj5FsVN61aT2PFhd6EN-tnQdExv_HUs4'
   )
 })
 
