@@ -59,7 +59,7 @@
   "devDependencies": {
     "@node-rs/jsonwebtoken": "^0.5.6",
     "@sinonjs/fake-timers": "^11.0.0",
-    "@types/node": "^20.0.0",
+    "@types/node": "^22.0.0",
     "@typescript-eslint/eslint-plugin": "^5.49.0",
     "@typescript-eslint/parser": "^5.49.0",
     "cronometro": "^3.0.2",
