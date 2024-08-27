@@ -1,5 +1,3 @@
-import 'node'
-
 export type Algorithm =
   | 'none'
   | 'HS256'
