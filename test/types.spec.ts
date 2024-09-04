@@ -134,7 +134,6 @@ const signerOptionsNoAlg = {
   }
 }
 expectNotAssignable<JwtHeader>(signerOptionsNoAlg.header)
-// expectNotAssignable<JwtHeader>(signerOptionsNoAlg.header)
 
 // Check all errors are typed correctly
 expectType<TokenValidationErrorCode[]>(Object.values(TokenError.codes))
