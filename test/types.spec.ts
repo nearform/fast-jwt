@@ -3,7 +3,15 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable @typescript-eslint/no-empty-function */
 
-import { createDecoder, createSigner, createVerifier, DecodedJwt, JwtHeader, TokenError, TokenValidationErrorCode } from '..'
+import {
+  createDecoder,
+  createSigner,
+  createVerifier,
+  DecodedJwt,
+  JwtHeader,
+  TokenError,
+  TokenValidationErrorCode
+} from '..'
 import { expectAssignable, expectNotAssignable, expectType } from 'tsd'
 
 // Signing
@@ -93,6 +101,24 @@ const signerOptions = {
   }
 }
 expectAssignable<JwtHeader>(signerOptions.header)
+
+const signerOptionsCustomHeaders = {
+  header: {
+    alg: 'RS256',
+    typ: '',
+    cty: '',
+    crit: [''],
+    kid: '',
+    jku: '',
+    x5u: '',
+    'x5t#S256': '',
+    x5t: '',
+    x5c: '',
+    customClaim: 'my-custom-claim',
+    customClaim2: 'my-custom-claim2'
+  }
+}
+expectAssignable<JwtHeader>(signerOptionsCustomHeaders.header)
 
 const signerOptionsNoAlg = {
   header: {

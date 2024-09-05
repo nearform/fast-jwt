@@ -63,8 +63,8 @@ type SignerCallback = (e: Error | TokenError | null, token: string) => void
 type VerifierCallback = (e: Error | TokenError | null, payload: any) => void
 
 type DecodedJwt = {
-  header: { [key: string]: any },
-  payload: any,
+  header: Record<string, any>
+  payload: any
   signature: string
 }
 
@@ -80,7 +80,7 @@ declare function VerifierSync(token: string | Buffer): any
 declare function VerifierAsync(token: string | Buffer): Promise<any>
 declare function VerifierAsync(token: string | Buffer, cb: object): void
 
-export interface JwtHeader {
+export interface JwtHeader extends Record<string, any> {
   alg: string | Algorithm
   typ?: string | undefined
   cty?: string | undefined
