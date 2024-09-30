@@ -60,7 +60,7 @@
     "@node-rs/jsonwebtoken": "^0.5.6",
     "@sinonjs/fake-timers": "^13.0.1",
     "@types/node": "^22.0.0",
-    "@typescript-eslint/eslint-plugin": "^5.49.0",
+    "@typescript-eslint/eslint-plugin": "^8.8.0",
     "@typescript-eslint/parser": "^5.49.0",
     "cronometro": "^3.0.2",
     "eslint": "^8.33.0",
