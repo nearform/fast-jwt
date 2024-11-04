@@ -40,7 +40,7 @@
   "scripts": {
     "postpublish": "git push origin && git push origin -f --tags",
     "lint": "eslint src/**/*.js test/**/*.js src/**/*.ts test/**/*.ts",
-    "test": "borp --coverage -p test/*.spec.js -p test/**/*.spec.js && tsd",
+    "test": "borp --coverage -p test/*.spec.js -p test/**/*.spec.js -T && tsd",
     "test:ci": "npm run lint && npm run test",
     "test:watch": "npm run test -- --watch",
     "test:generate-keys": "node benchmarks/keys/generate-keys.js",
