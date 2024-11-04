@@ -7,7 +7,7 @@ const {
   JWK: { asKey }
 } = require('jose')
 const { resolve } = require('node:path')
-const { test } = require('tap')
+const { test } = require('node:test')
 
 const { createSigner, createVerifier } = require('../src')
 const { useNewCrypto } = require('../src/crypto')
@@ -44,17 +44,14 @@ for (const type of ['HS', 'ES', 'RS', 'PS']) {
       const verify = createVerifier({ algorithm, key: publicKey.toString() })
       const token = jsonwebtokenSign({ a: 1, b: 2, c: 3 }, privateKey.toString(), { algorithm, noTimestamp: true })
 
-      t.strictSame(verify(token), { a: 1, b: 2, c: 3 })
-
-      t.end()
+      t.assert.deepStrictEqual(verify(token), { a: 1, b: 2, c: 3 })
     })
 
     test(`jsonwebtoken should correcty verify tokens created by fast-jwt - ${algorithm}`, t => {
       const signer = createSigner({ algorithm, key: privateKey, noTimestamp: true })
       const token = signer({ a: 1, b: 2, c: 3 })
 
-      t.strictSame(jsonwebtokenVerify(token, publicKey, { algorithm }), { a: 1, b: 2, c: 3 })
-      t.end()
+      t.assert.deepStrictEqual(jsonwebtokenVerify(token, publicKey, { algorithm }), { a: 1, b: 2, c: 3 })
     })
   }
 }
@@ -70,17 +67,14 @@ if (useNewCrypto) {
         }
       })
 
-      t.strictSame(verify(token), { a: 1, b: 2, c: 3 })
-
-      t.end()
+      t.assert.deepStrictEqual(verify(token), { a: 1, b: 2, c: 3 })
     })
 
     test(`jose should correcty verify tokens created by fast-jwt - EdDSA with ${curve}`, t => {
       const signer = createSigner({ key: privateKeys[curve], noTimestamp: true })
       const token = signer({ a: 1, b: 2, c: 3 })
 
-      t.strictSame(joseVerify(token, asKey(publicKeys[curve])), { a: 1, b: 2, c: 3 })
-      t.end()
+      t.assert.deepStrictEqual(joseVerify(token, asKey(publicKeys[curve])), { a: 1, b: 2, c: 3 })
     })
   }
 }

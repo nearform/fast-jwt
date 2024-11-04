@@ -2,7 +2,7 @@
 
 const { readFileSync } = require('node:fs')
 const { resolve } = require('node:path')
-const { test } = require('tap')
+const { test } = require('node:test')
 
 const { createSigner, createVerifier, TokenError, createDecoder } = require('../src')
 const { useNewCrypto } = require('../src/crypto')
@@ -50,7 +50,7 @@ test('it passes the correct decoded jwt token to the key callback', async t => {
     {
       noTimestamp: true,
       key: decodedJwt => {
-        t.strictSame(decodedJwt, {
+        t.assert.deepStrictEqual(decodedJwt, {
           payload: { a: 1 },
           header: {
             alg: undefined,
@@ -64,28 +64,28 @@ test('it passes the correct decoded jwt token to the key callback', async t => {
 })
 
 test('it correctly returns a token - sync', async t => {
-  t.equal(
+  t.assert.equal(
     sign({ a: 1 }, { noTimestamp: true }),
     'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxfQ.57TF7smP9XDhIexBqPC-F1toZReYZLWb_YRU5tv0sxM'
   )
 
-  t.equal(
+  t.assert.equal(
     sign({ a: 1 }, { key: undefined, algorithm: 'none', noTimestamp: true }),
     'eyJhbGciOiJub25lIiwidHlwIjoiSldUIn0.eyJhIjoxfQ.'
   )
 
-  t.equal(
+  t.assert.equal(
     sign({ a: 1 }, { noTimestamp: true, algorithm: 'none', key: null }),
     'eyJhbGciOiJub25lIiwidHlwIjoiSldUIn0.eyJhIjoxfQ.'
   )
 
   if (useNewCrypto) {
-    t.equal(
+    t.assert.equal(
       sign({ a: 1 }, { noTimestamp: true, key: privateKeys.Ed25519 }),
       'eyJhbGciOiJFZERTQSIsInR5cCI6IkpXVCJ9.eyJhIjoxfQ.pIRjmLR-JW4sTCslD24h5fs0sTUpGYBG7zh4Z_UyEZ_u29NojdH2dSNKQZwwgjl1WvfYNtBCCF_EnYTazAXmDQ'
     )
   } else {
-    t.throws(() => sign({ a: 1 }, { noTimestamp: true, key: privateKeys.Ed25519 }), {
+    t.assert.throws(() => sign({ a: 1 }, { noTimestamp: true, key: privateKeys.Ed25519 }), {
       message: 'Cannot create the signature.',
       originalError: {
         message: 'EdDSA algorithms are not supported by your Node.js version.'
@@ -95,7 +95,7 @@ test('it correctly returns a token - sync', async t => {
 })
 
 test('it correctly returns a token - async - key with callback', async t => {
-  t.equal(
+  t.assert.equal(
     await sign(
       { a: 1 },
       { key: (_decodedJwt, callback) => setTimeout(() => callback(null, 'secret'), 10), noTimestamp: true }
@@ -105,14 +105,14 @@ test('it correctly returns a token - async - key with callback', async t => {
 })
 
 test('it correctly returns a token - async - key as promise', async t => {
-  t.equal(
+  t.assert.equal(
     await sign({ a: 1 }, { key: async () => 'secret', noTimestamp: true }),
     'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxfQ.57TF7smP9XDhIexBqPC-F1toZReYZLWb_YRU5tv0sxM'
   )
 })
 
 test('it correctly returns a token - async - static key', async t => {
-  t.equal(
+  t.assert.equal(
     await sign({ a: 1 }, { noTimestamp: true }),
     'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxfQ.57TF7smP9XDhIexBqPC-F1toZReYZLWb_YRU5tv0sxM'
   )
@@ -120,9 +120,8 @@ test('it correctly returns a token - async - static key', async t => {
 
 test('it correctly returns a token - callback - key as promise', t => {
   sign({ a: 1 }, { key: async () => Buffer.from('secret', 'utf-8'), noTimestamp: true }, (error, token) => {
-    t.type(error, 'null')
-    t.equal(token, 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxfQ.57TF7smP9XDhIexBqPC-F1toZReYZLWb_YRU5tv0sxM')
-    t.end()
+    t.assert.ok(error == null)
+    t.assert.equal(token, 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxfQ.57TF7smP9XDhIexBqPC-F1toZReYZLWb_YRU5tv0sxM')
   })
 })
 
@@ -133,9 +132,9 @@ test('it correctly returns a token - key as an RSA X509 key', async t => {
     const decoder = createDecoder()
     const result = decoder(signedToken)
 
-    t.equal(payload.a, result.a)
+    t.assert.equal(payload.a, result.a)
   } else {
-    t.throws(() => sign(payload, { key: privateKeys.RSX509 }), {
+    t.assert.throws(() => sign(payload, { key: privateKeys.RSX509 }), {
       message: 'Cannot create the signature.',
       originalError: {
         message: 'The "key" argument must be one of type string, Buffer, TypedArray, or DataView. Received type object'
@@ -151,9 +150,9 @@ test('it correctly returns a token - key as an RSA passphrase protected key', as
     const decoder = createDecoder()
     const result = decoder(signedToken)
 
-    t.equal(payload.a, result.a)
+    t.assert.equal(payload.a, result.a)
   } else {
-    t.throws(() => sign(payload, { key: { key: privateKeys.PPRS, passphrase: 'secret' } }), {
+    t.assert.throws(() => sign(payload, { key: { key: privateKeys.PPRS, passphrase: 'secret' } }), {
       message: 'Cannot create the signature.',
       originalError: {
         message: 'The "key" argument must be one of type string, Buffer, TypedArray, or DataView. Received type object'
@@ -169,9 +168,9 @@ test('it correctly returns a token - key as an ES256 passphrase protected key', 
     const decoder = createDecoder()
     const result = decoder(signedToken)
 
-    t.equal(payload.a, result.a)
+    t.assert.equal(payload.a, result.a)
   } else {
-    t.throws(() => sign(payload, { key: { key: privateKeys.PPES256, passphrase: 'secret' } }), {
+    t.assert.throws(() => sign(payload, { key: { key: privateKeys.PPES256, passphrase: 'secret' } }), {
       message: 'Cannot create the signature.',
       originalError: {
         message: 'The "key" argument must be one of type string, Buffer, TypedArray, or DataView. Received type object'
@@ -187,9 +186,9 @@ test('it correctly returns a token - key as an ES384 passphrase protected key', 
     const decoder = createDecoder()
     const result = decoder(signedToken)
 
-    t.equal(payload.a, result.a)
+    t.assert.equal(payload.a, result.a)
   } else {
-    t.throws(() => sign(payload, { key: { key: privateKeys.PPES384, passphrase: 'secret' } }), {
+    t.assert.throws(() => sign(payload, { key: { key: privateKeys.PPES384, passphrase: 'secret' } }), {
       message: 'Cannot create the signature.',
       originalError: {
         message: 'The "key" argument must be one of type string, Buffer, TypedArray, or DataView. Received type object'
@@ -205,9 +204,9 @@ test('it correctly returns a token - key as an ES512 passphrase protected key', 
     const decoder = createDecoder()
     const result = decoder(signedToken)
 
-    t.equal(payload.a, result.a)
+    t.assert.equal(payload.a, result.a)
   } else {
-    t.throws(() => sign(payload, { key: { key: privateKeys.PPES512, passphrase: 'secret' } }), {
+    t.assert.throws(() => sign(payload, { key: { key: privateKeys.PPES512, passphrase: 'secret' } }), {
       message: 'Cannot create the signature.',
       originalError: {
         message: 'The "key" argument must be one of type string, Buffer, TypedArray, or DataView. Received type object'
@@ -217,20 +216,20 @@ test('it correctly returns a token - key as an ES512 passphrase protected key', 
 })
 
 test('it correctly returns an error when algorithm is not provided when using passphrase protected key', async t => {
-  t.throws(() => sign({ a: 1 }, { key: { key: privateKeys.PPRS, passphrase: 'secret' } }), {
+  t.assert.throws(() => sign({ a: 1 }, { key: { key: privateKeys.PPRS, passphrase: 'secret' } }), {
     message: 'When using password protected key you must provide the algorithm option.'
   })
 })
 
 test('it correctly returns an error when using "EdDSA" algorithm passphrase protected key', async t => {
-  t.throws(() => sign({ a: 1 }, { algorithm: 'EdDSA', key: { key: privateKeys.PPRS, passphrase: 'secret' } }), {
+  t.assert.throws(() => sign({ a: 1 }, { algorithm: 'EdDSA', key: { key: privateKeys.PPRS, passphrase: 'secret' } }), {
     message: 'Invalid private key provided for algorithm EdDSA.',
     code: TokenError.codes.invalidKey
   })
 })
 
 test('it correctly returns an error when using "ES256" algorithm with RSA private key', async t => {
-  t.throws(() => sign({ a: 1 }, { algorithm: 'ES256', key: privateKeys.RS }), {
+  t.assert.throws(() => sign({ a: 1 }, { algorithm: 'ES256', key: privateKeys.RS }), {
     message: 'Invalid private key provided for algorithm ES256.',
     code: TokenError.codes.invalidKey
   })
@@ -252,52 +251,52 @@ test('it correctly autodetects the algorithm depending on the secret provided', 
 
   let token = createSigner({ key: privateKeys.HS })({ a: 1 })
   let verification = hsVerifier(token)
-  t.equal(verification.header.alg, 'HS256')
+  t.assert.equal(verification.header.alg, 'HS256')
 
   token = createSigner({ key: privateKeys.RS })({ a: 1 })
   verification = rsVerifier(token)
-  t.equal(verification.header.alg, 'RS256')
+  t.assert.equal(verification.header.alg, 'RS256')
 
   token = createSigner({ key: privateKeys.PS })({ a: 1 })
   verification = psVerifier(token)
-  t.equal(verification.header.alg, 'RS256')
+  t.assert.equal(verification.header.alg, 'RS256')
 
   token = createSigner({ key: privateKeys.ES256 })({ a: 1 })
   verification = es256Verifier(token)
-  t.equal(verification.header.alg, 'ES256')
+  t.assert.equal(verification.header.alg, 'ES256')
 
   token = createSigner({ key: privateKeys.ES384 })({ a: 1 })
   verification = es384Verifier(token)
-  t.equal(verification.header.alg, 'ES384')
+  t.assert.equal(verification.header.alg, 'ES384')
 
   token = createSigner({ key: privateKeys.ES512 })({ a: 1 })
   verification = es512Verifier(token)
-  t.equal(verification.header.alg, 'ES512')
+  t.assert.equal(verification.header.alg, 'ES512')
 
   if (useNewCrypto) {
     token = createSigner({ algorithm: 'RS256', key: { key: privateKeys.PPRS, passphrase: 'secret' } })({ a: 1 })
     verification = pprsVerifier(token)
-    t.equal(verification.header.alg, 'RS256')
+    t.assert.equal(verification.header.alg, 'RS256')
 
     token = createSigner({ algorithm: 'ES256', key: { key: privateKeys.PPES256, passphrase: 'secret' } })({ a: 1 })
     verification = ppes256Verifier(token)
-    t.equal(verification.header.alg, 'ES256')
+    t.assert.equal(verification.header.alg, 'ES256')
 
     token = createSigner({ algorithm: 'ES384', key: { key: privateKeys.PPES384, passphrase: 'secret' } })({ a: 1 })
     verification = ppes384Verifier(token)
-    t.equal(verification.header.alg, 'ES384')
+    t.assert.equal(verification.header.alg, 'ES384')
 
     token = createSigner({ algorithm: 'ES512', key: { key: privateKeys.PPES512, passphrase: 'secret' } })({ a: 1 })
     verification = ppes512Verifier(token)
-    t.equal(verification.header.alg, 'ES512')
+    t.assert.equal(verification.header.alg, 'ES512')
 
     token = createSigner({ key: privateKeys.Ed25519 })({ a: 1 })
     verification = es25519Verifier(token)
-    t.equal(verification.header.alg, 'EdDSA')
+    t.assert.equal(verification.header.alg, 'EdDSA')
 
     token = createSigner({ key: privateKeys.Ed448 })({ a: 1 })
     verification = es448Verifier(token)
-    t.equal(verification.header.alg, 'EdDSA')
+    t.assert.equal(verification.header.alg, 'EdDSA')
   }
 })
 
@@ -306,87 +305,87 @@ test('it correctly set a timestamp', async t => {
   const originalNow = Date.now
 
   Date.now = () => ts.shift()
-  t.not(sign({ a: 1 }, {}), sign({ a: 1 }, {}))
+  t.assert.notDeepStrictEqual(sign({ a: 1 }, {}), sign({ a: 1 }, {}))
   Date.now = originalNow
 })
 
 test('it respect the payload iat, if one is set', async t => {
-  t.equal(
+  t.assert.equal(
     sign({ a: 1, iat: 123 }, {}),
     'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxLCJpYXQiOjEyM30.J-5nCdVMKQ0yqIIkKTPBuQf46vPXcbwdLpAcYBZ9EqU'
   )
 })
 
 test('it respect the payload sub, if one is set', async t => {
-  t.equal(
+  t.assert.equal(
     sign({ a: 1, sub: 'SUB' }, { noTimestamp: true }),
     'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxLCJzdWIiOiJTVUIifQ.wweP9vNGt77bBGwZ_PLXfPxy2qcx2mnjUa0AWVA5bEM'
   )
 })
 
 test('it uses the clockTimestamp option, if one is set', async t => {
-  t.equal(
+  t.assert.equal(
     sign({ a: 1 }, { clockTimestamp: 123000 }),
     'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxLCJpYXQiOjEyM30.J-5nCdVMKQ0yqIIkKTPBuQf46vPXcbwdLpAcYBZ9EqU'
   )
 })
 
 test('it respects payload exp claim (if supplied), overriding the default expiresIn timeout', async t => {
-  t.equal(
+  t.assert.equal(
     sign({ a: 1, iat: 100 }, { expiresIn: 1000 }),
     'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxLCJpYXQiOjEwMCwiZXhwIjoxMDF9.ULKqTsvUYm7iNOKA6bP5NXsa1A8vofgPIGiC182Vf_Q'
   )
 
-  t.equal(
+  t.assert.equal(
     sign({ a: 1, iat: 100, exp: 200 }, { expiresIn: 1000 }),
     'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxLCJpYXQiOjEwMCwiZXhwIjoyMDB9.RJbB3-VIjLIQr-VmZ1Kl42MrHr2pAU-CQuXK8jHMKR0'
   )
 })
 
 test('it supports expiresIn as a string', async t => {
-  t.equal(
+  t.assert.equal(
     sign({ a: 1, iat: 100 }, { expiresIn: '1000' }),
     'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxLCJpYXQiOjEwMCwiZXhwIjoxMDF9.ULKqTsvUYm7iNOKA6bP5NXsa1A8vofgPIGiC182Vf_Q'
   )
 
-  t.equal(
+  t.assert.equal(
     sign({ a: 1, iat: 100 }, { expiresIn: '1s' }),
     'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxLCJpYXQiOjEwMCwiZXhwIjoxMDF9.ULKqTsvUYm7iNOKA6bP5NXsa1A8vofgPIGiC182Vf_Q'
   )
 })
 
 test('it adds the payload exp claim', async t => {
-  t.equal(
+  t.assert.equal(
     sign({ a: 1, iat: 100, exp: 200 }, {}),
     'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxLCJpYXQiOjEwMCwiZXhwIjoyMDB9.RJbB3-VIjLIQr-VmZ1Kl42MrHr2pAU-CQuXK8jHMKR0'
   )
 })
 
 test('it ignores invalid exp claim', async t => {
-  t.equal(
+  t.assert.equal(
     sign({ a: 1, iat: 100, exp: Number.NaN }, {}),
     'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxLCJpYXQiOjEwMH0.5V5yFNSqmn0w6yDR1vUbykF36WwdQmADMTLJwiJtx8w'
   )
 
-  t.equal(
+  t.assert.equal(
     sign({ a: 1, iat: 100, exp: null }, {}),
     'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxLCJpYXQiOjEwMH0.5V5yFNSqmn0w6yDR1vUbykF36WwdQmADMTLJwiJtx8w'
   )
 
-  t.equal(
+  t.assert.equal(
     sign({ a: 1, iat: 100, exp: undefined }, {}),
     'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxLCJpYXQiOjEwMH0.5V5yFNSqmn0w6yDR1vUbykF36WwdQmADMTLJwiJtx8w'
   )
 })
 
 test('it adds a nbf claim, overriding the payload one, only if the payload is a object', async t => {
-  t.equal(
+  t.assert.equal(
     sign({ a: 1, iat: 100 }, { notBefore: 1000 }),
     // jwt that contains nbf claim to be 1000
     'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxLCJpYXQiOjEwMCwibmJmIjoxMDF9.WhZeNowse7q1s5FSlcMcs_4KcxXpSdQ4yqv0xrGB3sU'
   )
 
-  t.equal(
+  t.assert.equal(
     sign({ a: 1, iat: 100, nbf: 200 }, { notBefore: 1000 }),
     // jwt that contains nbf claim to be 200
     'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxLCJpYXQiOjEwMCwibmJmIjoyMDB9.HmHmbH-pOTlpj5FsVN61aT2PFhd6EN-tnQdExv_HUs4'
@@ -394,91 +393,91 @@ test('it adds a nbf claim, overriding the payload one, only if the payload is a 
 })
 
 test('it supports notBefore as a string', async t => {
-  t.equal(
+  t.assert.equal(
     sign({ a: 1, iat: 100 }, { notBefore: '1000' }),
     'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxLCJpYXQiOjEwMCwibmJmIjoxMDF9.WhZeNowse7q1s5FSlcMcs_4KcxXpSdQ4yqv0xrGB3sU'
   )
 
-  t.equal(
+  t.assert.equal(
     sign({ a: 1, iat: 100 }, { notBefore: '1s' }),
     'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxLCJpYXQiOjEwMCwibmJmIjoxMDF9.WhZeNowse7q1s5FSlcMcs_4KcxXpSdQ4yqv0xrGB3sU'
   )
 })
 
 test('it adds a jti claim, overriding the payload one, only if the payload is a object', async t => {
-  t.equal(
+  t.assert.equal(
     sign({ a: 1 }, { jti: 'JTI', noTimestamp: true }),
     'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxLCJqdGkiOiJKVEkifQ.Ew1eS3Pn9R0hqV0JCA5AECTSvaEm9glggxWlmq0cYl4'
   )
 
-  t.equal(
+  t.assert.equal(
     sign({ a: 1, jti: 'original' }, { jti: 'JTI', noTimestamp: true }),
     'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxLCJqdGkiOiJKVEkifQ.Ew1eS3Pn9R0hqV0JCA5AECTSvaEm9glggxWlmq0cYl4'
   )
 })
 
 test('it adds a aud claim, overriding the payload one, only if the payload is a object', async t => {
-  t.equal(
+  t.assert.equal(
     sign({ a: 1 }, { aud: 'AUD1', noTimestamp: true }),
     'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxLCJhdWQiOiJBVUQxIn0.fplBCKNjVH2jjpk-hFQZ9jnG96nVFZqOeU-C97AvKAI'
   )
 
-  t.equal(
+  t.assert.equal(
     sign({ a: 1, aud: 'original' }, { aud: 'AUD1', noTimestamp: true }),
     'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxLCJhdWQiOiJBVUQxIn0.fplBCKNjVH2jjpk-hFQZ9jnG96nVFZqOeU-C97AvKAI'
   )
 
-  t.equal(
+  t.assert.equal(
     sign({ a: 1, aud: 'original' }, { aud: ['AUD1', 'AUD2'], noTimestamp: true }),
     'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxLCJhdWQiOlsiQVVEMSIsIkFVRDIiXX0.zRcmqvl1hRzaWa8qX_ge7mHeJNSH-Th-TLu0-62jFxc'
   )
 })
 
 test('it adds a iss claim, overriding the payload one, only if the payload is a object', async t => {
-  t.equal(
+  t.assert.equal(
     sign({ a: 1 }, { iss: 'ISS', noTimestamp: true }),
     'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxLCJpc3MiOiJJU1MifQ.YLEisGRTlJL9Y7KLHbIahXr1Zqu0of5w1mJf4aGphTE'
   )
 
-  t.equal(
+  t.assert.equal(
     sign({ a: 1, iss: 'original' }, { iss: 'ISS', noTimestamp: true }),
     'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxLCJpc3MiOiJJU1MifQ.YLEisGRTlJL9Y7KLHbIahXr1Zqu0of5w1mJf4aGphTE'
   )
 })
 
 test('it adds a sub claim, overriding the payload one, only if the payload is a object', async t => {
-  t.equal(
+  t.assert.equal(
     sign({ a: 1 }, { sub: 'SUB', noTimestamp: true }),
     'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxLCJzdWIiOiJTVUIifQ.wweP9vNGt77bBGwZ_PLXfPxy2qcx2mnjUa0AWVA5bEM'
   )
 
-  t.equal(
+  t.assert.equal(
     sign({ a: 1, sub: 'original' }, { sub: 'SUB', noTimestamp: true }),
     'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxLCJzdWIiOiJTVUIifQ.wweP9vNGt77bBGwZ_PLXfPxy2qcx2mnjUa0AWVA5bEM'
   )
 })
 
 test('it adds a nonce claim, overriding the payload one, only if the payload is a object', async t => {
-  t.equal(
+  t.assert.equal(
     sign({ a: 1 }, { nonce: 'NONCE', noTimestamp: true }),
     'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxLCJub25jZSI6Ik5PTkNFIn0.NvCriFYuVDq0fTSf5t_92EwbxnwgjZVMBEMfW-RVl_k'
   )
 
-  t.equal(
+  t.assert.equal(
     sign({ a: 1, nonce: 'original' }, { nonce: 'NONCE', noTimestamp: true }),
     'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxLCJub25jZSI6Ik5PTkNFIn0.NvCriFYuVDq0fTSf5t_92EwbxnwgjZVMBEMfW-RVl_k'
   )
 })
 
 test('it adds a kid to the header', async t => {
-  t.equal(
+  t.assert.equal(
     sign({ a: 1 }, { kid: '123', noTimestamp: true }),
     'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCIsImtpZCI6IjEyMyJ9.eyJhIjoxfQ.7tQHnTc72lr2wAQeb7n-bDesok0WUHXCDGyNfOMA8CA'
   )
 })
 
 test('it adds additional arbitrary fields to the header', async t => {
-  t.equal(
+  t.assert.equal(
     sign({ a: 1 }, { header: { b: 2, c: 3 }, noTimestamp: true }),
     'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCIsImIiOjIsImMiOjN9.eyJhIjoxfQ.pfoXZ4zIsYNDmvhFy7pX6dUaK7SV6NfwxTTISwqeFeY'
   )
@@ -487,16 +486,16 @@ test('it adds additional arbitrary fields to the header', async t => {
 test('it mutates the payload if asked to', async t => {
   const payload = { a: 1, iat: 100 }
 
-  t.equal(
+  t.assert.equal(
     sign(payload, { mutatePayload: true, expiresIn: 1000 }),
     'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxLCJpYXQiOjEwMCwiZXhwIjoxMDF9.ULKqTsvUYm7iNOKA6bP5NXsa1A8vofgPIGiC182Vf_Q'
   )
 
-  t.equal(payload.exp, 101)
+  t.assert.equal(payload.exp, 101)
 })
 
 test('it correctly handle errors - async callback', async t => {
-  await t.rejects(
+  await t.assert.rejects(
     sign(
       { a: 1 },
       {
@@ -509,7 +508,7 @@ test('it correctly handle errors - async callback', async t => {
     { message: 'Cannot fetch key.' }
   )
 
-  await t.rejects(
+  await t.assert.rejects(
     sign(
       { a: 1 },
       {
@@ -533,10 +532,8 @@ test('it correctly handle errors - callback', t => {
       noTimestamp: true
     },
     (error, token) => {
-      t.ok(error instanceof TokenError)
-      t.equal(error.message, 'Cannot fetch key.')
-
-      t.end()
+      t.assert.ok(error instanceof TokenError)
+      t.assert.equal(error.message, 'Cannot fetch key.')
     }
   )
 })
@@ -551,13 +548,11 @@ test('it correctly validates the key received from the callback', t => {
       noTimestamp: true
     },
     (error, token) => {
-      t.ok(error instanceof TokenError)
-      t.equal(
+      t.assert.ok(error instanceof TokenError)
+      t.assert.equal(
         error.message,
         'The key returned from the callback must be a string or a buffer containing a secret or a private key.'
       )
-
-      t.end()
     }
   )
 })
@@ -573,10 +568,8 @@ test('it correctly handle errors - evented callback', t => {
       algorithm: 'RS256'
     },
     (error, token) => {
-      t.ok(error instanceof TokenError)
-      t.equal(error.message, 'Invalid private key provided for algorithm RS256.')
-
-      t.end()
+      t.assert.ok(error instanceof TokenError)
+      t.assert.equal(error.message, 'Invalid private key provided for algorithm RS256.')
     }
   )
 })
@@ -585,8 +578,8 @@ test('returns a promise according to key option', async t => {
   const s1 = createSigner({ key: 'secret' })({ a: 'PAYLOAD' })
   const s2 = createSigner({ key: async () => 'secret' })({ a: 'PAYLOAD' })
 
-  t.ok(typeof s1.then === 'undefined')
-  t.ok(typeof s2.then === 'function')
+  t.assert.ok(typeof s1.then === 'undefined')
+  t.assert.ok(typeof s2.then === 'function')
 
   await s2.then(
     () => false,
@@ -595,21 +588,21 @@ test('returns a promise according to key option', async t => {
 })
 
 test('payload validation', async t => {
-  t.throws(() => createSigner({ key: 'secret' })(123), {
+  t.assert.throws(() => createSigner({ key: 'secret' })(123), {
     message: 'The payload must be an object.'
   })
 
-  t.rejects(async () => createSigner({ key: () => 'secret' })(123), {
+  t.assert.rejects(async () => createSigner({ key: () => 'secret' })(123), {
     message: 'The payload must be an object.'
   })
 })
 
 test('exp claim validation', async t => {
-  t.throws(() => createSigner({ key: 'secret' })({ exp: 'exp' }), {
+  t.assert.throws(() => createSigner({ key: 'secret' })({ exp: 'exp' }), {
     message: 'The exp claim must be a positive integer.'
   })
 
-  t.throws(() => createSigner({ key: 'secret' })({ exp: -1 }), {
+  t.assert.throws(() => createSigner({ key: 'secret' })({ exp: -1 }), {
     message: 'The exp claim must be a positive integer.'
   })
 })
@@ -617,84 +610,84 @@ test('exp claim validation', async t => {
 test('options validation - algorithm', async t => {
   createSigner({ key: 'secret' })
 
-  t.throws(() => createSigner({ key: 'secret', algorithm: 'FOO' }), {
+  t.assert.throws(() => createSigner({ key: 'secret', algorithm: 'FOO' }), {
     message:
       'The algorithm option must be one of the following values: HS256, HS384, HS512, ES256, ES384, ES512, RS256, RS384, RS512, PS256, PS384, PS512, EdDSA, none.'
   })
 })
 
 test('options validation - key', async t => {
-  t.throws(() => createSigner({ key: 123 }), {
+  t.assert.throws(() => createSigner({ key: 123 }), {
     message: 'The key option must be a string, a buffer, an object containing key/passphrase properties or a function returning the algorithm secret or private key.'
   })
 
-  t.throws(() => createSigner({ key: { key: privateKeys.PPRS } }), {
+  t.assert.throws(() => createSigner({ key: { key: privateKeys.PPRS } }), {
     message: 'The key option must be a string, a buffer, an object containing key/passphrase properties or a function returning the algorithm secret or private key.'
   })
 
-  t.throws(() => createSigner({ key: { passphrase: 'secret' } }), {
+  t.assert.throws(() => createSigner({ key: { passphrase: 'secret' } }), {
     message: 'The key option must be a string, a buffer, an object containing key/passphrase properties or a function returning the algorithm secret or private key.'
   })
 
-  t.throws(() => createSigner({ algorithm: 'none', key: 123 }), {
+  t.assert.throws(() => createSigner({ algorithm: 'none', key: 123 }), {
     message: 'The key option must not be provided when the algorithm option is "none".'
   })
 })
 
 test('options validation - clockTimestamp', async t => {
-  t.throws(() => createSigner({ key: 'secret', clockTimestamp: '123' }), {
+  t.assert.throws(() => createSigner({ key: 'secret', clockTimestamp: '123' }), {
     message: 'The clockTimestamp option must be a positive number.'
   })
 
-  t.throws(() => createSigner({ key: 'secret', clockTimestamp: -1 }), {
+  t.assert.throws(() => createSigner({ key: 'secret', clockTimestamp: -1 }), {
     message: 'The clockTimestamp option must be a positive number.'
   })
 })
 
 test('options validation - expiresIn', async t => {
-  t.throws(() => createSigner({ key: 'secret', expiresIn: true }), {
+  t.assert.throws(() => createSigner({ key: 'secret', expiresIn: true }), {
     message: 'The expiresIn option must be a positive number or a valid string.'
   })
 
-  t.throws(() => createSigner({ key: 'secret', expiresIn: 'invalid string' }), {
-    message: 'The expiresIn option must be a positive number or a valid string'
+  t.assert.throws(() => createSigner({ key: 'secret', expiresIn: 'invalid string' }), {
+    message: 'The expiresIn option must be a positive number or a valid string.'
   })
 
-  t.throws(() => createSigner({ key: 'secret', expiresIn: -1 }), {
-    message: 'The expiresIn option must be a positive number or a valid string'
+  t.assert.throws(() => createSigner({ key: 'secret', expiresIn: -1 }), {
+    message: 'The expiresIn option must be a positive number or a valid string.'
   })
 })
 
 test('options validation - notBefore', async t => {
-  t.throws(() => createSigner({ key: 'secret', notBefore: true }), {
+  t.assert.throws(() => createSigner({ key: 'secret', notBefore: true }), {
     message: 'The notBefore option must be a positive number or a valid string.'
   })
 
-  t.throws(() => createSigner({ key: 'secret', notBefore: 'invalid string' }), {
+  t.assert.throws(() => createSigner({ key: 'secret', notBefore: 'invalid string' }), {
     message: 'The notBefore option must be a positive number or a valid string.'
   })
 
-  t.throws(() => createSigner({ key: 'secret', notBefore: -1 }), {
+  t.assert.throws(() => createSigner({ key: 'secret', notBefore: -1 }), {
     message: 'The notBefore option must be a positive number or a valid string.'
   })
 })
 
 test('options validation - aud', async t => {
-  t.throws(() => createSigner({ key: 'secret', aud: 123 }), {
+  t.assert.throws(() => createSigner({ key: 'secret', aud: 123 }), {
     message: 'The aud option must be a string or an array of strings.'
   })
 })
 
 for (const option of ['jti', 'iss', 'sub', 'nonce', 'kid']) {
   test(`options validation - ${option}`, async t => {
-    t.throws(() => createSigner({ key: 'secret', [option]: 123 }), {
+    t.assert.throws(() => createSigner({ key: 'secret', [option]: 123 }), {
       message: `The ${option} option must be a string.`
     })
   })
 }
 
 test('options validation - header', async t => {
-  t.throws(() => createSigner({ key: 'secret', header: 123 }), {
+  t.assert.throws(() => createSigner({ key: 'secret', header: 123 }), {
     message: 'The header option must be a object.'
   })
 })

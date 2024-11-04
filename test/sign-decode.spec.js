@@ -1,6 +1,6 @@
 'use strict'
 
-const { test } = require('tap')
+const { test } = require('node:test')
 
 const { createDecoder, createSigner } = require('../src')
 
@@ -14,14 +14,12 @@ test('Should encode and decode the token, keeping a consistent payload', t => {
     iat: 999,
     exp: 200000
   }
-  t.strictSame(decoder(signer(p1)), p1)
+  t.assert.deepStrictEqual(decoder(signer(p1)), p1)
 
   const p2 = {
     a: 'h',
     iat: 999,
     nbf: 999
   }
-  t.strictSame(decoder(signer(p2)), p2)
-
-  t.end()
+  t.assert.deepStrictEqual(decoder(signer(p2)), p2)
 })

@@ -1,6 +1,6 @@
 'use strict'
 
-const { test } = require('tap')
+const { test } = require('node:test')
 
 const { createDecoder } = require('../src')
 
@@ -15,9 +15,9 @@ const nonJwtToken =
   'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVEFBIn0.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6Ik9LIiwiaWF0Ijo5ODc2NTQzMjEwfQ.Tauq025SLRNP4qTYsr_FHXwjQ_ZTsAjBGwE-2h6if4k'
 
 test('should return a valid token', t => {
-  t.strictSame(defaultDecoder(token), { sub: '1234567890', name: 'OK', iat: 9876543210 })
+  t.assert.deepStrictEqual(defaultDecoder(token), { sub: '1234567890', name: 'OK', iat: 9876543210 })
 
-  t.strictSame(completeDecoder(Buffer.from(token, 'utf-8')), {
+  t.assert.deepStrictEqual(completeDecoder(Buffer.from(token, 'utf-8')), {
     header: {
       alg: 'HS256',
       typ: 'JWT'
@@ -30,42 +30,32 @@ test('should return a valid token', t => {
     signature: 'gWCa6uhcbaAgVmJC46OAIl-9yTBDAdIphDq_NP6fenY',
     input: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6Ik9LIiwiaWF0Ijo5ODc2NTQzMjEwfQ'
   })
-
-  t.end()
 })
 
 test('token must be a string', t => {
   for (const token of [false, null, 0, NaN, [], { a: 1 }]) {
-    t.throws(() => defaultDecoder(token), { message: 'The token must be a string or a buffer.' })
+    t.assert.throws(() => defaultDecoder(token), { message: 'The token must be a string or a buffer.' })
   }
-
-  t.end()
 })
 
 test('token must be well formed', t => {
   for (const token of ['foo', 'foo.bar']) {
-    t.throws(() => defaultDecoder(token), { message: 'The token is malformed.' })
+    t.assert.throws(() => defaultDecoder(token), { message: 'The token is malformed.' })
   }
-
-  t.end()
 })
 
 test('invalid header', t => {
-  t.throws(() => defaultDecoder('a.b.c'), { message: 'The token header is not a valid base64url serialized JSON.' })
+  t.assert.throws(() => defaultDecoder('a.b.c'), { message: 'The token header is not a valid base64url serialized JSON.' })
 
-  t.throws(() => defaultDecoder('Zm9v.b.c'), { message: 'The token header is not a valid base64url serialized JSON.' })
+  t.assert.throws(() => defaultDecoder('Zm9v.b.c'), { message: 'The token header is not a valid base64url serialized JSON.' })
 
-  t.throws(() => typDecoder(nonJwtToken), { message: 'The type must be "JWT".' })
-
-  t.end()
+  t.assert.throws(() => typDecoder(nonJwtToken), { message: 'The type must be "JWT".' })
 })
 
 test('invalid payload', t => {
-  t.throws(() => defaultDecoder('eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.bbb.ccc'), {
+  t.assert.throws(() => defaultDecoder('eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.bbb.ccc'), {
     message: 'The token payload is not a valid base64url serialized JSON.'
   })
-
-  t.end()
 })
 
 // https://tools.ietf.org/html/rfc7519#section-7.2
@@ -75,14 +65,12 @@ test('invalid payload', t => {
 //      RFC 7159 [RFC7159]; let the JWT Claims Set be this JSON object.
 test('payload must be a JSON object', t => {
   // string
-  t.throws(() => defaultDecoder('eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.MTIz.5frDWv6bqXyHPXl3oZYOTnALMCGwfEYjQZbke2iyR3Y'), {
+  t.assert.throws(() => defaultDecoder('eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.MTIz.5frDWv6bqXyHPXl3oZYOTnALMCGwfEYjQZbke2iyR3Y'), {
     message: 'The payload must be an object'
   })
 
   // null
-  t.throws(() => defaultDecoder('eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.bnVsbA.Y-B_ctjXNWaZlNk8kqfSZ06B8GSZvPAfhMz-pQ2prfo'), {
+  t.assert.throws(() => defaultDecoder('eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.bnVsbA.Y-B_ctjXNWaZlNk8kqfSZ06B8GSZvPAfhMz-pQ2prfo'), {
     message: 'The payload must be an object'
   })
-
-  t.end()
 })
