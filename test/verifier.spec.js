@@ -1529,7 +1529,7 @@ test('default errorCacheTTL should not cache errors when sub millisecond executi
 
   await t.assert.rejects(async () => verifier(token))
 
-  t.notSame(verifier.cache.get(hashToken(token))[0], checkToken)
+  t.assert.notDeepStrictEqual(verifier.cache.get(hashToken(token))[0], checkToken)
 
   clock.uninstall()
 })
