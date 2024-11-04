@@ -300,7 +300,7 @@ module.exports = function createSigner(options) {
   }, {})
 
   // Return the signer
-  const context = {
+  return sign.bind(null, {
     key,
     algorithm,
     noTimestamp,
@@ -313,7 +313,5 @@ module.exports = function createSigner(options) {
     isAsync: keyType === 'function',
     additionalHeader,
     fixedPayload
-  }
-
-  return sign.bind(null, context)
+  })
 }
