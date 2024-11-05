@@ -1,6 +1,6 @@
 'use strict'
 
-const { test } = require('tap')
+const { test } = require('node:test')
 const {
   JWK: { asKey }
 } = require('jose')
@@ -85,10 +85,8 @@ test('HS256', t => {
 
   const verified = createVerifier({ key })(token)
 
-  t.same(verified, payload)
-  t.equal(token, expectedToken)
-
-  t.end()
+  t.assert.deepStrictEqual(verified, payload)
+  t.assert.equal(token, expectedToken)
 })
 
 test('RS256', t => {
@@ -104,10 +102,8 @@ test('RS256', t => {
 
   const verified = createVerifier({ key: rsaPublicKey })(token)
 
-  t.same(verified, payload)
-  t.equal(token, expectedToken)
-
-  t.end()
+  t.assert.deepStrictEqual(verified, payload)
+  t.assert.equal(token, expectedToken)
 })
 
 test('PS384', t => {
@@ -123,11 +119,9 @@ test('PS384', t => {
 
   const verified = createVerifier({ key: rsaPublicKey })(token)
 
-  t.same(verified, payload)
+  t.assert.deepStrictEqual(verified, payload)
   // Since PS algorithm uses random data, we cannot match the signature
-  t.equal(token.replace(/\..+/, ''), expectedToken.replace(/\..+/, ''))
-
-  t.end()
+  t.assert.equal(token.replace(/\..+/, ''), expectedToken.replace(/\..+/, ''))
 })
 
 test('ES512', t => {
@@ -143,11 +137,9 @@ test('ES512', t => {
 
   const verified = createVerifier({ key: ecPublicKey })(token)
 
-  t.same(verified, payload)
+  t.assert.deepStrictEqual(verified, payload)
   // Since ES algorithm uses random data, we cannot match the signature
-  t.equal(token.replace(/\..+/, ''), expectedToken.replace(/\..+/, ''))
-
-  t.end()
+  t.assert.equal(token.replace(/\..+/, ''), expectedToken.replace(/\..+/, ''))
 })
 
 if (useNewCrypto) {
@@ -173,9 +165,7 @@ if (useNewCrypto) {
 
     const verified = createVerifier({ key: ed25519PublicKey })(token)
 
-    t.same(verified, payload)
-    t.equal(token, expectedToken)
-
-    t.end()
+    t.assert.deepStrictEqual(verified, payload)
+    t.assert.equal(token, expectedToken)
   })
 }

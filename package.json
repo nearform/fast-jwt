@@ -40,9 +40,9 @@
   "scripts": {
     "postpublish": "git push origin && git push origin -f --tags",
     "lint": "eslint src/**/*.js test/**/*.js src/**/*.ts test/**/*.ts",
-    "test": "tap --reporter=spec --coverage-report=html --coverage-report=text --100 --no-browser test/*.spec.js test/**/*.spec.js && tsd",
-    "test:ci": "npm run lint && tap --no-color --reporter=spec --coverage-report=json --coverage-report=text --100 test/*.spec.js test/**/*.spec.js && tsd",
-    "test:watch": "tap --watch --reporter=spec --coverage-report=html --coverage-report=text --no-browser test/*.spec.js test/**/*.spec.js",
+    "test": "node --test --experimental-test-coverage && tsd",
+    "test:ci": "npm run lint && npm run test",
+    "test:watch": "node --test --watch --experimental-test-coverage",
     "test:generate-keys": "node benchmarks/keys/generate-keys.js",
     "test:generate-tokens": "node benchmarks/keys/generate-tokens.js",
     "benchmark:sign": "node benchmarks/sign.mjs",
@@ -72,12 +72,11 @@
     "jose": "^2.0.6",
     "jsonwebtoken": "^9.0.0",
     "prettier": "^3.0.0",
-    "tap": "^16.3.4",
     "tsd": "^0.31.0",
     "typescript": "^5.0.2"
   },
   "engines": {
-    "node": ">=16"
+    "node": ">=20"
   },
   "tsd": {
     "directory": "test"
