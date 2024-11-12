@@ -176,6 +176,8 @@ Create a verifier function by calling `createVerifier` and providing one or more
 
 - `clockTolerance`: Timespan in milliseconds is the tolerance to apply to the current timestamp when performing time comparisons. Default is `0`.
 
+- `tokenHasher`: The function that will be used to hash the token. By default is used [the hashToken function](./src/utils.js).
+
 The verifier is a function which accepts a token (as Buffer or string) and returns the payload or the sections of the token.
 
 If the `key` option is a function, the signer will also accept a Node style callback and will return a promise, supporting therefore both callback and async/await styles.
