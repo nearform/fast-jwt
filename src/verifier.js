@@ -476,10 +476,7 @@ module.exports = function createVerifier(options) {
     validators.push({ type: 'string', claim: 'nonce', allowed: ensureStringClaimMatcher(allowedNonce) })
   }
 
-  let normalizedTyp = null
-  if (checkTyp) {
-    normalizedTyp = checkTyp.toLowerCase().replace(/^application\//, '')
-  }
+  const normalizedTyp = checkTyp ? checkTyp.toLowerCase().replace(/^application\//, '') : null
 
   const context = {
     key,
