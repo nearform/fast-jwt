@@ -72,7 +72,7 @@ function cacheSet(
     ignoreExpiration,
     ignoreNotBefore,
     maxAge,
-    clockTimestamp,
+    clockTimestamp = Date.now(),
     clockTolerance,
     errorCacheTTL
   },
@@ -86,7 +86,7 @@ function cacheSet(
 
   if (value instanceof TokenError) {
     const ttl = typeof errorCacheTTL === 'function' ? errorCacheTTL(value) : errorCacheTTL
-    cacheValue[2] = (clockTimestamp || Date.now()) + clockTolerance + ttl
+    cacheValue[2] = clockTimestamp + clockTolerance + ttl
     cache.set(hashToken(token), cacheValue)
     return value
   }
@@ -107,7 +107,7 @@ function cacheSet(
   }
 
   // The maximum TTL for the token cannot exceed the configured cacheTTL
-  const maxTTL = (clockTimestamp || Date.now()) + clockTolerance + cacheTTL
+  const maxTTL = clockTimestamp + clockTolerance + cacheTTL
   cacheValue[2] = cacheValue[2] === 0 ? maxTTL : Math.min(cacheValue[2], maxTTL)
 
   cache.set(hashToken(token), cacheValue)
