@@ -135,10 +135,8 @@ function handleCachedResult(cached, callback, promise) {
 
 function validateAlgorithmAndSignature(input, header, signature, key, allowedAlgorithms) {
   // According to the signature and key, check with algorithms are supported
-  const algorithms = allowedAlgorithms
-
   // Verify the token is allowed
-  if (!algorithms.includes(header.alg)) {
+  if (!allowedAlgorithms.includes(header.alg)) {
     throw new TokenError(TokenError.codes.invalidAlgorithm, 'The token algorithm is invalid.')
   }
 
