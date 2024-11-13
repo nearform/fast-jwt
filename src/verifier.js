@@ -374,7 +374,7 @@ module.exports = function createVerifier(options) {
     allowedSub,
     allowedNonce,
     requiredClaims
-  } = { cacheTTL: 600000, clockTolerance: 0, errorCacheTTL: -1, ...options }
+  } = { cacheTTL: 600_000, clockTolerance: 0, errorCacheTTL: -1, ...options }
 
   // Validate options
   if (!Array.isArray(allowedAlgorithms)) {
