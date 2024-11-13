@@ -248,19 +248,6 @@ function verify(
 ) {
   const [callback, promise] = isAsync ? ensurePromiseCallback(cb) : []
 
-  const cacheContext = {
-    cache,
-    token,
-    cacheTTL,
-    errorCacheTTL,
-    payload: undefined,
-    ignoreExpiration,
-    ignoreNotBefore,
-    maxAge,
-    clockTimestamp,
-    clockTolerance
-  }
-
   // Check the cache
   if (cache) {
     const [value, min, max] = cache.get(hashToken(token)) || [undefined, 0, 0]
@@ -297,7 +284,18 @@ function verify(
   }
 
   const { header, payload, signature } = decoded
-  cacheContext.payload = payload
+  const cacheContext = {
+    cache,
+    token,
+    cacheTTL,
+    errorCacheTTL,
+    ignoreExpiration,
+    ignoreNotBefore,
+    maxAge,
+    clockTimestamp,
+    clockTolerance,
+    payload
+  }
   const validationContext = { validators, allowedAlgorithms, checkTyp, clockTimestamp, clockTolerance, requiredClaims }
 
   // We have the key
