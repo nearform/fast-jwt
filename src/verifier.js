@@ -202,8 +202,7 @@ function verifyToken(
   // Verify the payload
   const now = clockTimestamp || Date.now()
 
-  for (const validator of validators) {
-    const { type, claim, allowed, array, modifier, greater, errorCode, errorVerb } = validator
+  for (const { type, claim, allowed, array, modifier, greater, errorCode, errorVerb } of validators) {
     const value = payload[claim]
     const arrayValue = Array.isArray(value)
     const values = arrayValue ? value : [value]
