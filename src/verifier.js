@@ -178,7 +178,7 @@ function validateClaimDateValue(value, modifier, now, greater, errorCode, errorV
 function verifyToken(
   key,
   { input, header, payload, signature },
-  { validators, allowedAlgorithms, checkTyp, clockTimestamp, clockTolerance, requiredClaims }
+  { validators, allowedAlgorithms, checkTyp, clockTimestamp, requiredClaims }
 ) {
   // Verify the key
   /* istanbul ignore next */
