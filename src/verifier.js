@@ -191,9 +191,6 @@ function verifyToken(
     throw new TokenError(TokenError.codes.invalidType, 'Invalid typ.')
   }
 
-  // Verify the payload
-  const now = clockTimestamp || Date.now()
-
   if (requiredClaims) {
     for (const claim of requiredClaims) {
       if (!(claim in payload)) {
@@ -201,6 +198,9 @@ function verifyToken(
       }
     }
   }
+
+  // Verify the payload
+  const now = clockTimestamp || Date.now()
 
   for (const validator of validators) {
     const { type, claim, allowed, array, modifier, greater, errorCode, errorVerb } = validator
