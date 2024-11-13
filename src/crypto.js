@@ -15,12 +15,10 @@ const {
     RSA_PSS_SALTLEN_AUTO
   }
 } = require('node:crypto')
-let { sign: directSign, verify: directVerify } = require('node:crypto')
+const { sign: directSign, verify: directVerify } = require('node:crypto')
 const { joseToDer, derToJose } = require('ecdsa-sig-formatter')
 const Cache = require('mnemonist/lru-cache')
 const { TokenError } = require('./error')
-
-const useNewCrypto = typeof directSign === 'function'
 
 const base64UrlMatcher = /[=+/]/g
 const encoderMap = { '=': '', '+': '-', '/': '_' }
@@ -40,19 +38,6 @@ const ecCurves = {
   '1.3.132.0.10': { bits: '256', names: ['secp256k1'] },
   '1.3.132.0.34': { bits: '384', names: ['P-384', 'secp384r1'] },
   '1.3.132.0.35': { bits: '512', names: ['P-521', 'secp521r1'] }
-}
-
-/* istanbul ignore next */
-if (!useNewCrypto) {
-  directSign = function (alg, data, options) {
-    if (typeof alg === 'undefined') {
-      throw new TokenError(TokenError.codes.signError, 'EdDSA algorithms are not supported by your Node.js version.')
-    }
-
-    return createSign(alg)
-      .update(data)
-      .sign(options)
-  }
 }
 
 const PrivateKey = asn.define('PrivateKey', function () {
@@ -351,7 +336,6 @@ function verifySignature(algorithm, key, input, signature) {
 }
 
 module.exports = {
-  useNewCrypto,
   base64UrlMatcher,
   base64UrlReplacer,
   hsAlgorithms,

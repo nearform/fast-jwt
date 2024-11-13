@@ -3,7 +3,7 @@
 const { createPublicKey, createSecretKey } = require('node:crypto')
 const Cache = require('mnemonist/lru-cache')
 
-const { useNewCrypto, hsAlgorithms, verifySignature, detectPublicKeyAlgorithms } = require('./crypto')
+const { hsAlgorithms, verifySignature, detectPublicKeyAlgorithms } = require('./crypto')
 const createDecoder = require('./decoder')
 const { TokenError } = require('./error')
 const { getAsyncKey, ensurePromiseCallback, hashToken } = require('./utils')
@@ -39,13 +39,7 @@ function prepareKeyOrSecret(key, isSecret) {
     key = Buffer.from(key, 'utf-8')
   }
 
-  // Only on Node 12 - Create a key object
-  /* istanbul ignore next */
-  if (useNewCrypto) {
-    key = isSecret ? createSecretKey(key) : createPublicKey(key)
-  }
-
-  return key
+  return isSecret ? createSecretKey(key) : createPublicKey(key)
 }
 
 function ensureStringClaimMatcher(raw) {

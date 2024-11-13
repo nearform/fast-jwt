@@ -6,7 +6,6 @@ const {
 } = require('jose')
 
 const { createVerifier, createSigner } = require('../src')
-const { useNewCrypto } = require('../src/crypto')
 
 const payload = {
   text: "It’s a dangerous business, Frodo, going out your door. You step onto the road, and if you don't keep your feet, there’s no knowing where you might be swept off to."
@@ -142,30 +141,28 @@ test('ES512', t => {
   t.assert.equal(token.replace(/\..+/, ''), expectedToken.replace(/\..+/, ''))
 })
 
-if (useNewCrypto) {
-  // All the keys here are extracted from https://tools.ietf.org/html/rfc8037
-  const ed25519PublicKey = asKey({
-    kty: 'OKP',
-    crv: 'Ed25519',
-    x: '11qYAYKxCrfVS_7TyWQHOg7hcvPapiMlrwIaaPcHURo'
-  }).toPEM()
+// All the keys here are extracted from https://tools.ietf.org/html/rfc8037
+const ed25519PublicKey = asKey({
+  kty: 'OKP',
+  crv: 'Ed25519',
+  x: '11qYAYKxCrfVS_7TyWQHOg7hcvPapiMlrwIaaPcHURo'
+}).toPEM()
 
-  const ed25519PrivateKey = asKey({
-    kty: 'OKP',
-    crv: 'Ed25519',
-    d: 'nWGxne_9WmC6hEr0kuwsxERJxWl7MmkZcDusAxyuf2A',
-    x: '11qYAYKxCrfVS_7TyWQHOg7hcvPapiMlrwIaaPcHURo'
-  }).toPEM(true)
+const ed25519PrivateKey = asKey({
+  kty: 'OKP',
+  crv: 'Ed25519',
+  d: 'nWGxne_9WmC6hEr0kuwsxERJxWl7MmkZcDusAxyuf2A',
+  x: '11qYAYKxCrfVS_7TyWQHOg7hcvPapiMlrwIaaPcHURo'
+}).toPEM(true)
 
-  test('EdDSA - Ed25519', t => {
-    const expectedToken =
-      'eyJhbGciOiJFZERTQSIsInR5cCI6IkpXVCJ9.eyJ0ZXh0IjoiSXTigJlzIGEgZGFuZ2Vyb3VzIGJ1c2luZXNzLCBGcm9kbywgZ29pbmcgb3V0IHlvdXIgZG9vci4gWW91IHN0ZXAgb250byB0aGUgcm9hZCwgYW5kIGlmIHlvdSBkb24ndCBrZWVwIHlvdXIgZmVldCwgdGhlcmXigJlzIG5vIGtub3dpbmcgd2hlcmUgeW91IG1pZ2h0IGJlIHN3ZXB0IG9mZiB0by4ifQ.s6A86zrJs551R4UxXwJsfRCGswdTJYFeNWjHUkZvragJ7hN43T5UetbpG4S6L2G7wOq5N_JJKrkbs0q0Gd-EAQ'
+test('EdDSA - Ed25519', t => {
+  const expectedToken =
+    'eyJhbGciOiJFZERTQSIsInR5cCI6IkpXVCJ9.eyJ0ZXh0IjoiSXTigJlzIGEgZGFuZ2Vyb3VzIGJ1c2luZXNzLCBGcm9kbywgZ29pbmcgb3V0IHlvdXIgZG9vci4gWW91IHN0ZXAgb250byB0aGUgcm9hZCwgYW5kIGlmIHlvdSBkb24ndCBrZWVwIHlvdXIgZmVldCwgdGhlcmXigJlzIG5vIGtub3dpbmcgd2hlcmUgeW91IG1pZ2h0IGJlIHN3ZXB0IG9mZiB0by4ifQ.s6A86zrJs551R4UxXwJsfRCGswdTJYFeNWjHUkZvragJ7hN43T5UetbpG4S6L2G7wOq5N_JJKrkbs0q0Gd-EAQ'
 
-    const token = createSigner({ algorithm: 'EdDSA', key: ed25519PrivateKey, noTimestamp: true })(payload)
+  const token = createSigner({ algorithm: 'EdDSA', key: ed25519PrivateKey, noTimestamp: true })(payload)
 
-    const verified = createVerifier({ key: ed25519PublicKey })(token)
+  const verified = createVerifier({ key: ed25519PublicKey })(token)
 
-    t.assert.deepStrictEqual(verified, payload)
-    t.assert.equal(token, expectedToken)
-  })
-}
+  t.assert.deepStrictEqual(verified, payload)
+  t.assert.equal(token, expectedToken)
+})

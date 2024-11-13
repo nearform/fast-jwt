@@ -10,7 +10,6 @@ const { resolve } = require('node:path')
 const { test } = require('node:test')
 
 const { createSigner, createVerifier } = require('../src')
-const { useNewCrypto } = require('../src/crypto')
 
 const privateKeys = {
   HS: 'secretsecretsecret',
@@ -56,25 +55,23 @@ for (const type of ['HS', 'ES', 'RS', 'PS']) {
   }
 }
 
-if (useNewCrypto) {
-  for (const curve of ['Ed25519', 'Ed448']) {
-    test(`fast-jwt should correcty verify tokens created by jose - EdDSA with ${curve}`, t => {
-      const verify = createVerifier({ key: publicKeys[curve].toString() })
-      const token = joseSign({ a: 1, b: 2, c: 3 }, asKey(privateKeys[curve]), {
-        iat: false,
-        header: {
-          typ: 'JWT'
-        }
-      })
-
-      t.assert.deepStrictEqual(verify(token), { a: 1, b: 2, c: 3 })
+for (const curve of ['Ed25519', 'Ed448']) {
+  test(`fast-jwt should correcty verify tokens created by jose - EdDSA with ${curve}`, t => {
+    const verify = createVerifier({ key: publicKeys[curve].toString() })
+    const token = joseSign({ a: 1, b: 2, c: 3 }, asKey(privateKeys[curve]), {
+      iat: false,
+      header: {
+        typ: 'JWT'
+      }
     })
 
-    test(`jose should correcty verify tokens created by fast-jwt - EdDSA with ${curve}`, t => {
-      const signer = createSigner({ key: privateKeys[curve], noTimestamp: true })
-      const token = signer({ a: 1, b: 2, c: 3 })
+    t.assert.deepStrictEqual(verify(token), { a: 1, b: 2, c: 3 })
+  })
 
-      t.assert.deepStrictEqual(joseVerify(token, asKey(publicKeys[curve])), { a: 1, b: 2, c: 3 })
-    })
-  }
+  test(`jose should correcty verify tokens created by fast-jwt - EdDSA with ${curve}`, t => {
+    const signer = createSigner({ key: privateKeys[curve], noTimestamp: true })
+    const token = signer({ a: 1, b: 2, c: 3 })
+
+    t.assert.deepStrictEqual(joseVerify(token, asKey(publicKeys[curve])), { a: 1, b: 2, c: 3 })
+  })
 }
