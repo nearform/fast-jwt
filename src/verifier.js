@@ -15,23 +15,17 @@ function exactStringClaimMatcher(allowed, actual) {
 }
 
 function checkAreCompatibleAlgorithms(expected, actual) {
-  let valid = false
-
   for (const expectedAlg of expected) {
-    valid = actual.indexOf(expectedAlg) !== -1
-
     // if at least one of the expected algorithms is compatible we're done
-    if (valid) {
-      break
+    if (actual.includes(expectedAlg)) {
+      return
     }
   }
 
-  if (!valid) {
-    throw new TokenError(
-      TokenError.codes.invalidKey,
-      `Invalid public key provided for algorithms ${expected.join(', ')}.`
-    )
-  }
+  throw new TokenError(
+    TokenError.codes.invalidKey,
+    `Invalid public key provided for algorithms ${expected.join(', ')}.`
+  )
 }
 
 function prepareKeyOrSecret(key, isSecret) {
