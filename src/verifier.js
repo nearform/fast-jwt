@@ -81,7 +81,7 @@ function cacheSet(
     clockTimestamp,
     clockTolerance,
     errorCacheTTL,
-    tokenHasher
+    cacheKeyBuilder
   },
   value
 ) {
@@ -94,7 +94,7 @@ function cacheSet(
   if (value instanceof TokenError) {
     const ttl = typeof errorCacheTTL === 'function' ? errorCacheTTL(value) : errorCacheTTL
     cacheValue[2] = (clockTimestamp || Date.now()) + clockTolerance + ttl
-    cache.set(tokenHasher(token), cacheValue)
+    cache.set(cacheKeyBuilder(token), cacheValue)
     return value
   }
 
@@ -117,7 +117,7 @@ function cacheSet(
   const maxTTL = (clockTimestamp || Date.now()) + clockTolerance + cacheTTL
   cacheValue[2] = cacheValue[2] === 0 ? maxTTL : Math.min(cacheValue[2], maxTTL)
 
-  cache.set(tokenHasher(token), cacheValue)
+  cache.set(cacheKeyBuilder(token), cacheValue)
 
   return value
 }
@@ -260,7 +260,7 @@ function verify(
     cache,
     requiredClaims,
     errorCacheTTL,
-    tokenHasher
+    cacheKeyBuilder
   },
   token,
   cb
@@ -278,12 +278,12 @@ function verify(
     maxAge,
     clockTimestamp,
     clockTolerance,
-    tokenHasher
+    cacheKeyBuilder
   }
 
   // Check the cache
   if (cache) {
-    const [value, min, max] = cache.get(tokenHasher(token)) || [undefined, 0, 0]
+    const [value, min, max] = cache.get(cacheKeyBuilder(token)) || [undefined, 0, 0]
     const now = clockTimestamp || Date.now()
 
     // Validate time range
@@ -396,8 +396,8 @@ module.exports = function createVerifier(options) {
     allowedSub,
     allowedNonce,
     requiredClaims,
-    tokenHasher
-  } = { cacheTTL: 600000, clockTolerance: 0, errorCacheTTL: -1, tokenHasher: hashToken, ...options }
+    cacheKeyBuilder
+  } = { cacheTTL: 600000, clockTolerance: 0, errorCacheTTL: -1, cacheKeyBuilder: hashToken, ...options }
 
   // Validate options
   if (!Array.isArray(allowedAlgorithms)) {
@@ -521,7 +521,7 @@ module.exports = function createVerifier(options) {
     decode: createDecoder({ complete: true }),
     cache: createCache(cacheSize),
     requiredClaims,
-    tokenHasher
+    cacheKeyBuilder
   }
 
   // Return the verifier
