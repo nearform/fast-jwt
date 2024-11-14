@@ -6,7 +6,6 @@ const { resolve } = require('node:path')
 
 const { createVerifier, createSigner } = require('../src')
 const {
-  useNewCrypto,
   hsAlgorithms,
   rsaAlgorithms,
   detectPrivateKeyAlgorithm,
@@ -315,48 +314,46 @@ for (const type of ['ES', 'RS', 'PS']) {
   }
 }
 
-if (useNewCrypto) {
-  for (const type of ['Ed25519', 'Ed448']) {
-    const privateKey = privateKeys[type]
-    const publicKey = publicKeys[type]
+for (const type of ['Ed25519', 'Ed448']) {
+  const privateKey = privateKeys[type]
+  const publicKey = publicKeys[type]
 
-    test(`EdDSA with ${type} based tokens round trip with buffer keys`, t => {
-      const token = createSigner({ algorithm: 'EdDSA', key: privateKey })({ payload: 'PAYLOAD' })
-      const verified = createVerifier({ algorithms: ['EdDSA'], key: publicKey })(token)
+  test(`EdDSA with ${type} based tokens round trip with buffer keys`, t => {
+    const token = createSigner({ algorithm: 'EdDSA', key: privateKey })({ payload: 'PAYLOAD' })
+    const verified = createVerifier({ algorithms: ['EdDSA'], key: publicKey })(token)
 
-      t.assert.equal(verified.payload, 'PAYLOAD')
-      t.assert.ok(verified.iat >= start)
-      t.assert.ok(verified.iat <= Date.now() / 1000)
+    t.assert.equal(verified.payload, 'PAYLOAD')
+    t.assert.ok(verified.iat >= start)
+    t.assert.ok(verified.iat <= Date.now() / 1000)
+  })
+
+  test(`EdDSA with ${type} based tokens round trip with string keys`, t => {
+    const token = createSigner({ algorithm: 'EdDSA', key: privateKey.toString('utf-8') })({
+      payload: 'PAYLOAD'
     })
+    const verified = createVerifier({ algorithms: ['EdDSA'], key: publicKey.toString('utf-8') })(token)
 
-    test(`EdDSA with ${type} based tokens round trip with string keys`, t => {
-      const token = createSigner({ algorithm: 'EdDSA', key: privateKey.toString('utf-8') })({
-        payload: 'PAYLOAD'
-      })
-      const verified = createVerifier({ algorithms: ['EdDSA'], key: publicKey.toString('utf-8') })(token)
+    t.assert.equal(verified.payload, 'PAYLOAD')
+    t.assert.ok(verified.iat >= start)
+    t.assert.ok(verified.iat <= Date.now() / 1000)
+  })
 
-      t.assert.equal(verified.payload, 'PAYLOAD')
-      t.assert.ok(verified.iat >= start)
-      t.assert.ok(verified.iat <= Date.now() / 1000)
+  test(`EdDSA with ${type} based tokens should validate the private key`, async t => {
+    await t.assert.rejects(
+      createSigner({ algorithm: 'EdDSA', key: async () => 123 })({ payload: 'PAYLOAD' }),
+      {
+        message:
+          'The key returned from the callback must be a string or a buffer containing a secret or a private key.'
+      },
+      null
+    )
+  })
+
+  test(`EdDSA with ${type} based tokens should validate the public key`, async t => {
+    const token = createSigner({ algorithm: 'EdDSA', key: privateKey })({ payload: 'PAYLOAD' })
+
+    await t.assert.rejects(createVerifier({ algorithms: ['EdDSA'], key: async () => 123 })(token), {
+      message: 'The key returned from the callback must be a string or a buffer containing a secret or a public key.'
     })
-
-    test(`EdDSA with ${type} based tokens should validate the private key`, async t => {
-      await t.assert.rejects(
-        createSigner({ algorithm: 'EdDSA', key: async () => 123 })({ payload: 'PAYLOAD' }),
-        {
-          message:
-            'The key returned from the callback must be a string or a buffer containing a secret or a private key.'
-        },
-        null
-      )
-    })
-
-    test(`EdDSA with ${type} based tokens should validate the public key`, async t => {
-      const token = createSigner({ algorithm: 'EdDSA', key: privateKey })({ payload: 'PAYLOAD' })
-
-      await t.assert.rejects(createVerifier({ algorithms: ['EdDSA'], key: async () => 123 })(token), {
-        message: 'The key returned from the callback must be a string or a buffer containing a secret or a public key.'
-      })
-    })
-  }
+  })
 }

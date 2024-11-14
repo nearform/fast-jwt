@@ -5,7 +5,6 @@ const { resolve } = require('node:path')
 const { test } = require('node:test')
 
 const { createSigner, createVerifier, TokenError, createDecoder } = require('../src')
-const { useNewCrypto } = require('../src/crypto')
 
 const privateKeys = {
   HS: 'secretsecretsecret',
@@ -79,19 +78,10 @@ test('it correctly returns a token - sync', async t => {
     'eyJhbGciOiJub25lIiwidHlwIjoiSldUIn0.eyJhIjoxfQ.'
   )
 
-  if (useNewCrypto) {
-    t.assert.equal(
-      sign({ a: 1 }, { noTimestamp: true, key: privateKeys.Ed25519 }),
-      'eyJhbGciOiJFZERTQSIsInR5cCI6IkpXVCJ9.eyJhIjoxfQ.pIRjmLR-JW4sTCslD24h5fs0sTUpGYBG7zh4Z_UyEZ_u29NojdH2dSNKQZwwgjl1WvfYNtBCCF_EnYTazAXmDQ'
-    )
-  } else {
-    t.assert.throws(() => sign({ a: 1 }, { noTimestamp: true, key: privateKeys.Ed25519 }), {
-      message: 'Cannot create the signature.',
-      originalError: {
-        message: 'EdDSA algorithms are not supported by your Node.js version.'
-      }
-    })
-  }
+  t.assert.equal(
+    sign({ a: 1 }, { noTimestamp: true, key: privateKeys.Ed25519 }),
+    'eyJhbGciOiJFZERTQSIsInR5cCI6IkpXVCJ9.eyJhIjoxfQ.pIRjmLR-JW4sTCslD24h5fs0sTUpGYBG7zh4Z_UyEZ_u29NojdH2dSNKQZwwgjl1WvfYNtBCCF_EnYTazAXmDQ'
+  )
 })
 
 test('it correctly returns a token - async - key with callback', async t => {
@@ -127,92 +117,47 @@ test('it correctly returns a token - callback - key as promise', t => {
 
 test('it correctly returns a token - key as an RSA X509 key', async t => {
   const payload = { a: 1 }
-  if (useNewCrypto) {
-    const signedToken = sign(payload, { key: privateKeys.RSX509, noTimestamp: true })
-    const decoder = createDecoder()
-    const result = decoder(signedToken)
+  const signedToken = sign(payload, { key: privateKeys.RSX509, noTimestamp: true })
+  const decoder = createDecoder()
+  const result = decoder(signedToken)
 
-    t.assert.equal(payload.a, result.a)
-  } else {
-    t.assert.throws(() => sign(payload, { key: privateKeys.RSX509 }), {
-      message: 'Cannot create the signature.',
-      originalError: {
-        message: 'The "key" argument must be one of type string, Buffer, TypedArray, or DataView. Received type object'
-      }
-    })
-  }
+  t.assert.equal(payload.a, result.a)
 })
 
 test('it correctly returns a token - key as an RSA passphrase protected key', async t => {
   const payload = { a: 1 }
-  if (useNewCrypto) {
-    const signedToken = sign(payload, { algorithm: 'RS256', key: { key: privateKeys.PPRS, passphrase: 'secret' } })
-    const decoder = createDecoder()
-    const result = decoder(signedToken)
+  const signedToken = sign(payload, { algorithm: 'RS256', key: { key: privateKeys.PPRS, passphrase: 'secret' } })
+  const decoder = createDecoder()
+  const result = decoder(signedToken)
 
-    t.assert.equal(payload.a, result.a)
-  } else {
-    t.assert.throws(() => sign(payload, { key: { key: privateKeys.PPRS, passphrase: 'secret' } }), {
-      message: 'Cannot create the signature.',
-      originalError: {
-        message: 'The "key" argument must be one of type string, Buffer, TypedArray, or DataView. Received type object'
-      }
-    })
-  }
+  t.assert.equal(payload.a, result.a)
 })
 
 test('it correctly returns a token - key as an ES256 passphrase protected key', async t => {
   const payload = { a: 1 }
-  if (useNewCrypto) {
-    const signedToken = sign(payload, { algorithm: 'ES256', key: { key: privateKeys.PPES256, passphrase: 'secret' } })
-    const decoder = createDecoder()
-    const result = decoder(signedToken)
+  const signedToken = sign(payload, { algorithm: 'ES256', key: { key: privateKeys.PPES256, passphrase: 'secret' } })
+  const decoder = createDecoder()
+  const result = decoder(signedToken)
 
-    t.assert.equal(payload.a, result.a)
-  } else {
-    t.assert.throws(() => sign(payload, { key: { key: privateKeys.PPES256, passphrase: 'secret' } }), {
-      message: 'Cannot create the signature.',
-      originalError: {
-        message: 'The "key" argument must be one of type string, Buffer, TypedArray, or DataView. Received type object'
-      }
-    })
-  }
+  t.assert.equal(payload.a, result.a)
 })
 
 test('it correctly returns a token - key as an ES384 passphrase protected key', async t => {
   const payload = { a: 1 }
-  if (useNewCrypto) {
-    const signedToken = sign(payload, { algorithm: 'ES384', key: { key: privateKeys.PPES384, passphrase: 'secret' } })
-    const decoder = createDecoder()
-    const result = decoder(signedToken)
+  const signedToken = sign(payload, { algorithm: 'ES384', key: { key: privateKeys.PPES384, passphrase: 'secret' } })
+  const decoder = createDecoder()
+  const result = decoder(signedToken)
 
-    t.assert.equal(payload.a, result.a)
-  } else {
-    t.assert.throws(() => sign(payload, { key: { key: privateKeys.PPES384, passphrase: 'secret' } }), {
-      message: 'Cannot create the signature.',
-      originalError: {
-        message: 'The "key" argument must be one of type string, Buffer, TypedArray, or DataView. Received type object'
-      }
-    })
-  }
+  t.assert.equal(payload.a, result.a)
 })
 
 test('it correctly returns a token - key as an ES512 passphrase protected key', async t => {
   const payload = { a: 1 }
-  if (useNewCrypto) {
-    const signedToken = sign(payload, { algorithm: 'ES512', key: { key: privateKeys.PPES512, passphrase: 'secret' } })
-    const decoder = createDecoder()
-    const result = decoder(signedToken)
+  const signedToken = sign(payload, { algorithm: 'ES512', key: { key: privateKeys.PPES512, passphrase: 'secret' } })
+  const decoder = createDecoder()
+  const result = decoder(signedToken)
 
-    t.assert.equal(payload.a, result.a)
-  } else {
-    t.assert.throws(() => sign(payload, { key: { key: privateKeys.PPES512, passphrase: 'secret' } }), {
-      message: 'Cannot create the signature.',
-      originalError: {
-        message: 'The "key" argument must be one of type string, Buffer, TypedArray, or DataView. Received type object'
-      }
-    })
-  }
+  t.assert.equal(payload.a, result.a)
 })
 
 test('it correctly returns an error when algorithm is not provided when using passphrase protected key', async t => {
@@ -273,31 +218,29 @@ test('it correctly autodetects the algorithm depending on the secret provided', 
   verification = es512Verifier(token)
   t.assert.equal(verification.header.alg, 'ES512')
 
-  if (useNewCrypto) {
-    token = createSigner({ algorithm: 'RS256', key: { key: privateKeys.PPRS, passphrase: 'secret' } })({ a: 1 })
-    verification = pprsVerifier(token)
-    t.assert.equal(verification.header.alg, 'RS256')
+  token = createSigner({ algorithm: 'RS256', key: { key: privateKeys.PPRS, passphrase: 'secret' } })({ a: 1 })
+  verification = pprsVerifier(token)
+  t.assert.equal(verification.header.alg, 'RS256')
 
-    token = createSigner({ algorithm: 'ES256', key: { key: privateKeys.PPES256, passphrase: 'secret' } })({ a: 1 })
-    verification = ppes256Verifier(token)
-    t.assert.equal(verification.header.alg, 'ES256')
+  token = createSigner({ algorithm: 'ES256', key: { key: privateKeys.PPES256, passphrase: 'secret' } })({ a: 1 })
+  verification = ppes256Verifier(token)
+  t.assert.equal(verification.header.alg, 'ES256')
 
-    token = createSigner({ algorithm: 'ES384', key: { key: privateKeys.PPES384, passphrase: 'secret' } })({ a: 1 })
-    verification = ppes384Verifier(token)
-    t.assert.equal(verification.header.alg, 'ES384')
+  token = createSigner({ algorithm: 'ES384', key: { key: privateKeys.PPES384, passphrase: 'secret' } })({ a: 1 })
+  verification = ppes384Verifier(token)
+  t.assert.equal(verification.header.alg, 'ES384')
 
-    token = createSigner({ algorithm: 'ES512', key: { key: privateKeys.PPES512, passphrase: 'secret' } })({ a: 1 })
-    verification = ppes512Verifier(token)
-    t.assert.equal(verification.header.alg, 'ES512')
+  token = createSigner({ algorithm: 'ES512', key: { key: privateKeys.PPES512, passphrase: 'secret' } })({ a: 1 })
+  verification = ppes512Verifier(token)
+  t.assert.equal(verification.header.alg, 'ES512')
 
-    token = createSigner({ key: privateKeys.Ed25519 })({ a: 1 })
-    verification = es25519Verifier(token)
-    t.assert.equal(verification.header.alg, 'EdDSA')
+  token = createSigner({ key: privateKeys.Ed25519 })({ a: 1 })
+  verification = es25519Verifier(token)
+  t.assert.equal(verification.header.alg, 'EdDSA')
 
-    token = createSigner({ key: privateKeys.Ed448 })({ a: 1 })
-    verification = es448Verifier(token)
-    t.assert.equal(verification.header.alg, 'EdDSA')
-  }
+  token = createSigner({ key: privateKeys.Ed448 })({ a: 1 })
+  verification = es448Verifier(token)
+  t.assert.equal(verification.header.alg, 'EdDSA')
 })
 
 test('it correctly set a timestamp', async t => {
