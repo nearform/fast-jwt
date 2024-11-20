@@ -276,6 +276,10 @@ For verified tokens, caching considers the time sensitive claims of the token (`
 
 Performances improvements varies by uses cases and by the type of the operation performed and the algorithm used.
 
+The default `cacheKeyBuilder` is a function that hashes the token. This provides a good level of protection against sensitive information leaks, but it also has a significant performance impact (almost 10x slower, as it's a CPU bound operation). If you are using caching and you are not concerned about potential information leaks you can use the identity function as `cacheKeyBuilder` to improve them.
+
+For a detailed discussion about it, take a look at [this issue](https://github.com/nearform/fast-jwt/issues/503).
+
 > **_Note:_** Errors are not cached by default, to change this behaviour use the `errorCacheTTL` option.
 
 ## Token Error Codes
