@@ -15,23 +15,17 @@ function exactStringClaimMatcher(allowed, actual) {
 }
 
 function checkAreCompatibleAlgorithms(expected, actual) {
-  let valid = false
-
   for (const expectedAlg of expected) {
-    valid = actual.indexOf(expectedAlg) !== -1
-
     // if at least one of the expected algorithms is compatible we're done
-    if (valid) {
-      break
+    if (actual.includes(expectedAlg)) {
+      return
     }
   }
 
-  if (!valid) {
-    throw new TokenError(
-      TokenError.codes.invalidKey,
-      `Invalid public key provided for algorithms ${expected.join(', ')}.`
-    )
-  }
+  throw new TokenError(
+    TokenError.codes.invalidKey,
+    `Invalid public key provided for algorithms ${expected.join(', ')}.`
+  )
 }
 
 function prepareKeyOrSecret(key, isSecret) {
@@ -72,7 +66,7 @@ function cacheSet(
     ignoreExpiration,
     ignoreNotBefore,
     maxAge,
-    clockTimestamp,
+    clockTimestamp = Date.now(),
     clockTolerance,
     errorCacheTTL,
     cacheKeyBuilder
@@ -87,7 +81,7 @@ function cacheSet(
 
   if (value instanceof TokenError) {
     const ttl = typeof errorCacheTTL === 'function' ? errorCacheTTL(value) : errorCacheTTL
-    cacheValue[2] = (clockTimestamp || Date.now()) + clockTolerance + ttl
+    cacheValue[2] = clockTimestamp + clockTolerance + ttl
     cache.set(cacheKeyBuilder(token), cacheValue)
     return value
   }
@@ -108,7 +102,7 @@ function cacheSet(
   }
 
   // The maximum TTL for the token cannot exceed the configured cacheTTL
-  const maxTTL = (clockTimestamp || Date.now()) + clockTolerance + cacheTTL
+  const maxTTL = clockTimestamp + clockTolerance + cacheTTL
   cacheValue[2] = cacheValue[2] === 0 ? maxTTL : Math.min(cacheValue[2], maxTTL)
 
   cache.set(cacheKeyBuilder(token), cacheValue)
@@ -136,10 +130,8 @@ function handleCachedResult(cached, callback, promise) {
 
 function validateAlgorithmAndSignature(input, header, signature, key, allowedAlgorithms) {
   // According to the signature and key, check with algorithms are supported
-  const algorithms = allowedAlgorithms
-
   // Verify the token is allowed
-  if (!algorithms.includes(header.alg)) {
+  if (!allowedAlgorithms.includes(header.alg)) {
     throw new TokenError(TokenError.codes.invalidAlgorithm, 'The token algorithm is invalid.')
   }
 
@@ -181,7 +173,7 @@ function validateClaimDateValue(value, modifier, now, greater, errorCode, errorV
 function verifyToken(
   key,
   { input, header, payload, signature },
-  { validators, allowedAlgorithms, checkTyp, clockTimestamp, clockTolerance, requiredClaims }
+  { validators, allowedAlgorithms, checkTyp, clockTimestamp, requiredClaims }
 ) {
   // Verify the key
   /* istanbul ignore next */
@@ -196,14 +188,9 @@ function verifyToken(
   validateAlgorithmAndSignature(input, header, signature, key, allowedAlgorithms)
 
   // Verify typ
-  if (checkTyp) {
-    if (typeof header.typ !== 'string' || checkTyp !== header.typ.toLowerCase().replace(/^application\//, '')) {
-      throw new TokenError(TokenError.codes.invalidType, 'Invalid typ.')
-    }
+  if (checkTyp && (typeof header.typ !== 'string' || checkTyp !== header.typ.toLowerCase().replace(/^application\//, ''))) {
+    throw new TokenError(TokenError.codes.invalidType, 'Invalid typ.')
   }
-
-  // Verify the payload
-  const now = clockTimestamp || Date.now()
 
   if (requiredClaims) {
     for (const claim of requiredClaims) {
@@ -213,8 +200,10 @@ function verifyToken(
     }
   }
 
-  for (const validator of validators) {
-    const { type, claim, allowed, array, modifier, greater, errorCode, errorVerb } = validator
+  // Verify the payload
+  const now = clockTimestamp || Date.now()
+
+  for (const { type, claim, allowed, array, modifier, greater, errorCode, errorVerb } of validators) {
     const value = payload[claim]
     const arrayValue = Array.isArray(value)
     const values = arrayValue ? value : [value]
@@ -261,20 +250,6 @@ function verify(
 ) {
   const [callback, promise] = isAsync ? ensurePromiseCallback(cb) : []
 
-  const cacheContext = {
-    cache,
-    token,
-    cacheTTL,
-    errorCacheTTL,
-    payload: undefined,
-    ignoreExpiration,
-    ignoreNotBefore,
-    maxAge,
-    clockTimestamp,
-    clockTolerance,
-    cacheKeyBuilder
-  }
-
   // Check the cache
   if (cache) {
     const [value, min, max] = cache.get(cacheKeyBuilder(token)) || [undefined, 0, 0]
@@ -311,7 +286,19 @@ function verify(
   }
 
   const { header, payload, signature } = decoded
-  cacheContext.payload = payload
+  const cacheContext = {
+    cache,
+    token,
+    cacheTTL,
+    errorCacheTTL,
+    ignoreExpiration,
+    ignoreNotBefore,
+    maxAge,
+    clockTimestamp,
+    clockTolerance,
+    payload,
+    cacheKeyBuilder
+  }
   const validationContext = { validators, allowedAlgorithms, checkTyp, clockTimestamp, clockTolerance, requiredClaims }
 
   // We have the key
@@ -391,7 +378,7 @@ module.exports = function createVerifier(options) {
     allowedNonce,
     requiredClaims,
     cacheKeyBuilder
-  } = { cacheTTL: 600000, clockTolerance: 0, errorCacheTTL: -1, cacheKeyBuilder: hashToken, ...options }
+  } = { cacheTTL: 600_000, clockTolerance: 0, errorCacheTTL: -1, cacheKeyBuilder: hashToken, ...options }
 
   // Validate options
   if (!Array.isArray(allowedAlgorithms)) {
@@ -493,10 +480,7 @@ module.exports = function createVerifier(options) {
     validators.push({ type: 'string', claim: 'nonce', allowed: ensureStringClaimMatcher(allowedNonce) })
   }
 
-  let normalizedTyp = null
-  if (checkTyp) {
-    normalizedTyp = checkTyp.toLowerCase().replace(/^application\//, '')
-  }
+  const normalizedTyp = checkTyp ? checkTyp.toLowerCase().replace(/^application\//, '') : null
 
   const context = {
     key,
