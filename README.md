@@ -176,6 +176,8 @@ Create a verifier function by calling `createVerifier` and providing one or more
 
 - `clockTolerance`: Timespan in milliseconds is the tolerance to apply to the current timestamp when performing time comparisons. Default is `0`.
 
+- `cacheKeyBuilder`: The function that will be used to create the [cache's key](#caching) for each token. To mitigate the risk of leaking sensitive information and generate collisions, [a hashing function](./src/utils.js) is used by default.
+
 The verifier is a function which accepts a token (as Buffer or string) and returns the payload or the sections of the token.
 
 If the `key` option is a function, the signer will also accept a Node style callback and will return a promise, supporting therefore both callback and async/await styles.
@@ -273,6 +275,10 @@ When caching is enabled, verified tokens are always stored in cache. If the veri
 For verified tokens, caching considers the time sensitive claims of the token (`iat`, `nbf` and `exp`) and make sure the verification is retried after a token becomes valid or after a token becomes expired.
 
 Performances improvements varies by uses cases and by the type of the operation performed and the algorithm used.
+
+The default `cacheKeyBuilder` is a function that hashes the token. This provides a good level of protection against sensitive information leaks, but it also has a significant performance impact (almost 10x slower, as it's a CPU bound operation). If you are using caching and you are not concerned about potential information leaks you can use the identity function as `cacheKeyBuilder` to improve them.
+
+For a detailed discussion about it, take a look at [this issue](https://github.com/nearform/fast-jwt/issues/503).
 
 > **_Note:_** Errors are not cached by default, to change this behaviour use the `errorCacheTTL` option.
 

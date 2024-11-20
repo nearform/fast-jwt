@@ -1004,6 +1004,27 @@ test('caching - sync', t => {
   t.assert.ok(verifier.cache.get(hashToken(invalidToken))[0] instanceof TokenError)
 })
 
+test('caching - sync - custom cacheKeyBuilder', t => {
+  const token = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxfQ.57TF7smP9XDhIexBqPC-F1toZReYZLWb_YRU5tv0sxM'
+  const invalidToken = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxfQ.aaa'
+
+  const verifier = createVerifier({ key: 'secret', cache: true, cacheKeyBuilder: (id) => id })
+
+  t.assert.equal(verifier.cache.size, 0)
+  t.assert.deepStrictEqual(verifier(token), { a: 1 })
+  t.assert.equal(verifier.cache.size, 1)
+  t.assert.deepStrictEqual(verifier(token), { a: 1 })
+  t.assert.equal(verifier.cache.size, 1)
+
+  t.assert.throws(() => verifier(invalidToken), { message: 'The token signature is invalid.' })
+  t.assert.equal(verifier.cache.size, 2)
+  t.assert.throws(() => verifier(invalidToken), { message: 'The token signature is invalid.' })
+  t.assert.equal(verifier.cache.size, 2)
+
+  t.assert.deepStrictEqual(verifier.cache.get(token)[0], { a: 1 })
+  t.assert.ok(verifier.cache.get(invalidToken)[0] instanceof TokenError)
+})
+
 test('caching - async', async t => {
   const token = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxfQ.57TF7smP9XDhIexBqPC-F1toZReYZLWb_YRU5tv0sxM'
   const invalidToken = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxfQ.aaa'

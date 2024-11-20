@@ -68,7 +68,8 @@ function cacheSet(
     maxAge,
     clockTimestamp = Date.now(),
     clockTolerance,
-    errorCacheTTL
+    errorCacheTTL,
+    cacheKeyBuilder
   },
   value
 ) {
@@ -81,7 +82,7 @@ function cacheSet(
   if (value instanceof TokenError) {
     const ttl = typeof errorCacheTTL === 'function' ? errorCacheTTL(value) : errorCacheTTL
     cacheValue[2] = clockTimestamp + clockTolerance + ttl
-    cache.set(hashToken(token), cacheValue)
+    cache.set(cacheKeyBuilder(token), cacheValue)
     return value
   }
 
@@ -104,7 +105,7 @@ function cacheSet(
   const maxTTL = clockTimestamp + clockTolerance + cacheTTL
   cacheValue[2] = cacheValue[2] === 0 ? maxTTL : Math.min(cacheValue[2], maxTTL)
 
-  cache.set(hashToken(token), cacheValue)
+  cache.set(cacheKeyBuilder(token), cacheValue)
 
   return value
 }
@@ -241,7 +242,8 @@ function verify(
     decode,
     cache,
     requiredClaims,
-    errorCacheTTL
+    errorCacheTTL,
+    cacheKeyBuilder
   },
   token,
   cb
@@ -250,7 +252,7 @@ function verify(
 
   // Check the cache
   if (cache) {
-    const [value, min, max] = cache.get(hashToken(token)) || [undefined, 0, 0]
+    const [value, min, max] = cache.get(cacheKeyBuilder(token)) || [undefined, 0, 0]
     const now = clockTimestamp || Date.now()
 
     // Validate time range
@@ -294,7 +296,8 @@ function verify(
     maxAge,
     clockTimestamp,
     clockTolerance,
-    payload
+    payload,
+    cacheKeyBuilder
   }
   const validationContext = { validators, allowedAlgorithms, checkTyp, clockTimestamp, clockTolerance, requiredClaims }
 
@@ -373,8 +376,9 @@ module.exports = function createVerifier(options) {
     allowedIss,
     allowedSub,
     allowedNonce,
-    requiredClaims
-  } = { cacheTTL: 600_000, clockTolerance: 0, errorCacheTTL: -1, ...options }
+    requiredClaims,
+    cacheKeyBuilder
+  } = { cacheTTL: 600_000, clockTolerance: 0, errorCacheTTL: -1, cacheKeyBuilder: hashToken, ...options }
 
   // Validate options
   if (!Array.isArray(allowedAlgorithms)) {
@@ -494,7 +498,8 @@ module.exports = function createVerifier(options) {
     validators,
     decode: createDecoder({ complete: true }),
     cache: createCache(cacheSize),
-    requiredClaims
+    requiredClaims,
+    cacheKeyBuilder
   }
 
   // Return the verifier
