@@ -7,7 +7,6 @@ const { test } = require('node:test')
 const { install: fakeTime } = require('@sinonjs/fake-timers')
 
 const { createSigner, createVerifier, TokenError } = require('../src')
-const { useNewCrypto } = require('../src/crypto')
 const { hashToken } = require('../src/utils')
 
 const privateKeys = {
@@ -120,29 +119,13 @@ test('it correctly verifies a token - sync', t => {
     }
   )
 
-  if (useNewCrypto) {
-    t.assert.deepStrictEqual(
-      verify(
-        'eyJhbGciOiJFZERTQSIsInR5cCI6IkpXVCIsImt0eSI6Ik9LUCIsImNydiI6IkVkMjU1MTkifQ.eyJhIjoxfQ.n4isU7JqaKRVOyx2ni7b_iaAzB75pAUCW6CetcoClhtJ5yDM7YkNMbKqmDUhTKMpupAcztIjX8m4mZwpA33HAA',
-        { key: publicKeys.Ed25519 }
-      ),
-      { a: 1 }
-    )
-  } else {
-    t.assert.throws(
-      () =>
-        verify(
-          'eyJhbGciOiJFZERTQSIsInR5cCI6IkpXVCIsImt0eSI6Ik9LUCIsImNydiI6IkVkMjU1MTkifQ.eyJhIjoxfQ.n4isU7JqaKRVOyx2ni7b_iaAzB75pAUCW6CetcoClhtJ5yDM7YkNMbKqmDUhTKMpupAcztIjX8m4mZwpA33HAA',
-          { key: publicKeys.Ed25519 }
-        ),
-      {
-        message: 'Cannot verify the signature.',
-        originalError: {
-          message: 'EdDSA algorithms are not supported by your Node.js version.'
-        }
-      }
-    )
-  }
+  t.assert.deepStrictEqual(
+    verify(
+      'eyJhbGciOiJFZERTQSIsInR5cCI6IkpXVCIsImt0eSI6Ik9LUCIsImNydiI6IkVkMjU1MTkifQ.eyJhIjoxfQ.n4isU7JqaKRVOyx2ni7b_iaAzB75pAUCW6CetcoClhtJ5yDM7YkNMbKqmDUhTKMpupAcztIjX8m4mZwpA33HAA',
+      { key: publicKeys.Ed25519 }
+    ),
+    { a: 1 }
+  )
 })
 
 test('it correctly verifies a token - async - key with callback', async t => {
@@ -1083,34 +1066,32 @@ for (const type of ['HS', 'ES', 'RS', 'PS']) {
   }
 }
 
-if (useNewCrypto) {
-  test('caching - should use the right hash method for storing values - EdDSA with Ed25519', t => {
-    const signer = createSigner({ algorithm: 'EdDSA', key: privateKeys.Ed25519, noTimestamp: 1 })
-    const verifier = createVerifier({ key: publicKeys.Ed25519, cache: true })
-    const token = signer({ a: 1 })
-    const hash = createHash('sha512').update(token).digest('hex')
+test('caching - should use the right hash method for storing values - EdDSA with Ed25519', t => {
+  const signer = createSigner({ algorithm: 'EdDSA', key: privateKeys.Ed25519, noTimestamp: 1 })
+  const verifier = createVerifier({ key: publicKeys.Ed25519, cache: true })
+  const token = signer({ a: 1 })
+  const hash = createHash('sha512').update(token).digest('hex')
 
-    t.assert.deepStrictEqual(verifier(token), { a: 1 })
-    t.assert.equal(verifier.cache.size, 1)
-    t.assert.equal(Array.from(verifier.cache.keys())[0], hash)
+  t.assert.deepStrictEqual(verifier(token), { a: 1 })
+  t.assert.equal(verifier.cache.size, 1)
+  t.assert.equal(Array.from(verifier.cache.keys())[0], hash)
+})
+
+test('caching - should use the right hash method for storing values - EdDSA with Ed448', t => {
+  const signer = createSigner({
+    algorithm: 'EdDSA',
+    key: privateKeys.Ed448,
+    noTimestamp: 1,
+    header: { crv: 'Ed448' }
   })
+  const verifier = createVerifier({ key: publicKeys.Ed448, cache: true })
+  const token = signer({ a: 1 })
+  const hash = createHash('shake256', { outputLength: 114 }).update(token).digest('hex')
 
-  test('caching - should use the right hash method for storing values - EdDSA with Ed448', t => {
-    const signer = createSigner({
-      algorithm: 'EdDSA',
-      key: privateKeys.Ed448,
-      noTimestamp: 1,
-      header: { crv: 'Ed448' }
-    })
-    const verifier = createVerifier({ key: publicKeys.Ed448, cache: true })
-    const token = signer({ a: 1 })
-    const hash = createHash('shake256', { outputLength: 114 }).update(token).digest('hex')
-
-    t.assert.deepStrictEqual(verifier(token), { a: 1 })
-    t.assert.equal(verifier.cache.size, 1)
-    t.assert.equal(Array.from(verifier.cache.keys())[0], hash)
-  })
-}
+  t.assert.deepStrictEqual(verifier(token), { a: 1 })
+  t.assert.equal(verifier.cache.size, 1)
+  t.assert.equal(Array.from(verifier.cache.keys())[0], hash)
+})
 
 test('caching - should be able to manipulate cache directy', t => {
   const clock = fakeTime({ now: 100000 })

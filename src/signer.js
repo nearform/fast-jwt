@@ -3,7 +3,6 @@
 const {
   base64UrlMatcher,
   base64UrlReplacer,
-  useNewCrypto,
   hsAlgorithms,
   esAlgorithms,
   rsaAlgorithms,
@@ -45,13 +44,7 @@ function prepareKeyOrSecret(key, algorithm) {
     key = Buffer.from(key, 'utf-8')
   }
 
-  // Only on Node 12 - Create a key object
-  /* istanbul ignore next */
-  if (useNewCrypto) {
-    key = algorithm[0] === 'H' ? createSecretKey(key) : createPrivateKey(key)
-  }
-
-  return key
+  return algorithm[0] === 'H' ? createSecretKey(key) : createPrivateKey(key)
 }
 
 function sign(
