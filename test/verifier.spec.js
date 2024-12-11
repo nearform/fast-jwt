@@ -41,6 +41,7 @@ function verify(token, options, callback) {
 }
 
 test('it gets the correct decoded jwt token as argument on the key callback', async t => {
+  t.plan(1)
   verify('eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxfQ.57TF7smP9XDhIexBqPC-F1toZReYZLWb_YRU5tv0sxM', {
     key: async decoded => {
       t.assert.deepStrictEqual(decoded, {
@@ -115,7 +116,8 @@ test('it correctly verifies a token - sync', t => {
     {
       header: { typ: 'JWT', alg: 'HS256' },
       payload: { a: 1 },
-      signature: '57TF7smP9XDhIexBqPC-F1toZReYZLWb_YRU5tv0sxM'
+      signature: '57TF7smP9XDhIexBqPC-F1toZReYZLWb_YRU5tv0sxM',
+      input: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxfQ.57TF7smP9XDhIexBqPC-F1toZReYZLWb_YRU5tv0sxM'
     }
   )
 
@@ -147,7 +149,8 @@ test('it correctly verifies a token - async - key with callback', async t => {
     {
       header: { typ: 'JWT', alg: 'HS256' },
       payload: { a: 1 },
-      signature: '57TF7smP9XDhIexBqPC-F1toZReYZLWb_YRU5tv0sxM'
+      signature: '57TF7smP9XDhIexBqPC-F1toZReYZLWb_YRU5tv0sxM',
+      input: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxfQ.57TF7smP9XDhIexBqPC-F1toZReYZLWb_YRU5tv0sxM'
     }
   )
 })
@@ -1008,7 +1011,7 @@ test('caching - sync - custom cacheKeyBuilder', t => {
   const token = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxfQ.57TF7smP9XDhIexBqPC-F1toZReYZLWb_YRU5tv0sxM'
   const invalidToken = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxfQ.aaa'
 
-  const verifier = createVerifier({ key: 'secret', cache: true, cacheKeyBuilder: (id) => id })
+  const verifier = createVerifier({ key: 'secret', cache: true, cacheKeyBuilder: id => id })
 
   t.assert.equal(verifier.cache.size, 0)
   t.assert.deepStrictEqual(verifier(token), { a: 1 })
@@ -1258,7 +1261,11 @@ test('caching - should be able to consider both nbf and exp field at the same ti
   t.assert.equal(verifier.cache.size, 1)
   t.assert.deepStrictEqual(verifier(token), { a: 1, iat: 100, nbf: 300, exp: 500 })
   t.assert.equal(verifier.cache.size, 1)
-  t.assert.deepStrictEqual(verifier.cache.get(hashToken(token)), [{ a: 1, iat: 100, nbf: 300, exp: 500 }, 300000, 500000])
+  t.assert.deepStrictEqual(verifier.cache.get(hashToken(token)), [
+    { a: 1, iat: 100, nbf: 300, exp: 500 },
+    300000,
+    500000
+  ])
 
   // Now advance again after the expiry time
   clock.tick(210000)
@@ -1295,7 +1302,11 @@ test('caching - should be able to consider clockTolerance on both nbf and exp fi
   t.assert.equal(verifier.cache.size, 1)
   t.assert.deepStrictEqual(verifier(token), { a: 1, iat: 100, nbf: 300, exp: 500 })
   t.assert.equal(verifier.cache.size, 1)
-  t.assert.deepStrictEqual(verifier.cache.get(hashToken(token)), [{ a: 1, iat: 100, nbf: 300, exp: 500 }, 240000, 560000])
+  t.assert.deepStrictEqual(verifier.cache.get(hashToken(token)), [
+    { a: 1, iat: 100, nbf: 300, exp: 500 },
+    240000,
+    560000
+  ])
 
   // Now advance to activation time
   clock.tick(150000)
@@ -1305,7 +1316,11 @@ test('caching - should be able to consider clockTolerance on both nbf and exp fi
   t.assert.equal(verifier.cache.size, 1)
   t.assert.deepStrictEqual(verifier(token), { a: 1, iat: 100, nbf: 300, exp: 500 })
   t.assert.equal(verifier.cache.size, 1)
-  t.assert.deepStrictEqual(verifier.cache.get(hashToken(token)), [{ a: 1, iat: 100, nbf: 300, exp: 500 }, 240000, 560000])
+  t.assert.deepStrictEqual(verifier.cache.get(hashToken(token)), [
+    { a: 1, iat: 100, nbf: 300, exp: 500 },
+    240000,
+    560000
+  ])
 
   // Now advance again after the expiry time, in clockTolerance range (current time going to be 540000 )
   clock.tick(150000)
@@ -1313,7 +1328,11 @@ test('caching - should be able to consider clockTolerance on both nbf and exp fi
   t.assert.equal(verifier.cache.size, 1)
   t.assert.deepStrictEqual(verifier(token), { a: 1, iat: 100, nbf: 300, exp: 500 })
   t.assert.equal(verifier.cache.size, 1)
-  t.assert.deepStrictEqual(verifier.cache.get(hashToken(token)), [{ a: 1, iat: 100, nbf: 300, exp: 500 }, 240000, 560000])
+  t.assert.deepStrictEqual(verifier.cache.get(hashToken(token)), [
+    { a: 1, iat: 100, nbf: 300, exp: 500 },
+    240000,
+    560000
+  ])
 
   clock.tick(100000)
   // The token should now be expired and the cache should have been updated to reflect it
@@ -1347,7 +1366,11 @@ test('caching - should ignore the nbf and exp when asked to', t => {
   t.assert.equal(verifierNoNbf.cache.size, 1)
   t.assert.deepStrictEqual(verifierNoNbf(token), { a: 1, iat: 100, nbf: 300, exp: 500 })
   t.assert.equal(verifierNoNbf.cache.size, 1)
-  t.assert.deepStrictEqual(verifierNoNbf.cache.get(hashToken(token)), [{ a: 1, iat: 100, nbf: 300, exp: 500 }, 0, 500000])
+  t.assert.deepStrictEqual(verifierNoNbf.cache.get(hashToken(token)), [
+    { a: 1, iat: 100, nbf: 300, exp: 500 },
+    0,
+    500000
+  ])
 
   // Now advance to activation time
   clock.tick(200000)
@@ -1357,7 +1380,11 @@ test('caching - should ignore the nbf and exp when asked to', t => {
   t.assert.equal(verifier.cache.size, 1)
   t.assert.deepStrictEqual(verifier(token), { a: 1, iat: 100, nbf: 300, exp: 500 })
   t.assert.equal(verifier.cache.size, 1)
-  t.assert.deepStrictEqual(verifier.cache.get(hashToken(token)), [{ a: 1, iat: 100, nbf: 300, exp: 500 }, 300000, 500000])
+  t.assert.deepStrictEqual(verifier.cache.get(hashToken(token)), [
+    { a: 1, iat: 100, nbf: 300, exp: 500 },
+    300000,
+    500000
+  ])
 
   // Now advance again after the expiry time
   clock.tick(210000)
@@ -1374,7 +1401,11 @@ test('caching - should ignore the nbf and exp when asked to', t => {
   t.assert.equal(verifierNoExp.cache.size, 1)
   t.assert.deepStrictEqual(verifierNoExp(token), { a: 1, iat: 100, nbf: 300, exp: 500 })
   t.assert.equal(verifierNoExp.cache.size, 1)
-  t.assert.deepStrictEqual(verifierNoExp.cache.get(hashToken(token)), [{ a: 1, iat: 100, nbf: 300, exp: 500 }, 300000, 1110000])
+  t.assert.deepStrictEqual(verifierNoExp.cache.get(hashToken(token)), [
+    { a: 1, iat: 100, nbf: 300, exp: 500 },
+    300000,
+    1110000
+  ])
 
   clock.uninstall()
 })

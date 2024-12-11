@@ -188,7 +188,10 @@ function verifyToken(
   validateAlgorithmAndSignature(input, header, signature, key, allowedAlgorithms)
 
   // Verify typ
-  if (checkTyp && (typeof header.typ !== 'string' || checkTyp !== header.typ.toLowerCase().replace(/^application\//, ''))) {
+  if (
+    checkTyp &&
+    (typeof header.typ !== 'string' || checkTyp !== header.typ.toLowerCase().replace(/^application\//, ''))
+  ) {
     throw new TokenError(TokenError.codes.invalidType, 'Invalid typ.')
   }
 
@@ -306,7 +309,7 @@ function verify(
     try {
       verifyToken(key, decoded, validationContext)
 
-      return cacheSet(cacheContext, complete ? { header, payload, signature } : payload)
+      return cacheSet(cacheContext, complete ? { header, payload, signature, input: token } : payload)
     } catch (e) {
       throw cacheSet(cacheContext, e)
     }
@@ -351,7 +354,7 @@ function verify(
       return callback(cacheSet(cacheContext, e))
     }
 
-    callback(null, cacheSet(cacheContext, complete ? { header, payload, signature } : payload))
+    callback(null, cacheSet(cacheContext, complete ? { header, payload, signature, input: token } : payload))
   })
 
   return promise
