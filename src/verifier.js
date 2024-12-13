@@ -288,7 +288,7 @@ function verify(
     throw e
   }
 
-  const { header, payload, signature } = decoded
+  const { header, payload, signature, input } = decoded
   const cacheContext = {
     cache,
     token,
@@ -309,7 +309,7 @@ function verify(
     try {
       verifyToken(key, decoded, validationContext)
 
-      return cacheSet(cacheContext, complete ? { header, payload, signature, input: token } : payload)
+      return cacheSet(cacheContext, complete ? { header, payload, signature, input } : payload)
     } catch (e) {
       throw cacheSet(cacheContext, e)
     }
