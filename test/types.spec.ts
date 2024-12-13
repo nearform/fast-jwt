@@ -142,7 +142,7 @@ const decodedJwt: DecodedJwt = {
   header: { alg: 'RS256', typ: 'JWT' },
   payload: { sub: '12345', iss: 'iss' },
   signature: 'abc123',
-  input: 'sample-token'
+  input: 'input'
 }
 
 expectType<DecodedJwt>(decodedJwt)
