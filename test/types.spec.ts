@@ -137,3 +137,16 @@ expectNotAssignable<JwtHeader>(signerOptionsNoAlg.header)
 
 // Check all errors are typed correctly
 expectType<TokenValidationErrorCode[]>(Object.values(TokenError.codes))
+
+const decodedJwt: DecodedJwt = {
+  header: { alg: 'RS256', typ: 'JWT' },
+  payload: { sub: '12345', iss: 'iss' },
+  signature: 'abc123',
+  input: 'input'
+}
+
+expectType<DecodedJwt>(decodedJwt)
+expectType<Record<string, any>>(decodedJwt.header)
+expectType<any>(decodedJwt.payload)
+expectType<string>(decodedJwt.signature)
+expectType<string>(decodedJwt.input)

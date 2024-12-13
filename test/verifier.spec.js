@@ -117,7 +117,7 @@ test('it correctly verifies a token - sync', t => {
       header: { typ: 'JWT', alg: 'HS256' },
       payload: { a: 1 },
       signature: '57TF7smP9XDhIexBqPC-F1toZReYZLWb_YRU5tv0sxM',
-      input: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxfQ.57TF7smP9XDhIexBqPC-F1toZReYZLWb_YRU5tv0sxM'
+      input: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxfQ'
     }
   )
 
