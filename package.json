@@ -58,7 +58,7 @@
   },
   "devDependencies": {
     "@node-rs/jsonwebtoken": "^0.5.9",
-    "@sinonjs/fake-timers": "^13.0.5",
+    "@sinonjs/fake-timers": "^14.0.0",
     "@types/node": "^22.10.2",
     "cronometro": "^4.0.0",
     "eslint": "^9.17.0",
