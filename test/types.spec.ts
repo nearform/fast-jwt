@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unused-expressions */
 /* eslint-disable @typescript-eslint/no-unused-vars */
 
+import { expectAssignable, expectNotAssignable, expectType } from 'tsd'
 import {
   createDecoder,
   createSigner,
@@ -10,7 +11,6 @@ import {
   TokenError,
   TokenValidationErrorCode
 } from '..'
-import { expectAssignable, expectNotAssignable, expectType } from 'tsd'
 
 // Signing
 // Buffer key, both async/callback styles
@@ -44,6 +44,14 @@ createSigner({
   algorithm: 'RS256'
 })
 
+// Generic signer
+const signer = createSigner<Record<string, number>>({
+  expiresIn: '10min',
+  key: Buffer.from('KEY'),
+  algorithm: 'RS256'
+})
+signer({ key: 1 })
+
 // Decoding
 const decoder = createDecoder({ checkTyp: 'true' })
 decoder('FOO')
@@ -76,6 +84,14 @@ createVerifier({
     return 'KEY'
   }
 })('456').then(console.log, console.log)
+
+// Generic verifier
+createVerifier<Record<string, number>>({
+  key: 'KEY',
+  algorithms: ['RS256'],
+  requiredClaims: ['aud'],
+  checkTyp: 'JWT'
+})({ key: 1 }).then(console.log, console.log)
 
 // Errors
 const wrapped = TokenError.wrap(new Error('ORIGINAL'), 'FAST_JWT_INVALID_TYPE', 'MESSAGE')
