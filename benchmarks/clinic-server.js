@@ -66,21 +66,21 @@ const authRoute = {
 
 fastify.post('/sign-jwt', {
   ...signRoute,
-  async handler(request, reply) {
+  async handler(request) {
     return { token: signerJwt(request.query, key, { algorithm: 'HS256' }) }
   }
 })
 
 fastify.post('/sign-fast', {
   ...signRoute,
-  async handler(request, reply) {
+  async handler(request) {
     return { token: await signerFast(request.query) }
   }
 })
 
 fastify.get('/auth-jwt', {
   ...authRoute,
-  async handler(request, reply) {
+  async handler(request) {
     return {
       payload: verifierJwt(request.query.token, key, { algorithm: 'HS256' })
     }
@@ -89,7 +89,7 @@ fastify.get('/auth-jwt', {
 
 fastify.get('/auth-fast', {
   ...authRoute,
-  async handler(request, reply) {
+  async handler(request) {
     return { payload: await verifierFast(request.query.token) }
   }
 })

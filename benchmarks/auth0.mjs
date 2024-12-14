@@ -2,14 +2,7 @@
 
 import { isMainThread } from 'worker_threads'
 
-import {
-  tokens,
-  privateKeys,
-  publicKeys,
-  compareSigning,
-  compareVerifying,
-  saveLogs
-} from './utils.mjs'
+import { tokens, privateKeys, publicKeys, compareSigning, compareVerifying, saveLogs } from './utils.mjs'
 
 async function runSuites() {
   if (!isMainThread) {

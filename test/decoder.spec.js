@@ -45,9 +45,13 @@ test('token must be well formed', t => {
 })
 
 test('invalid header', t => {
-  t.assert.throws(() => defaultDecoder('a.b.c'), { message: 'The token header is not a valid base64url serialized JSON.' })
+  t.assert.throws(() => defaultDecoder('a.b.c'), {
+    message: 'The token header is not a valid base64url serialized JSON.'
+  })
 
-  t.assert.throws(() => defaultDecoder('Zm9v.b.c'), { message: 'The token header is not a valid base64url serialized JSON.' })
+  t.assert.throws(() => defaultDecoder('Zm9v.b.c'), {
+    message: 'The token header is not a valid base64url serialized JSON.'
+  })
 
   t.assert.throws(() => typDecoder(nonJwtToken), { message: 'The type must be "JWT".' })
 })
@@ -65,12 +69,18 @@ test('invalid payload', t => {
 //      RFC 7159 [RFC7159]; let the JWT Claims Set be this JSON object.
 test('payload must be a JSON object', t => {
   // string
-  t.assert.throws(() => defaultDecoder('eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.MTIz.5frDWv6bqXyHPXl3oZYOTnALMCGwfEYjQZbke2iyR3Y'), {
-    message: 'The payload must be an object'
-  })
+  t.assert.throws(
+    () => defaultDecoder('eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.MTIz.5frDWv6bqXyHPXl3oZYOTnALMCGwfEYjQZbke2iyR3Y'),
+    {
+      message: 'The payload must be an object'
+    }
+  )
 
   // null
-  t.assert.throws(() => defaultDecoder('eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.bnVsbA.Y-B_ctjXNWaZlNk8kqfSZ06B8GSZvPAfhMz-pQ2prfo'), {
-    message: 'The payload must be an object'
-  })
+  t.assert.throws(
+    () => defaultDecoder('eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.bnVsbA.Y-B_ctjXNWaZlNk8kqfSZ06B8GSZvPAfhMz-pQ2prfo'),
+    {
+      message: 'The payload must be an object'
+    }
+  )
 })
