@@ -474,7 +474,7 @@ test('it correctly handle errors - callback', t => {
       },
       noTimestamp: true
     },
-    (error, token) => {
+    error => {
       t.assert.ok(error instanceof TokenError)
       t.assert.equal(error.message, 'Cannot fetch key.')
     }
@@ -490,7 +490,7 @@ test('it correctly validates the key received from the callback', t => {
       },
       noTimestamp: true
     },
-    (error, token) => {
+    error => {
       t.assert.ok(error instanceof TokenError)
       t.assert.equal(
         error.message,
@@ -510,7 +510,7 @@ test('it correctly handle errors - evented callback', t => {
       noTimestamp: true,
       algorithm: 'RS256'
     },
-    (error, token) => {
+    error => {
       t.assert.ok(error instanceof TokenError)
       t.assert.equal(error.message, 'Invalid private key provided for algorithm RS256.')
     }
@@ -561,15 +561,18 @@ test('options validation - algorithm', async t => {
 
 test('options validation - key', async t => {
   t.assert.throws(() => createSigner({ key: 123 }), {
-    message: 'The key option must be a string, a buffer, an object containing key/passphrase properties or a function returning the algorithm secret or private key.'
+    message:
+      'The key option must be a string, a buffer, an object containing key/passphrase properties or a function returning the algorithm secret or private key.'
   })
 
   t.assert.throws(() => createSigner({ key: { key: privateKeys.PPRS } }), {
-    message: 'The key option must be a string, a buffer, an object containing key/passphrase properties or a function returning the algorithm secret or private key.'
+    message:
+      'The key option must be a string, a buffer, an object containing key/passphrase properties or a function returning the algorithm secret or private key.'
   })
 
   t.assert.throws(() => createSigner({ key: { passphrase: 'secret' } }), {
-    message: 'The key option must be a string, a buffer, an object containing key/passphrase properties or a function returning the algorithm secret or private key.'
+    message:
+      'The key option must be a string, a buffer, an object containing key/passphrase properties or a function returning the algorithm secret or private key.'
   })
 
   t.assert.throws(() => createSigner({ algorithm: 'none', key: 123 }), {

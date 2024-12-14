@@ -5,12 +5,7 @@ const { readFileSync } = require('node:fs')
 const { resolve } = require('node:path')
 
 const { createVerifier, createSigner } = require('../src')
-const {
-  hsAlgorithms,
-  rsaAlgorithms,
-  detectPrivateKeyAlgorithm,
-  detectPublicKeyAlgorithms
-} = require('../src/crypto')
+const { hsAlgorithms, rsaAlgorithms, detectPrivateKeyAlgorithm, detectPublicKeyAlgorithms } = require('../src/crypto')
 
 const start = Math.floor(Date.now() / 1000)
 
@@ -342,8 +337,7 @@ for (const type of ['Ed25519', 'Ed448']) {
     await t.assert.rejects(
       createSigner({ algorithm: 'EdDSA', key: async () => 123 })({ payload: 'PAYLOAD' }),
       {
-        message:
-          'The key returned from the callback must be a string or a buffer containing a secret or a private key.'
+        message: 'The key returned from the callback must be a string or a buffer containing a secret or a private key.'
       },
       null
     )

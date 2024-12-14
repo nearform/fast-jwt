@@ -250,7 +250,7 @@ test('it correctly handle errors - callback', t => {
         callback(new Error('FAILED'))
       }
     },
-    (error, token) => {
+    error => {
       t.assert.ok(error instanceof TokenError)
       t.assert.equal(error.message, 'Cannot fetch key.')
     }
@@ -265,7 +265,7 @@ test('it correctly handle errors - evented callback', t => {
         process.nextTick(() => callback(null, 'FAILED'))
       }
     },
-    (error, token) => {
+    error => {
       t.assert.ok(error instanceof TokenError)
       t.assert.equal(error.message, 'The token signature is invalid.')
     }

@@ -39,7 +39,7 @@
   ],
   "scripts": {
     "postpublish": "git push origin && git push origin -f --tags",
-    "lint": "eslint src/**/*.js test/**/*.js src/**/*.ts test/**/*.ts",
+    "lint": "eslint .",
     "test": "node --test --experimental-test-coverage && tsd",
     "test:ci": "npm run lint && npm run test",
     "test:watch": "node --test --watch --experimental-test-coverage",
@@ -51,29 +51,29 @@
     "benchmark:auth0": "node benchmarks/auth0.mjs"
   },
   "dependencies": {
-    "@lukeed/ms": "^2.0.1",
+    "@lukeed/ms": "^2.0.2",
     "asn1.js": "^5.4.1",
     "ecdsa-sig-formatter": "^1.0.11",
-    "mnemonist": "^0.39.5"
+    "mnemonist": "^0.39.8"
   },
   "devDependencies": {
-    "@node-rs/jsonwebtoken": "^0.5.6",
-    "@sinonjs/fake-timers": "^13.0.1",
-    "@types/node": "^22.0.0",
-    "@typescript-eslint/eslint-plugin": "^5.49.0",
-    "@typescript-eslint/parser": "^5.49.0",
+    "@node-rs/jsonwebtoken": "^0.5.9",
+    "@sinonjs/fake-timers": "^13.0.5",
+    "@types/node": "^22.10.2",
     "cronometro": "^4.0.0",
-    "eslint": "^8.33.0",
-    "eslint-config-standard": "^17.0.0",
-    "eslint-plugin-import": "^2.27.5",
-    "eslint-plugin-n": "^16.0.0",
-    "eslint-plugin-promise": "^6.1.1",
-    "fastify": "^5.0.0",
-    "jose": "^2.0.6",
-    "jsonwebtoken": "^9.0.0",
-    "prettier": "^3.0.0",
-    "tsd": "^0.31.0",
-    "typescript": "^5.0.2"
+    "eslint": "^9.17.0",
+    "eslint-config-prettier": "^9.1.0",
+    "eslint-plugin-import": "^2.31.0",
+    "eslint-plugin-n": "^17.15.0",
+    "eslint-plugin-prettier": "^5.2.1",
+    "eslint-plugin-promise": "^7.2.1",
+    "fastify": "^5.2.0",
+    "jose": "^2.0.7",
+    "jsonwebtoken": "^9.0.2",
+    "prettier": "^3.4.2",
+    "tsd": "^0.31.2",
+    "typescript": "^5.7.2",
+    "typescript-eslint": "^8.18.0"
   },
   "engines": {
     "node": ">=20"

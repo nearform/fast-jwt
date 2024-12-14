@@ -43,27 +43,13 @@ const ecCurves = {
 const PrivateKey = asn.define('PrivateKey', function () {
   this.seq().obj(
     this.key('version').int(),
-    this.key('algorithm')
-      .seq()
-      .obj(
-        this.key('algorithm').objid(),
-        this.key('parameters')
-          .optional()
-          .objid()
-      )
+    this.key('algorithm').seq().obj(this.key('algorithm').objid(), this.key('parameters').optional().objid())
   )
 })
 
 const PublicKey = asn.define('PublicKey', function () {
   this.seq().obj(
-    this.key('algorithm')
-      .seq()
-      .obj(
-        this.key('algorithm').objid(),
-        this.key('parameters')
-          .optional()
-          .objid()
-      )
+    this.key('algorithm').seq().obj(this.key('algorithm').objid(), this.key('parameters').optional().objid())
   )
 })
 
@@ -71,10 +57,7 @@ const ECPrivateKey = asn.define('ECPrivateKey', function () {
   this.seq().obj(
     this.key('version').int(),
     this.key('privateKey').octstr(),
-    this.key('parameters')
-      .explicit(0)
-      .optional()
-      .choice({ namedCurve: this.objid() })
+    this.key('parameters').explicit(0).optional().choice({ namedCurve: this.objid() })
   )
 })
 
@@ -208,7 +191,12 @@ function detectPrivateKeyAlgorithm(key, providedAlgorithm) {
     }
     return cacheSet(privateKeysCache, key, detectedAlgorithm)
   } catch (e) {
-    throw cacheSet(privateKeysCache, key, null, TokenError.wrap(e, TokenError.codes.invalidKey, 'Unsupported PEM private key.'))
+    throw cacheSet(
+      privateKeysCache,
+      key,
+      null,
+      TokenError.wrap(e, TokenError.codes.invalidKey, 'Unsupported PEM private key.')
+    )
   }
 }
 
@@ -253,9 +241,7 @@ function createSignature(algorithm, key, input) {
 
     switch (type) {
       case 'HS':
-        raw = createHmac(alg, key)
-          .update(input)
-          .digest('base64')
+        raw = createHmac(alg, key).update(input).digest('base64')
         break
       case 'ES':
         raw = derToJose(directSign(alg, Buffer.from(input, 'utf-8'), key), algorithm).toString('base64')
@@ -273,10 +259,7 @@ function createSignature(algorithm, key, input) {
           options.saltLength = RSA_PSS_SALTLEN_DIGEST
         }
 
-        raw = createSign(alg)
-          .update(input)
-          .sign(options)
-          .toString('base64')
+        raw = createSign(alg).update(input).sign(options).toString('base64')
         break
       case 'Ed':
         raw = directSign(undefined, Buffer.from(input, 'utf-8'), key).toString('base64')
@@ -298,13 +281,8 @@ function verifySignature(algorithm, key, input, signature) {
 
     if (type === 'HS') {
       try {
-        return timingSafeEqual(
-          createHmac(alg, key)
-            .update(input)
-            .digest(),
-          signature
-        )
-      } catch (e) {
+        return timingSafeEqual(createHmac(alg, key).update(input).digest(), signature)
+      } catch {
         return false
       }
     } else if (type === 'Ed') {

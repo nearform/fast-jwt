@@ -185,10 +185,7 @@ module.exports = function createSigner(options) {
   } = { clockTimestamp: 0, ...options }
 
   // Validate options
-  if (
-    algorithm &&
-    !supportedAlgorithms.has(algorithm)
-  ) {
+  if (algorithm && !supportedAlgorithms.has(algorithm)) {
     throw new TokenError(
       TokenError.codes.invalidOption,
       `The algorithm option must be one of the following values: ${supportedAlgorithmsList}.`
@@ -239,7 +236,10 @@ module.exports = function createSigner(options) {
       expiresIn = parseMs(expiresIn)
     }
     if (typeof expiresIn !== 'number' || expiresIn < 0) {
-      throw new TokenError(TokenError.codes.invalidOption, 'The expiresIn option must be a positive number or a valid string.')
+      throw new TokenError(
+        TokenError.codes.invalidOption,
+        'The expiresIn option must be a positive number or a valid string.'
+      )
     }
   }
 
@@ -248,7 +248,10 @@ module.exports = function createSigner(options) {
       notBefore = parseMs(notBefore)
     }
     if (typeof notBefore !== 'number' || notBefore < 0) {
-      throw new TokenError(TokenError.codes.invalidOption, 'The notBefore option must be a positive number or a valid string.')
+      throw new TokenError(
+        TokenError.codes.invalidOption,
+        'The notBefore option must be a positive number or a valid string.'
+      )
     }
   }
 

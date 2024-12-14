@@ -1,12 +1,7 @@
 'use strict'
 
 import { isMainThread } from 'worker_threads'
-import {
-  privateKeys,
-  publicKeys,
-  compareSigning,
-  saveLogs
-} from './utils.mjs'
+import { privateKeys, publicKeys, compareSigning, saveLogs } from './utils.mjs'
 
 async function runSuites() {
   if (!isMainThread) {

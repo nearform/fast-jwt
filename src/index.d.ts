@@ -65,7 +65,7 @@ type VerifierCallback = (e: Error | TokenError | null, payload: any) => void
 type DecodedJwt = {
   header: Record<string, any>
   payload: any
-  signature: string,
+  signature: string
   input: string
 }
 
