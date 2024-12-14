@@ -69,29 +69,33 @@ type DecodedJwt = {
   input: string
 }
 
+type Bufferable = string | Buffer
+
 type KeyFetcher =
-  | ((DecodedJwt: DecodedJwt) => Promise<string | Buffer>)
-  | ((DecodedJwt: DecodedJwt, cb: (err: Error | TokenError | null, key: string | Buffer) => void) => void)
+  | ((DecodedJwt: DecodedJwt) => Promise<Bufferable>)
+  | ((DecodedJwt: DecodedJwt, cb: (err: Error | TokenError | null, key: Bufferable) => void) => void)
 
-declare function SignerSync(payload: string | Buffer | { [key: string]: any }): string
-declare function SignerAsync(payload: string | Buffer | { [key: string]: any }): Promise<string>
-declare function SignerAsync(payload: string | Buffer | { [key: string]: any }, cb: SignerCallback): void
+type SignerPayload = Bufferable | Record<string, any>
 
-declare function VerifierSync(token: string | Buffer): any
-declare function VerifierAsync(token: string | Buffer): Promise<any>
-declare function VerifierAsync(token: string | Buffer, cb: object): void
+declare function SignerSync(payload: SignerPayload): string
+declare function SignerAsync(payload: SignerPayload): Promise<string>
+declare function SignerAsync(payload: SignerPayload, cb: SignerCallback): void
+
+declare function VerifierSync(token: Bufferable): any
+declare function VerifierAsync(token: Bufferable): Promise<any>
+declare function VerifierAsync(token: Bufferable, cb: VerifierCallback): void
 
 export interface JwtHeader extends Record<string, any> {
   alg: string | Algorithm
-  typ?: string | undefined
-  cty?: string | undefined
-  crit?: Array<string | Exclude<keyof JwtHeader, 'crit'>> | undefined
-  kid?: string | undefined
-  jku?: string | undefined
-  x5u?: string | string[] | undefined
-  'x5t#S256'?: string | undefined
-  x5t?: string | undefined
-  x5c?: string | string[] | undefined
+  typ?: string
+  cty?: string
+  crit?: Array<string | Exclude<keyof JwtHeader, 'crit'>>
+  kid?: string
+  jku?: string
+  x5u?: string | string[]
+  'x5t#S256'?: string
+  x5t?: string
+  x5c?: string | string[]
 }
 
 export interface SignerOptions {
@@ -115,17 +119,20 @@ export interface DecoderOptions {
   checkTyp?: string
 }
 
+type VerifierAllowedBase = string | RegExp
+type VerifierAllowed = VerifierAllowedBase | Array<VerifierAllowedBase>
+
 export interface VerifierOptions {
   algorithms?: Algorithm[]
   complete?: boolean
   cache?: boolean | number
   cacheTTL?: number
   errorCacheTTL?: number | ((tokenError: TokenError) => number)
-  allowedJti?: string | RegExp | Array<string | RegExp>
-  allowedAud?: string | RegExp | Array<string | RegExp>
-  allowedIss?: string | RegExp | Array<string | RegExp>
-  allowedSub?: string | RegExp | Array<string | RegExp>
-  allowedNonce?: string | RegExp | Array<string | RegExp>
+  allowedJti?: VerifierAllowed
+  allowedAud?: VerifierAllowed
+  allowedIss?: VerifierAllowed
+  allowedSub?: VerifierAllowed
+  allowedNonce?: VerifierAllowed
   ignoreExpiration?: boolean
   ignoreNotBefore?: boolean
   maxAge?: number
@@ -136,14 +143,14 @@ export interface VerifierOptions {
 }
 
 export interface PrivateKey {
-  key: string | Buffer
+  key: Bufferable
   passphrase: string | undefined
 }
 
 export function createSigner(
-  options?: Partial<SignerOptions & { key: string | Buffer | PrivateKey }>
+  options?: Partial<SignerOptions & { key: Bufferable | PrivateKey }>
 ): typeof SignerSync
 export function createSigner(options?: Partial<SignerOptions & { key: KeyFetcher }>): typeof SignerAsync
-export function createDecoder(options?: Partial<DecoderOptions>): (token: string | Buffer) => any
-export function createVerifier(options?: Partial<VerifierOptions & { key: string | Buffer }>): typeof VerifierSync
+export function createDecoder(options?: Partial<DecoderOptions>): (token: Bufferable) => any
+export function createVerifier(options?: Partial<VerifierOptions & { key: Bufferable }>): typeof VerifierSync
 export function createVerifier(options?: Partial<VerifierOptions & { key: KeyFetcher }>): typeof VerifierAsync
