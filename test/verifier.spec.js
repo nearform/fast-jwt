@@ -1095,7 +1095,7 @@ test('caching - should use the right hash method for storing values - EdDSA with
   t.assert.equal(Array.from(verifier.cache.keys())[0], hash)
 })
 
-test('caching - should be able to manipulate cache directy', t => {
+test('caching - should be able to manipulate cache directly', t => {
   t.mock.timers.enable({ now: 100000 })
 
   const signer = createSigner({ key: 'secret', expiresIn: 100000 })
