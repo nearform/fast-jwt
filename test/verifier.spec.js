@@ -4,7 +4,6 @@ const { createHash } = require('node:crypto')
 const { readFileSync } = require('node:fs')
 const { resolve } = require('node:path')
 const { test } = require('node:test')
-const { install: fakeTime } = require('@sinonjs/fake-timers')
 
 const { createSigner, createVerifier, TokenError } = require('../src')
 const { hashToken } = require('../src/utils')
@@ -1096,8 +1095,8 @@ test('caching - should use the right hash method for storing values - EdDSA with
   t.assert.equal(Array.from(verifier.cache.keys())[0], hash)
 })
 
-test('caching - should be able to manipulate cache directy', t => {
-  const clock = fakeTime({ now: 100000 })
+test('caching - should be able to manipulate cache directly', t => {
+  t.mock.timers.enable({ now: 100000 })
 
   const signer = createSigner({ key: 'secret', expiresIn: 100000 })
   const verifier = createVerifier({ key: 'secret', cache: true })
@@ -1114,11 +1113,11 @@ test('caching - should be able to manipulate cache directy', t => {
   verifier.cache.set(token, null)
   t.assert.deepStrictEqual(verifier.cache.get(token), null)
 
-  clock.uninstall()
+  t.mock.timers.reset()
 })
 
 test('caching - should correctly expire cached token using the exp claim', t => {
-  const clock = fakeTime({ now: 100000 })
+  t.mock.timers.enable({ now: 100000 })
 
   const signer = createSigner({ key: 'secret', expiresIn: 100000 })
   const verifier = createVerifier({ key: 'secret', cache: true })
@@ -1133,7 +1132,7 @@ test('caching - should correctly expire cached token using the exp claim', t => 
   t.assert.deepStrictEqual(verifier.cache.get(hashToken(token)), [{ a: 1, iat: 100, exp: 200 }, 0, 200000])
 
   // Now advance to expired time
-  clock.tick(200000)
+  t.mock.timers.tick(200000)
 
   // The token should now be expired and the cache should have been updated to reflect it
   t.assert.throws(() => verifier(token), { message: 'The token has expired at 1970-01-01T00:03:20.000Z.' })
@@ -1143,7 +1142,7 @@ test('caching - should correctly expire cached token using the exp claim', t => 
   t.assert.throws(() => verifier(token), { message: 'The token has expired at 1970-01-01T00:03:20.000Z.' })
   t.assert.throws(() => verifier(token), { message: 'The token has expired at 1970-01-01T00:03:20.000Z.' })
 
-  clock.uninstall()
+  t.mock.timers.reset()
 
   // Now the real time is used, make cache considers the clockTimestamp algorithm
   verifier.cache.clear()
@@ -1158,7 +1157,7 @@ test('caching - should correctly expire cached token using the exp claim', t => 
 })
 
 test('caching - should correctly expire cached token using the maxAge claim', t => {
-  const clock = fakeTime({ now: 100000 })
+  t.mock.timers.enable({ now: 100000 })
 
   const signer = createSigner({ key: 'secret' })
   const verifier = createVerifier({ key: 'secret', cache: true, maxAge: 100000 })
@@ -1173,7 +1172,7 @@ test('caching - should correctly expire cached token using the maxAge claim', t 
   t.assert.deepStrictEqual(verifier.cache.get(hashToken(token)), [{ a: 1, iat: 100 }, 0, 200000])
 
   // Now advance to expired time
-  clock.tick(200000)
+  t.mock.timers.tick(200000)
 
   // The token should now be expired and the cache should have been updated to reflect it
   t.assert.throws(() => verifier(token), { message: 'The token has expired at 1970-01-01T00:03:20.000Z.' })
@@ -1182,11 +1181,11 @@ test('caching - should correctly expire cached token using the maxAge claim', t 
   t.assert.throws(() => verifier(token), { message: 'The token has expired at 1970-01-01T00:03:20.000Z.' })
   t.assert.throws(() => verifier(token), { message: 'The token has expired at 1970-01-01T00:03:20.000Z.' })
 
-  clock.uninstall()
+  t.mock.timers.reset()
 })
 
 test('caching - should correctly expire not yet cached token using the nbf claim at exact notBefore time', t => {
-  const clock = fakeTime({ now: 100000 })
+  t.mock.timers.enable({ now: 100000 })
 
   const signer = createSigner({ key: 'secret', notBefore: 200000 })
   const verifier = createVerifier({ key: 'secret', cache: true })
@@ -1200,7 +1199,7 @@ test('caching - should correctly expire not yet cached token using the nbf claim
   t.assert.ok(verifier.cache.get(hashToken(token))[0] instanceof TokenError)
 
   // Now advance to expired time
-  clock.tick(200000)
+  t.mock.timers.tick(200000)
 
   // The token should now be active and the cache should have been updated to reflect it
   t.assert.deepStrictEqual(verifier(token), { a: 1, iat: 100, nbf: 300 })
@@ -1209,11 +1208,11 @@ test('caching - should correctly expire not yet cached token using the nbf claim
   t.assert.equal(verifier.cache.size, 1)
   t.assert.deepStrictEqual(verifier.cache.get(hashToken(token)), [{ a: 1, iat: 100, nbf: 300 }, 300000, 900000])
 
-  clock.uninstall()
+  t.mock.timers.reset()
 })
 
 test('caching - should correctly expire not yet cached token using the nbf claim while checking after expiry period', t => {
-  const clock = fakeTime({ now: 100000 })
+  t.mock.timers.enable({ now: 100000 })
 
   const signer = createSigner({ key: 'secret', notBefore: 200000 })
   const verifier = createVerifier({ key: 'secret', cache: true })
@@ -1227,7 +1226,7 @@ test('caching - should correctly expire not yet cached token using the nbf claim
   t.assert.ok(verifier.cache.get(hashToken(token))[0] instanceof TokenError)
 
   // Now advance after expired time
-  clock.tick(200010)
+  t.mock.timers.tick(200010)
 
   // The token should now be active and the cache should have been updated to reflect it
   t.assert.deepStrictEqual(verifier(token), { a: 1, iat: 100, nbf: 300 })
@@ -1236,11 +1235,11 @@ test('caching - should correctly expire not yet cached token using the nbf claim
   t.assert.equal(verifier.cache.size, 1)
   t.assert.deepStrictEqual(verifier.cache.get(hashToken(token)), [{ a: 1, iat: 100, nbf: 300 }, 300000, 900010])
 
-  clock.uninstall()
+  t.mock.timers.reset()
 })
 
 test('caching - should be able to consider both nbf and exp field at the same time', t => {
-  const clock = fakeTime({ now: 100000 })
+  t.mock.timers.enable({ now: 100000 })
 
   const signer = createSigner({ key: 'secret', expiresIn: 400000, notBefore: 200000 })
   const verifier = createVerifier({ key: 'secret', cache: true })
@@ -1254,7 +1253,7 @@ test('caching - should be able to consider both nbf and exp field at the same ti
   t.assert.ok(verifier.cache.get(hashToken(token))[0] instanceof TokenError)
 
   // Now advance to activation time
-  clock.tick(200000)
+  t.mock.timers.tick(200000)
 
   // The token should now be active and the cache should have been updated to reflect it
   t.assert.deepStrictEqual(verifier(token), { a: 1, iat: 100, nbf: 300, exp: 500 })
@@ -1268,7 +1267,7 @@ test('caching - should be able to consider both nbf and exp field at the same ti
   ])
 
   // Now advance again after the expiry time
-  clock.tick(210000)
+  t.mock.timers.tick(210000)
 
   // The token should now be expired and the cache should have been updated to reflect it
   t.assert.throws(() => verifier(token), { message: 'The token has expired at 1970-01-01T00:08:20.000Z.' })
@@ -1277,11 +1276,11 @@ test('caching - should be able to consider both nbf and exp field at the same ti
   t.assert.throws(() => verifier(token), { message: 'The token has expired at 1970-01-01T00:08:20.000Z.' })
   t.assert.throws(() => verifier(token), { message: 'The token has expired at 1970-01-01T00:08:20.000Z.' })
 
-  clock.uninstall()
+  t.mock.timers.reset()
 })
 
 test('caching - should be able to consider clockTolerance on both nbf and exp field', t => {
-  const clock = fakeTime({ now: 100000 })
+  t.mock.timers.enable({ now: 100000 })
 
   const signer = createSigner({ key: 'secret', expiresIn: 400000, notBefore: 200000 })
   const verifier = createVerifier({ key: 'secret', cache: true, clockTolerance: 60000 })
@@ -1295,7 +1294,7 @@ test('caching - should be able to consider clockTolerance on both nbf and exp fi
   t.assert.ok(verifier.cache.get(hashToken(token))[0] instanceof TokenError)
 
   // Now advance before the activation time, in clockTolerance range
-  clock.tick(140000)
+  t.mock.timers.tick(140000)
 
   // The token should now be active and the cache should have been updated to reflect it
   t.assert.deepStrictEqual(verifier(token), { a: 1, iat: 100, nbf: 300, exp: 500 })
@@ -1309,7 +1308,7 @@ test('caching - should be able to consider clockTolerance on both nbf and exp fi
   ])
 
   // Now advance to activation time
-  clock.tick(150000)
+  t.mock.timers.tick(150000)
 
   // The token should now be active and the cache should have been updated to reflect it
   t.assert.deepStrictEqual(verifier(token), { a: 1, iat: 100, nbf: 300, exp: 500 })
@@ -1323,7 +1322,7 @@ test('caching - should be able to consider clockTolerance on both nbf and exp fi
   ])
 
   // Now advance again after the expiry time, in clockTolerance range (current time going to be 540000 )
-  clock.tick(150000)
+  t.mock.timers.tick(150000)
   t.assert.deepStrictEqual(verifier(token), { a: 1, iat: 100, nbf: 300, exp: 500 })
   t.assert.equal(verifier.cache.size, 1)
   t.assert.deepStrictEqual(verifier(token), { a: 1, iat: 100, nbf: 300, exp: 500 })
@@ -1334,7 +1333,7 @@ test('caching - should be able to consider clockTolerance on both nbf and exp fi
     560000
   ])
 
-  clock.tick(100000)
+  t.mock.timers.tick(100000)
   // The token should now be expired and the cache should have been updated to reflect it
   t.assert.throws(() => verifier(token), { message: 'The token has expired at 1970-01-01T00:09:20.000Z.' })
   t.assert.equal(verifier.cache.size, 1)
@@ -1342,11 +1341,11 @@ test('caching - should be able to consider clockTolerance on both nbf and exp fi
   t.assert.throws(() => verifier(token), { message: 'The token has expired at 1970-01-01T00:09:20.000Z.' })
   t.assert.throws(() => verifier(token), { message: 'The token has expired at 1970-01-01T00:09:20.000Z.' })
 
-  clock.uninstall()
+  t.mock.timers.reset()
 })
 
 test('caching - should ignore the nbf and exp when asked to', t => {
-  const clock = fakeTime({ now: 100000 })
+  t.mock.timers.enable({ now: 100000 })
 
   const signer = createSigner({ key: 'secret', expiresIn: 400000, notBefore: 200000 })
   const verifier = createVerifier({ key: 'secret', cache: true })
@@ -1373,7 +1372,7 @@ test('caching - should ignore the nbf and exp when asked to', t => {
   ])
 
   // Now advance to activation time
-  clock.tick(200000)
+  t.mock.timers.tick(200000)
 
   // The token should now be active and the cache should have been updated to reflect it
   t.assert.deepStrictEqual(verifier(token), { a: 1, iat: 100, nbf: 300, exp: 500 })
@@ -1387,7 +1386,7 @@ test('caching - should ignore the nbf and exp when asked to', t => {
   ])
 
   // Now advance again after the expiry time
-  clock.tick(210000)
+  t.mock.timers.tick(210000)
 
   // The token should now be expired and the cache should have been updated to reflect it
   t.assert.throws(() => verifier(token), { message: 'The token has expired at 1970-01-01T00:08:20.000Z.' })
@@ -1407,7 +1406,7 @@ test('caching - should ignore the nbf and exp when asked to', t => {
     1110000
   ])
 
-  clock.uninstall()
+  t.mock.timers.reset()
 })
 
 test('options validation - errorCacheTTL', t => {
@@ -1421,7 +1420,7 @@ test('options validation - errorCacheTTL', t => {
 })
 
 test('default errorCacheTTL should not cache errors', async t => {
-  const clock = fakeTime({ now: 0 })
+  t.mock.timers.enable({ now: 0 })
   const token = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxfQ.57TF7smP9XDhIexBqPC-F1toZReYZLWb_YRU5tv0sxM'
   const verifier = createVerifier({
     key: async () => {
@@ -1435,11 +1434,11 @@ test('default errorCacheTTL should not cache errors', async t => {
   await t.assert.rejects(async () => verifier(token))
   t.assert.equal(verifier.cache.size, 1)
   t.assert.deepStrictEqual(verifier.cache.get(hashToken(token))[2], -1)
-  clock.uninstall()
+  t.mock.timers.reset()
 })
 
 test('errors should have ttl equal to errorCacheTTL', async t => {
-  const clock = fakeTime({ now: 0 })
+  t.mock.timers.enable({ now: 0 })
   const errorCacheTTL = 20000
   const token = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxfQ.57TF7smP9XDhIexBqPC-F1toZReYZLWb_YRU5tv0sxM'
   const verifier = createVerifier({
@@ -1455,11 +1454,11 @@ test('errors should have ttl equal to errorCacheTTL', async t => {
   await t.assert.rejects(async () => verifier(token))
   t.assert.equal(verifier.cache.size, 1)
   t.assert.deepStrictEqual(verifier.cache.get(hashToken(token))[2], errorCacheTTL)
-  clock.uninstall()
+  t.mock.timers.reset()
 })
 
 test('errors should have ttl equal to errorCacheTTL', async t => {
-  const clock = fakeTime({ now: 0 })
+  t.mock.timers.enable({ now: 0 })
   const errorCacheTTL = 20000
   const token = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxfQ.57TF7smP9XDhIexBqPC-F1toZReYZLWb_YRU5tv0sxM'
   const verifier = createVerifier({
@@ -1476,21 +1475,21 @@ test('errors should have ttl equal to errorCacheTTL', async t => {
   t.assert.equal(verifier.cache.size, 1)
   t.assert.deepStrictEqual(verifier.cache.get(hashToken(token))[2], errorCacheTTL)
 
-  clock.tick(1000)
+  t.mock.timers.tick(1000)
   // cache hit and ttl not changed
   await t.assert.rejects(async () => verifier(token))
   t.assert.deepStrictEqual(verifier.cache.get(hashToken(token))[2], errorCacheTTL)
 
-  clock.tick(errorCacheTTL)
+  t.mock.timers.tick(errorCacheTTL)
   // cache expired, request performed, new ttl
   await t.assert.rejects(async () => verifier(token))
   t.assert.deepStrictEqual(verifier.cache.get(hashToken(token))[2], errorCacheTTL + 1000 + errorCacheTTL)
 
-  clock.uninstall()
+  t.mock.timers.reset()
 })
 
 test('errors should have ttl equal to errorCacheTTL as function', async t => {
-  const clock = fakeTime({ now: 0 })
+  t.mock.timers.enable({ now: 0 })
 
   const fetchKeyErrorTTL = 2000
   const errorCacheTTL = tokenError => {
@@ -1515,11 +1514,11 @@ test('errors should have ttl equal to errorCacheTTL as function', async t => {
   t.assert.equal(verifier.cache.size, 1)
   t.assert.deepStrictEqual(verifier.cache.get(hashToken(token))[2], fetchKeyErrorTTL)
 
-  clock.uninstall()
+  t.mock.timers.reset()
 })
 
 test('invalid errorCacheTTL function should be handle ', async t => {
-  const clock = fakeTime({ now: 0 })
+  t.mock.timers.enable({ now: 0 })
 
   const errorCacheTTL = () => {
     throw new Error('invalid errorCacheTTL function')
@@ -1539,11 +1538,11 @@ test('invalid errorCacheTTL function should be handle ', async t => {
   t.assert.throws(() => verifier(token))
   t.assert.equal(verifier.cache.size, 0)
 
-  clock.uninstall()
+  t.mock.timers.reset()
 })
 
 test('default errorCacheTTL should not cache errors when sub millisecond execution', async t => {
-  const clock = fakeTime({ now: 0 })
+  t.mock.timers.enable({ now: 0 })
 
   const token = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxfQ.57TF7smP9XDhIexBqPC-F1toZReYZLWb_YRU5tv0sxM'
   const verifier = createVerifier({
@@ -1564,5 +1563,5 @@ test('default errorCacheTTL should not cache errors when sub millisecond executi
 
   t.assert.notDeepStrictEqual(verifier.cache.get(hashToken(token))[0], checkToken)
 
-  clock.uninstall()
+  t.mock.timers.reset()
 })
