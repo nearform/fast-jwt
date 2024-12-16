@@ -77,13 +77,13 @@ type KeyFetcher =
 
 type SignerPayload = Bufferable | Record<string, any>
 
-declare function SignerSync(payload: SignerPayload): string
-declare function SignerAsync(payload: SignerPayload): Promise<string>
-declare function SignerAsync(payload: SignerPayload, cb: SignerCallback): void
+declare function SignerSync<T = SignerPayload>(payload: T): string
+declare function SignerAsync<T = SignerPayload>(payload: T): Promise<string>
+declare function SignerAsync<T = SignerPayload>(payload: T, cb: SignerCallback): void
 
-declare function VerifierSync(token: Bufferable): any
-declare function VerifierAsync(token: Bufferable): Promise<any>
-declare function VerifierAsync(token: Bufferable, cb: VerifierCallback): void
+declare function VerifierSync<T = Bufferable>(token: T): any
+declare function VerifierAsync<T = Bufferable>(token: T): Promise<any>
+declare function VerifierAsync<T = Bufferable>(token: T, cb: VerifierCallback): void
 
 export interface JwtHeader extends Record<string, any> {
   alg: string | Algorithm
@@ -147,10 +147,10 @@ export interface PrivateKey {
   passphrase: string | undefined
 }
 
-export function createSigner(
+export function createSigner<T = SignerPayload>(
   options?: Partial<SignerOptions & { key: Bufferable | PrivateKey }>
-): typeof SignerSync
-export function createSigner(options?: Partial<SignerOptions & { key: KeyFetcher }>): typeof SignerAsync
+): typeof SignerSync<T>
+export function createSigner<T = SignerPayload>(options?: Partial<SignerOptions & { key: KeyFetcher }>): typeof SignerAsync<T>
 export function createDecoder(options?: Partial<DecoderOptions>): (token: Bufferable) => any
-export function createVerifier(options?: Partial<VerifierOptions & { key: Bufferable }>): typeof VerifierSync
-export function createVerifier(options?: Partial<VerifierOptions & { key: KeyFetcher }>): typeof VerifierAsync
+export function createVerifier<T = Bufferable>(options?: Partial<VerifierOptions & { key: Bufferable }>): typeof VerifierSync<T>
+export function createVerifier<T = Bufferable>(options?: Partial<VerifierOptions & { key: KeyFetcher }>): typeof VerifierAsync<T>
