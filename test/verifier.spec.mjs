@@ -5,8 +5,8 @@ import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { test } from 'node:test'
 
-import { createSigner, createVerifier, TokenError } from '../src/index.js'
-import { hashToken } from '../src/utils.js'
+import { createSigner, createVerifier, TokenError } from '../src/index.mjs'
+import { hashToken } from '../src/utils.mjs'
 
 const __dirname = import.meta.dirname
 

@@ -11,7 +11,7 @@ import jwt from 'jsonwebtoken'
 
 import { JWK as JWKJose, JWT as JWTJose } from 'jose'
 
-import { createDecoder, createSigner, createVerifier } from '../src/index.js'
+import { createDecoder, createSigner, createVerifier } from '../src/index.mjs'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 

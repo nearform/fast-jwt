@@ -1,6 +1,6 @@
 'use strict'
 
-import { TokenError } from './error.js'
+import { TokenError } from './error.mjs'
 
 function decode({ complete, checkTyp }, token) {
   // Make sure the token is a string or a Buffer - Other cases make no sense to even try to validate

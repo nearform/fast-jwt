@@ -2,7 +2,7 @@
 
 import { test } from 'node:test'
 
-import { createDecoder } from '../src/index.js'
+import { createDecoder } from '../src/index.mjs'
 
 const defaultDecoder = createDecoder()
 // const rawDecoder = createDecoder({ json: false })

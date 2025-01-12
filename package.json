@@ -40,7 +40,7 @@
     "dist/**"
   ],
   "scripts": {
-    "build": "tsc -p tsconfig-cjs.json && tsc -p tsconfig-es.json",
+    "build": "tsc -p tsconfig-cjs.json && tsc -p tsconfig-es.json && renamer --find mjs --replace js ./dist/cjs/*",
     "postpublish": "git push origin && git push origin -f --tags",
     "lint": "eslint .",
     "test": "node --test --experimental-test-coverage && tsd",
@@ -73,6 +73,7 @@
     "jose": "^2.0.7",
     "jsonwebtoken": "^9.0.2",
     "prettier": "^3.4.2",
+    "renamer": "~5.0.2",
     "tsd": "^0.31.2",
     "typescript": "^5.7.2",
     "typescript-eslint": "^8.18.0"

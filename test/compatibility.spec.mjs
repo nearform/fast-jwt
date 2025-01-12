@@ -9,7 +9,7 @@ const { asKey } = jose.JWK
 import { resolve } from 'node:path'
 import { test } from 'node:test'
 
-import { createSigner, createVerifier } from '../src/index.js'
+import { createSigner, createVerifier } from '../src/index.mjs'
 
 const __dirname = import.meta.dirname
 

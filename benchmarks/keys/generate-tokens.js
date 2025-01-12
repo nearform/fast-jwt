@@ -1,9 +1,9 @@
 'use strict'
 
-const { readFileSync } = require('node:fs')
-const { resolve } = require('node:path')
+import { readFileSync } from 'node:fs'
+import { resolve } from 'node:path'
 
-const { createSigner } = require('../../src')
+import { createSigner } from '../../src'
 
 const privateKeys = {
   HS: 'secretsecretsecret',

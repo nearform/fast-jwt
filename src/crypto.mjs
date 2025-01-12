@@ -19,7 +19,7 @@ const {
 import { sign as directSign, verify as directVerify } from 'node:crypto'
 import { joseToDer, derToJose } from 'ecdsa-sig-formatter'
 import { default as Cache } from 'mnemonist/lru-cache.js'
-import { TokenError } from './error.js'
+import { TokenError } from './error.mjs'
 
 export const base64UrlMatcher = /[=+/]/g
 const encoderMap = { '=': '', '+': '-', '/': '_' }

@@ -2,7 +2,7 @@
 
 import { test } from 'node:test'
 
-import { createDecoder, createSigner } from '../src/index.js'
+import { createDecoder, createSigner } from '../src/index.mjs'
 
 const secret = 'secret'
 const decoder = createDecoder({ key: secret })

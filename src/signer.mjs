@@ -9,9 +9,9 @@ import {
   edAlgorithms,
   detectPrivateKeyAlgorithm,
   createSignature
-} from './crypto.js'
-import { TokenError } from './error.js'
-import { getAsyncKey, ensurePromiseCallback } from './utils.js'
+} from './crypto.mjs'
+import { TokenError } from './error.mjs'
+import { getAsyncKey, ensurePromiseCallback } from './utils.mjs'
 import { createPrivateKey, createSecretKey } from 'node:crypto'
 import { parse as parseMs } from '@lukeed/ms'
 

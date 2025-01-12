@@ -3,10 +3,10 @@
 import { createPublicKey, createSecretKey } from 'node:crypto'
 import { default as Cache } from 'mnemonist/lru-cache.js'
 
-import { hsAlgorithms, verifySignature, detectPublicKeyAlgorithms } from './crypto.js'
-import { createDecoder } from './decoder.js'
-import { TokenError } from './error.js'
-import { getAsyncKey, ensurePromiseCallback, hashToken } from './utils.js'
+import { hsAlgorithms, verifySignature, detectPublicKeyAlgorithms } from './crypto.mjs'
+import { createDecoder } from './decoder.mjs'
+import { TokenError } from './error.mjs'
+import { getAsyncKey, ensurePromiseCallback, hashToken } from './utils.mjs'
 
 const defaultCacheSize = 1000
 

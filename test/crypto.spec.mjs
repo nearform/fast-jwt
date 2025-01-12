@@ -4,8 +4,8 @@ import { test } from 'node:test'
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 
-import { createSigner, createVerifier } from '../src/index.js'
-import { hsAlgorithms, rsaAlgorithms, detectPrivateKeyAlgorithm, detectPublicKeyAlgorithms } from '../src/crypto.js'
+import { createSigner, createVerifier } from '../src/index.mjs'
+import { hsAlgorithms, rsaAlgorithms, detectPrivateKeyAlgorithm, detectPublicKeyAlgorithms } from '../src/crypto.mjs'
 
 const start = Math.floor(Date.now() / 1000)
 

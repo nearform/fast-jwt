@@ -4,7 +4,7 @@ import { test } from 'node:test'
 import { default as jose } from 'jose'
 const { asKey } = jose.JWK
 
-import { createSigner, createVerifier } from '../src/index.js'
+import { createSigner, createVerifier } from '../src/index.mjs'
 
 const payload = {
   text: "It’s a dangerous business, Frodo, going out your door. You step onto the road, and if you don't keep your feet, there’s no knowing where you might be swept off to."
