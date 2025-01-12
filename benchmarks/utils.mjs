@@ -2,6 +2,7 @@
 
 import nodeRsJwt, { Algorithm } from '@node-rs/jsonwebtoken'
 import { run, bench, summary } from 'mitata'
+import { createSecretKey } from 'crypto'
 import { readFileSync } from 'fs'
 import { mkdir, writeFile } from 'fs/promises'
 import { dirname, resolve } from 'path'
@@ -126,6 +127,16 @@ export function compareDecoding(token, algorithm) {
   return runMitata(tests, mitataOptions)
 }
 
+function jsonwebtokenKeyFromString(publicKey) {
+  const jsonwebtokenBuffer = Buffer.from(publicKey)
+  const jwtSecretDataview = new DataView(
+    jsonwebtokenBuffer.buffer,
+    jsonwebtokenBuffer.byteOffset,
+    jsonwebtokenBuffer.byteLength
+  )
+  return createSecretKey(jwtSecretDataview)
+}
+
 export async function compareSigning(payload, algorithm, privateKey, publicKey) {
   const isEdDSA = algorithm.slice(0, 2) === 'Ed'
 
@@ -134,6 +145,7 @@ export async function compareSigning(payload, algorithm, privateKey, publicKey) 
   const fastjwtVerify = createVerifier({ key: publicKey })
 
   const josePrivateKey = asKey(privateKey)
+  const jsonwebtokenKey = jsonwebtokenKeyFromString(publicKey)
   const joseOptions = {
     algorithm,
     iat: false,
@@ -150,7 +162,7 @@ export async function compareSigning(payload, algorithm, privateKey, publicKey) 
     })
     const jsonwebtokenGenerated = isEdDSA
       ? null
-      : jsonwebtokenSign(payload, privateKey, { algorithm, noTimestamp: true })
+      : jsonwebtokenSign(payload, jsonwebtokenKey, { algorithm, noTimestamp: true })
 
     log('-------')
     log(`Generated ${algorithm} tokens:`)
@@ -162,7 +174,7 @@ export async function compareSigning(payload, algorithm, privateKey, publicKey) 
     log(`@node-rs/jsonwebtoken: ${JSON.stringify(nodeRsGenerated)}`)
     log('Generated tokens verification:')
     if (!isEdDSA) {
-      log(`         jsonwebtoken: ${JSON.stringify(jsonwebtokenVerify(jsonwebtokenGenerated, publicKey))}`)
+      log(`         jsonwebtoken: ${JSON.stringify(jsonwebtokenVerify(jsonwebtokenGenerated, jsonwebtokenKey))}`)
     }
     log(`                 jose: ${JSON.stringify(joseVerify(joseGenerated, asKey(publicKey)))}`)
     log(`              fastjwt: ${JSON.stringify(fastjwtVerify(fastjwtGenerated))}`)
@@ -181,10 +193,10 @@ export async function compareSigning(payload, algorithm, privateKey, publicKey) 
   if (!isEdDSA) {
     Object.assign(tests, {
       [`${algorithm} - jsonwebtoken (sync)`]: function () {
-        jsonwebtokenSign(payload, privateKey, { algorithm, noTimestamp: true })
+        jsonwebtokenSign(payload, jsonwebtokenKey, { algorithm, noTimestamp: true })
       },
       [`${algorithm} - jsonwebtoken (async)`]: async function () {
-        return new Promise(resolve => jsonwebtokenSign(payload, privateKey, { algorithm, noTimestamp: true }, resolve))
+        return new Promise(resolve => jsonwebtokenSign(payload, jsonwebtokenKey, { algorithm, noTimestamp: true }, resolve))
       }
     })
   }
@@ -216,12 +228,13 @@ export function compareVerifying(token, algorithm, publicKey) {
   const fastjwtCachedVerifyAsync = createVerifier({ key: async () => publicKey, cache: true })
 
   const josePublicKey = asKey(publicKey)
+  const jsonwebtokenKey = jsonwebtokenKeyFromString(publicKey)
 
   if ((process.env.NODE_DEBUG || '').includes('fast-jwt')) {
     log('-------')
     log(`Verified ${algorithm} tokens:`)
     if (!isEdDSA) {
-      log(`        jsonwebtoken: ${JSON.stringify(jsonwebtokenVerify(token, publicKey))}`)
+      log(`        jsonwebtoken: ${JSON.stringify(jsonwebtokenVerify(token, jsonwebtokenKey))}`)
     }
     log(`                jose: ${JSON.stringify(joseVerify(token, josePublicKey))}`)
     log(`             fastjwt: ${JSON.stringify(fastjwtVerify(token))}`)
@@ -250,10 +263,10 @@ export function compareVerifying(token, algorithm, publicKey) {
 
   if (!isEdDSA) {
     tests[`${algorithm} - jsonwebtoken (sync)`] = function () {
-      jsonwebtokenVerify(token, publicKey)
+      jsonwebtokenVerify(token, jsonwebtokenKey)
     }
     tests[`${algorithm} - jsonwebtoken (async)`] = async function () {
-      return new Promise(resolve => jsonwebtokenVerify(token, publicKey, resolve))
+      return new Promise(resolve => jsonwebtokenVerify(token, jsonwebtokenKey, resolve))
     }
   }
 
