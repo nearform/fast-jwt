@@ -1,8 +1,8 @@
 'use strict'
 
-const { test } = require('node:test')
+import { test } from 'node:test'
 
-const { createDecoder, createSigner } = require('../src')
+import { createDecoder, createSigner } from '../src/index.js'
 
 const secret = 'secret'
 const decoder = createDecoder({ key: secret })

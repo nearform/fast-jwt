@@ -1,11 +1,10 @@
 'use strict'
 
-const { test } = require('node:test')
-const {
-  JWK: { asKey }
-} = require('jose')
+import { test } from 'node:test'
+import { default as jose } from 'jose'
+const { asKey } = jose.JWK
 
-const { createVerifier, createSigner } = require('../src')
+import { createSigner, createVerifier } from '../src/index.js'
 
 const payload = {
   text: "It’s a dangerous business, Frodo, going out your door. You step onto the road, and if you don't keep your feet, there’s no knowing where you might be swept off to."

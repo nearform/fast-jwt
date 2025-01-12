@@ -1,12 +1,14 @@
 'use strict'
 
-const { createHash } = require('node:crypto')
-const { readFileSync } = require('node:fs')
-const { resolve } = require('node:path')
-const { test } = require('node:test')
+import { createHash } from 'node:crypto'
+import { readFileSync } from 'node:fs'
+import { resolve } from 'node:path'
+import { test } from 'node:test'
 
-const { createSigner, createVerifier, TokenError } = require('../src')
-const { hashToken } = require('../src/utils')
+import { createSigner, createVerifier, TokenError } from '../src/index.js'
+import { hashToken } from '../src/utils.js'
+
+const __dirname = import.meta.dirname
 
 const privateKeys = {
   HS: 'secretsecretsecret',

@@ -1,6 +1,6 @@
 'use strict'
 
-const {
+import {
   base64UrlMatcher,
   base64UrlReplacer,
   hsAlgorithms,
@@ -9,11 +9,11 @@ const {
   edAlgorithms,
   detectPrivateKeyAlgorithm,
   createSignature
-} = require('./crypto')
-const { TokenError } = require('./error')
-const { getAsyncKey, ensurePromiseCallback } = require('./utils')
-const { createPrivateKey, createSecretKey } = require('node:crypto')
-const { parse: parseMs } = require('@lukeed/ms')
+} from './crypto.js'
+import { TokenError } from './error.js'
+import { getAsyncKey, ensurePromiseCallback } from './utils.js'
+import { createPrivateKey, createSecretKey } from 'node:crypto'
+import { parse as parseMs } from '@lukeed/ms'
 
 const supportedAlgorithms = new Set([...hsAlgorithms, ...esAlgorithms, ...rsaAlgorithms, ...edAlgorithms, 'none'])
 
@@ -165,7 +165,7 @@ function sign(
   return promise
 }
 
-module.exports = function createSigner(options) {
+export function createSigner(options) {
   let {
     key,
     algorithm,

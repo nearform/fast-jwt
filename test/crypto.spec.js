@@ -1,13 +1,15 @@
 'use strict'
 
-const { test } = require('node:test')
-const { readFileSync } = require('node:fs')
-const { resolve } = require('node:path')
+import { test } from 'node:test'
+import { readFileSync } from 'node:fs'
+import { resolve } from 'node:path'
 
-const { createVerifier, createSigner } = require('../src')
-const { hsAlgorithms, rsaAlgorithms, detectPrivateKeyAlgorithm, detectPublicKeyAlgorithms } = require('../src/crypto')
+import { createSigner, createVerifier } from '../src/index.js'
+import { hsAlgorithms, rsaAlgorithms, detectPrivateKeyAlgorithm, detectPublicKeyAlgorithms } from '../src/crypto.js'
 
 const start = Math.floor(Date.now() / 1000)
+
+const __dirname = import.meta.dirname
 
 const privateKeys = {
   HS: 'secretsecretsecret',

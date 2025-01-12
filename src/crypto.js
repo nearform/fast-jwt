@@ -1,26 +1,27 @@
 'use strict'
 
-const asn = require('asn1.js')
-const {
+import { default as asn } from 'asn1.js'
+import {
   createHmac,
   createVerify,
   createSign,
   timingSafeEqual,
   createPublicKey,
-  constants: {
-    RSA_PKCS1_PSS_PADDING,
-    RSA_PSS_SALTLEN_DIGEST,
-    RSA_PKCS1_PADDING,
-    RSA_PSS_SALTLEN_MAX_SIGN,
-    RSA_PSS_SALTLEN_AUTO
-  }
-} = require('node:crypto')
-const { sign: directSign, verify: directVerify } = require('node:crypto')
-const { joseToDer, derToJose } = require('ecdsa-sig-formatter')
-const Cache = require('mnemonist/lru-cache')
-const { TokenError } = require('./error')
+  constants as cryptoConstants
+} from 'node:crypto'
+const {
+  RSA_PKCS1_PSS_PADDING,
+  RSA_PSS_SALTLEN_DIGEST,
+  RSA_PKCS1_PADDING,
+  RSA_PSS_SALTLEN_MAX_SIGN,
+  RSA_PSS_SALTLEN_AUTO
+} = cryptoConstants
+import { sign as directSign, verify as directVerify } from 'node:crypto'
+import { joseToDer, derToJose } from 'ecdsa-sig-formatter'
+import { default as Cache } from 'mnemonist/lru-cache.js'
+import { TokenError } from './error.js'
 
-const base64UrlMatcher = /[=+/]/g
+export const base64UrlMatcher = /[=+/]/g
 const encoderMap = { '=': '', '+': '-', '/': '_' }
 
 const privateKeyPemMatcher = /^-----BEGIN(?: (RSA|EC|ENCRYPTED))? PRIVATE KEY-----/
@@ -29,10 +30,10 @@ const publicKeyX509CertMatcher = '-----BEGIN CERTIFICATE-----'
 const privateKeysCache = new Cache(1000)
 const publicKeysCache = new Cache(1000)
 
-const hsAlgorithms = ['HS256', 'HS384', 'HS512']
-const esAlgorithms = ['ES256', 'ES384', 'ES512']
-const rsaAlgorithms = ['RS256', 'RS384', 'RS512', 'PS256', 'PS384', 'PS512']
-const edAlgorithms = ['EdDSA']
+export const hsAlgorithms = ['HS256', 'HS384', 'HS512']
+export const esAlgorithms = ['ES256', 'ES384', 'ES512']
+export const rsaAlgorithms = ['RS256', 'RS384', 'RS512', 'PS256', 'PS384', 'PS512']
+export const edAlgorithms = ['EdDSA']
 const ecCurves = {
   '1.2.840.10045.3.1.7': { bits: '256', names: ['P-256', 'prime256v1'] },
   '1.3.132.0.10': { bits: '256', names: ['secp256k1'] },
@@ -61,7 +62,7 @@ const ECPrivateKey = asn.define('ECPrivateKey', function () {
   )
 })
 
-function base64UrlReplacer(c) {
+export function base64UrlReplacer(c) {
   return encoderMap[c]
 }
 
@@ -166,7 +167,7 @@ function performDetectPublicKeyAlgorithms(key) {
   return [`ES${curve.bits}`]
 }
 
-function detectPrivateKeyAlgorithm(key, providedAlgorithm) {
+export function detectPrivateKeyAlgorithm(key, providedAlgorithm) {
   if (key instanceof Buffer) {
     key = key.toString('utf-8')
   } else if (typeof key !== 'string') {
@@ -200,7 +201,7 @@ function detectPrivateKeyAlgorithm(key, providedAlgorithm) {
   }
 }
 
-function detectPublicKeyAlgorithms(key) {
+export function detectPublicKeyAlgorithms(key) {
   if (!key) {
     return 'none'
   }
@@ -231,7 +232,7 @@ function detectPublicKeyAlgorithms(key) {
   }
 }
 
-function createSignature(algorithm, key, input) {
+export function createSignature(algorithm, key, input) {
   try {
     const type = algorithm.slice(0, 2)
     const alg = `sha${algorithm.slice(2)}`
@@ -272,7 +273,7 @@ function createSignature(algorithm, key, input) {
   }
 }
 
-function verifySignature(algorithm, key, input, signature) {
+export function verifySignature(algorithm, key, input, signature) {
   try {
     const type = algorithm.slice(0, 2)
     const alg = `SHA${algorithm.slice(2)}`
@@ -311,17 +312,4 @@ function verifySignature(algorithm, key, input, signature) {
     /* istanbul ignore next */
     throw new TokenError(TokenError.codes.verifyError, 'Cannot verify the signature.', { originalError: e })
   }
-}
-
-module.exports = {
-  base64UrlMatcher,
-  base64UrlReplacer,
-  hsAlgorithms,
-  rsaAlgorithms,
-  esAlgorithms,
-  edAlgorithms,
-  detectPrivateKeyAlgorithm,
-  detectPublicKeyAlgorithms,
-  createSignature,
-  verifySignature
 }

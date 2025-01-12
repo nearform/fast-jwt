@@ -1,15 +1,17 @@
 'use strict'
 
-const { readFileSync } = require('node:fs')
-const { sign: jsonwebtokenSign, verify: jsonwebtokenVerify } = require('jsonwebtoken')
-const {
-  JWT: { sign: joseSign, verify: joseVerify },
-  JWK: { asKey }
-} = require('jose')
-const { resolve } = require('node:path')
-const { test } = require('node:test')
+import { readFileSync } from 'node:fs'
+import { default as jsonwebtoken } from 'jsonwebtoken'
+const { sign: jsonwebtokenSign, verify: jsonwebtokenVerify } = jsonwebtoken
+import { default as jose } from 'jose'
+const { sign: joseSign, verify: joseVerify } = jose.JWT
+const { asKey } = jose.JWK
+import { resolve } from 'node:path'
+import { test } from 'node:test'
 
-const { createSigner, createVerifier } = require('../src')
+import { createSigner, createVerifier } from '../src/index.js'
+
+const __dirname = import.meta.dirname
 
 const privateKeys = {
   HS: 'secretsecretsecret',

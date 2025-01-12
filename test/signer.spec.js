@@ -1,10 +1,12 @@
 'use strict'
 
-const { readFileSync } = require('node:fs')
-const { resolve } = require('node:path')
-const { test } = require('node:test')
+import { readFileSync } from 'node:fs'
+import { resolve } from 'node:path'
+import { test } from 'node:test'
 
-const { createSigner, createVerifier, TokenError, createDecoder } = require('../src')
+import { createSigner, createVerifier, TokenError, createDecoder } from '../src/index.js'
+
+const __dirname = import.meta.dirname
 
 const privateKeys = {
   HS: 'secretsecretsecret',

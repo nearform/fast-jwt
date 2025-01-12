@@ -13,3 +13,7 @@ npm-debug.log
 npm-error.log
 yarn-debug.log
 yarn-error.log
+
+lib
+types
+dist
