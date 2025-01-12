@@ -1,17 +1,17 @@
 'use strict'
 
 import { isMainThread } from 'worker_threads'
-import { privateKeys, publicKeys, compareSigning, saveLogs } from './utils.mjs'
+import { privateKeys, publicKeys, compareSigning, saveLogs, algorithms } from './utils.mjs'
 
 async function runSuites() {
   if (!isMainThread) {
-    const algorightm = process.env.CURRENT_ALGORITHM
-    compareSigning({ a: 1, b: 2, c: 3 }, algorightm, privateKeys[algorightm], publicKeys[algorightm])
+    const algorithm = process.env.CURRENT_ALGORITHM
+    compareSigning({ a: 1, b: 2, c: 3 }, algorithm, privateKeys[algorithm], publicKeys[algorithm])
     return
   } else {
-    for (const algorightm of ['HS256', 'HS512', 'ES512', 'RS512', 'PS512', 'EdDSA']) {
-      process.env.CURRENT_ALGORITHM = algorightm
-      await compareSigning({ a: 1, b: 2, c: 3 }, algorightm, privateKeys[algorightm], publicKeys[algorightm])
+    for (const algorithm of algorithms) {
+      process.env.CURRENT_ALGORITHM = algorithm
+      await compareSigning({ a: 1, b: 2, c: 3 }, algorithm, privateKeys[algorithm], publicKeys[algorithm])
     }
   }
 
