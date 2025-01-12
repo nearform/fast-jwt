@@ -31,16 +31,26 @@
   "bugs": {
     "url": "https://github.com/nearform/fast-jwt/issues"
   },
-  "main": "dist/cjs/index.js",
-  "module": "dist/es/index.js",
-  "typings": "src/index.d.ts",
-  "types": "src/index.d.ts",
+  "main": "./dist/index.js",
+  "module": "./dist/index.mjs",
+  "types": "./src/index.d.ts",
+  "exports": {
+    "import": {
+      "types": "./src/index.d.ts",
+      "import": "./dist/index.mjs"
+    },
+    "require": {
+      "types": "./src/index.d.ts",
+      "require": "./dist/index.js"
+    }
+  },
+  "sideEffects": false,
   "files": [
-    "src/index.d.ts",
-    "dist/**"
+    "dist/**",
+    "./src/index.d.ts"
   ],
   "scripts": {
-    "build": "tsc -p tsconfig-cjs.json && tsc -p tsconfig-es.json && renamer --find mjs --replace js ./dist/cjs/*",
+    "build": "tsup src/index.mjs --format cjs,esm --clean --minify --sourcemap",
     "postpublish": "git push origin && git push origin -f --tags",
     "lint": "eslint .",
     "test": "node --test --experimental-test-coverage && tsd",
@@ -73,8 +83,8 @@
     "jose": "^2.0.7",
     "jsonwebtoken": "^9.0.2",
     "prettier": "^3.4.2",
-    "renamer": "~5.0.2",
     "tsd": "^0.31.2",
+    "tsup": "~8.3.5",
     "typescript": "^5.7.2",
     "typescript-eslint": "^8.18.0"
   },
