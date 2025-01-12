@@ -190,7 +190,7 @@ export async function compareSigning(payload, algorithm, privateKey, publicKey) 
     log(`@node-rs/jsonwebtoken: ${JSON.stringify(nodeRsGenerated)}`)
     log('Generated tokens verification:')
     if (!isEdDSA) {
-      log(`         jsonwebtoken: ${JSON.stringify(jsonwebtokenVerify(jsonwebtokenGenerated, asKey(publicKey)))}`)
+      log(`         jsonwebtoken: ${JSON.stringify(jsonwebtokenVerify(jsonwebtokenGenerated, jsonwebtokenKey))}`)
     }
     log(`                 jose: ${JSON.stringify(joseVerify(joseGenerated, asKey(publicKey)))}`)
     log(`              fastjwt: ${JSON.stringify(fastjwtVerify(fastjwtGenerated))}`)
