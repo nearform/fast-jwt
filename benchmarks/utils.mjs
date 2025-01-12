@@ -2,7 +2,7 @@
 
 import nodeRsJwt, { Algorithm } from '@node-rs/jsonwebtoken'
 import { run, bench, summary } from 'mitata'
-import { createSecretKey } from 'crypto'
+import { createSecretKey, createPublicKey, createPrivateKey } from 'crypto'
 import { readFileSync } from 'fs'
 import { mkdir, writeFile } from 'fs/promises'
 import { dirname, resolve } from 'path'
@@ -129,14 +129,26 @@ export function compareDecoding(token, algorithm) {
   return runMitata(tests, mitataOptions)
 }
 
-function jsonwebtokenKeyFromString(publicKey) {
-  const jsonwebtokenBuffer = Buffer.from(publicKey)
+function jsonwebtokenPrivateKeyFromString(privateKey) {
+  return jsonwebtokenKeyFromString(privateKey, createPrivateKey)
+}
+
+function jsonwebtokenSecretKeyFromString(publicKey) {
+  return jsonwebtokenKeyFromString(publicKey, createSecretKey)
+}
+
+function jsonwebtokenPublicKeyFromString(publicKey) {
+  return jsonwebtokenKeyFromString(publicKey, createPublicKey)
+}
+
+function jsonwebtokenKeyFromString(key, keyFunc) {
+  const jsonwebtokenBuffer = Buffer.from(key)
   const jwtSecretDataview = new DataView(
     jsonwebtokenBuffer.buffer,
     jsonwebtokenBuffer.byteOffset,
     jsonwebtokenBuffer.byteLength
   )
-  return createSecretKey(jwtSecretDataview)
+  return keyFunc(jwtSecretDataview)
 }
 
 export async function compareSigning(payload, algorithm, privateKey, publicKey) {
@@ -147,7 +159,9 @@ export async function compareSigning(payload, algorithm, privateKey, publicKey) 
   const fastjwtVerify = createVerifier({ key: publicKey })
 
   const josePrivateKey = asKey(privateKey)
-  const jsonwebtokenKey = jsonwebtokenKeyFromString(publicKey)
+  const jsonwebtokenKey = /^(?:RS|PS|ES)/.test(algorithm)
+    ? jsonwebtokenPrivateKeyFromString(privateKey)
+    : jsonwebtokenSecretKeyFromString(publicKey)
   const joseOptions = {
     algorithm,
     iat: false,
@@ -176,7 +190,7 @@ export async function compareSigning(payload, algorithm, privateKey, publicKey) 
     log(`@node-rs/jsonwebtoken: ${JSON.stringify(nodeRsGenerated)}`)
     log('Generated tokens verification:')
     if (!isEdDSA) {
-      log(`         jsonwebtoken: ${JSON.stringify(jsonwebtokenVerify(jsonwebtokenGenerated, jsonwebtokenKey))}`)
+      log(`         jsonwebtoken: ${JSON.stringify(jsonwebtokenVerify(jsonwebtokenGenerated, asKey(publicKey)))}`)
     }
     log(`                 jose: ${JSON.stringify(joseVerify(joseGenerated, asKey(publicKey)))}`)
     log(`              fastjwt: ${JSON.stringify(fastjwtVerify(fastjwtGenerated))}`)
@@ -230,7 +244,9 @@ export function compareVerifying(token, algorithm, publicKey) {
   const fastjwtCachedVerifyAsync = createVerifier({ key: async () => publicKey, cache: true })
 
   const josePublicKey = asKey(publicKey)
-  const jsonwebtokenKey = jsonwebtokenKeyFromString(publicKey)
+  const jsonwebtokenKey = /^(?:RS|PS|ES)/.test(algorithm)
+    ? jsonwebtokenPublicKeyFromString(publicKey)
+    : jsonwebtokenSecretKeyFromString(publicKey)
 
   if ((process.env.NODE_DEBUG || '').includes('fast-jwt')) {
     log('-------')
