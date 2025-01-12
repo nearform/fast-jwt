@@ -9,7 +9,7 @@ async function runSuites() {
     compareSigning({ a: 1, b: 2, c: 3 }, algorightm, privateKeys[algorightm], publicKeys[algorightm])
     return
   } else {
-    for (const algorightm of ['HS512', 'ES512', 'RS512', 'PS512', 'EdDSA']) {
+    for (const algorightm of ['HS256', 'HS512', 'ES512', 'RS512', 'PS512', 'EdDSA']) {
       process.env.CURRENT_ALGORITHM = algorightm
       await compareSigning({ a: 1, b: 2, c: 3 }, algorightm, privateKeys[algorightm], publicKeys[algorightm])
     }
