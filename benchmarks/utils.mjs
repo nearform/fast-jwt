@@ -30,7 +30,7 @@ const mitataOptions = {
   throw: true
 }
 
-export const algorithms = ['PS512']
+export const algorithms = ['HS256', 'RS256', 'HS512', 'ES512', 'RS512', 'PS512', 'EdDSA']
 
 export const tokens = {
   /*
@@ -263,11 +263,7 @@ export function compareVerifying(token, algorithm, publicKey) {
 
   const tests = {
     [`${algorithm} - fast-jwt (sync)`]: function () {
-try {
-        fastjwtVerify(token)
-} catch(e){
-  console.log(e)
-}
+      fastjwtVerify(token)
     },
     [`${algorithm} - fast-jwt (async)`]: async function () {
       return fastjwtVerifyAsync(token)
@@ -279,11 +275,7 @@ try {
       return fastjwtCachedVerifyAsync(token)
     },
     [`${algorithm} - jose (sync)`]: function () {
-try {
-        joseVerify(token, josePublicKey)
-} catch(e){
-  console.log(e)
-}
+      joseVerify(token, josePublicKey)
     }
   }
 
