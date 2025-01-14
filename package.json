@@ -40,7 +40,7 @@
   "scripts": {
     "postpublish": "git push origin && git push origin -f --tags",
     "lint": "eslint .",
-    "test": "node --test --experimental-test-coverage && tsd",
+    "test": "node --test --experimental-test-coverage test/**.spec.js && tsd",
     "test:ci": "npm run lint && npm run test",
     "test:watch": "node --test --watch --experimental-test-coverage",
     "test:generate-keys": "node benchmarks/keys/generate-keys.js",
