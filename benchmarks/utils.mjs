@@ -2,6 +2,7 @@
 
 import nodeRsJwt, { Algorithm } from '@node-rs/jsonwebtoken'
 import cronometro from 'cronometro'
+import { createSecretKey, createPublicKey, createPrivateKey } from 'crypto'
 import { readFileSync } from 'fs'
 import { mkdir, writeFile } from 'fs/promises'
 import { dirname, resolve } from 'path'
@@ -31,6 +32,8 @@ const cronometroOptions = {
   print: { compare: true, compareMode: 'base' }
 }
 
+export const algorithms = ['HS256', 'RS256', 'HS512', 'ES512', 'RS512', 'PS512', 'EdDSA']
+
 export const tokens = {
   /*
     Regenerate these tokens after regenerating the keys
@@ -47,7 +50,7 @@ export const tokens = {
   RS512:
     'eyJhbGciOiJSUzUxMiIsInR5cCI6IkpXVCIsImtpZCI6IjEyMyJ9.eyJhIjoxLCJiIjoyLCJjIjozLCJpYXQiOjE1ODA5MTUyOTZ9.JEHZDpA99hww-5-PKcCvwialNy1QcyDSJXJ-qvzV0fU56NXPxZRfn2rEwdX4g-8N-oXLsjCjNZzr0Hl39FXSK0ke_vnzwPW6D4r5mVL6Ak0K-jMgNFidxElM7PRg2XE7N72dI5ClQJCJMqex7NYmIN4OUj9psx1NDv8bM_Oj44kXyI6ozYrkV-6tvowLXUX9BOZH55jF3aAA1DLI4rVBKc_JYqiHf376xu6zvFxzZ8XP3-S-dTR7OBRZLe5_Y6YJweWiL2n0lRkEjYrpK3Ht9MlfaCmW2_KMH0DpUKVS6nnKmzqGjdutnzP6PYXZsJikCQOrIcPW97LdQWLLRIptSpn7YHH1xbNbq__kryaggwpKuNd6qhdXqREEhpaYl3Xc4yjGnBR0zMq7J-GxDo7mSujMMFmb4ZQLQWwANCEHSfqYIJYp7Upc1Rd__lo56Mr1Bd9claZPBNgKqAvhlmjZT9lELA-eyEzhH_yrcVzMcVpCC_oVIzvpiDQ0jgOLcDIz0q8uzoSCks3M0IK3flefopY8g1e-OExqBoYrfoktFciabLfTM5g-rIpC0CrrDN-TfXLqZAPkIv7suGBmQn9-HbcFL8eZEIg-q6D3o7EAfCO7ki9ncrm47C2y5SX3zDOjG37_5pN2JGWztfSFRQ-YbbEV13-TuKvRG3HLJjJQk6g',
   PS512:
-    'eyJhbGciOiJQUzUxMiIsInR5cCI6IkpXVCIsImtpZCI6IjEyMyJ9.eyJhIjoxLCJiIjoyLCJjIjozLCJpYXQiOjE1ODA5MTUyOTd9.IfPgE2aPz9dBzvb8hvn_RjBvdq5jLgfzRw-lM5Q2Ah67NYuRYjCzpvywJASY-0Y-tvk94kwwmDUpqR7nPPPlcv9o_OYQVGhPnndh6iMww0D-MGZwP0sqIauu6NgUsCY4rFG2_K8lxCYbdNThJJVDDN8v_VmKrK3qh7DJC89PE-ZbIMr4N3AuLww-vPgB-9hFmuVnjgO43scZb8C_SaA1HuSbw_SU6OWguAlaTP3zUKlyQmTvvx843J8byi5jDcqK4Rtah5gRaO8U1l6bzmVCKs8Fh3tv7A7GWs-eFukFu5dUr-Ig0iyIhPSAVOjnk0dEZ4s5YI1XaPrnm3wAKV9fyzSri2LaaElp_8Cy7xyJNDPgWSTUmm4BGU7m5x_zwamRbQ1zI7p-YxftwkL4Jl8VD1km7CP9T_6cOEt6RzSTNbTgkk3XhcqYZ0oTgAJ4nXa4j47-7E0n5drtM1xoYeWBaWQvXPdMwGTAwXMx33B1WOm80B7Ncn6AzZKtJtEYalFEKntNfJhWi5x9nZNc4-3cja4o1appVm5PWSOtV4mkLsrLL1T0x1c9ymyF_XtYkRAuxdOKaRs2N5YxHcikgX-iifI1Ih4l79BrWAgyioGjMTU78VMV_gLRQ1VLexmgYJLKL2fBUrBR-k8fI4VwbKEtEZF3wBINWBAp4-urFV3QVig',
+    'eyJhbGciOiJQUzUxMiIsInR5cCI6IkpXVCIsImtpZCI6IjEyMyJ9.eyJhIjoxLCJiIjoyLCJjIjozLCJpYXQiOjE3MzY3NzM0OTd9.KgJrc8DZI1XPOH3qh3xUn1_9Fpl-Js5OsBZCoPJJ9agfIPC1xkKGH7XQZId6P3_JWObZLmq2-17wB9-wUNQJA3wRH3wZpmWVrdY7qJDmAQT1cSqXHu4xfZaclG3jiawweLeGmAOcwnZFv0xsFaT-Pa_McTTl-BqNN20Kzs5GnLSCb8upy1xi73_hVwIqo9l3l02xFxcJp2UpELXLe6hzfsUZ43OEN-L4aYtLPKHW1KGGMz3TmNRfS0cjvC3swRr3B-jCdfcnofxHR2NBtPw0kkMePqWyr8k6O85vFYPlDyoNjbEIVtTwr2umJn_BA5IgDphj_Xa8YffHTg02-EUX9kKGhDhMKhx7Yeh_2wOyySPCG1gt1A5CxjndSvs14jCoA3F5GSPCWn0x2EG-mtUsERHXyNPuGvhlqrVAl5KYcGf8NgbDeVtSTbgy3ykFew76__d_P6j9GlIfvZ4rFVuAEvL4nhcBB7Tpp7Phtl72k19TlfeHe2REZkRMQ2Dc9FHH7gM-ey3A9m0ZT-IUFZkJgCVOjbgG3Vm7cDBmvn2oIGtsG6fkdHTHqWfUOcgkkJFEd28_75rnL-I_KhsXU8DCCVHedql-uMErwPiBThS9NqTv2ZqSVdEV4es0mK03X1IV3U6oXpP6sxOqE6FTrzDstEYTiZhQq8wDnWznlxaNWA8',
   EdDSA:
     'eyJhbGciOiJFZERTQSIsInR5cCI6IkpXVCIsImt0eSI6Ik9LUCIsImNydiI6IkVkMjU1MTkiLCJraWQiOiIxMjMifQ.eyJhIjoxLCJiIjoyLCJjIjozLCJpYXQiOjE1ODY3ODQ3ODF9.PDIxWOWhAHr-7Zy7UC8W4pRuk7dMYTD8xy0DR0N102P0pXK6U4r6THHe66muTdSM3qiDHZnync1WQp-10QFLCQ'
 }
@@ -129,6 +132,28 @@ export function compareDecoding(token, algorithm) {
   )
 }
 
+function jsonwebtokenPrivateKeyFromString(privateKey) {
+  return jsonwebtokenKeyFromString(privateKey, createPrivateKey)
+}
+
+function jsonwebtokenSecretKeyFromString(publicKey) {
+  return jsonwebtokenKeyFromString(publicKey, createSecretKey)
+}
+
+function jsonwebtokenPublicKeyFromString(publicKey) {
+  return jsonwebtokenKeyFromString(publicKey, createPublicKey)
+}
+
+function jsonwebtokenKeyFromString(key, keyFunc) {
+  const jsonwebtokenBuffer = Buffer.from(key)
+  const jwtSecretDataview = new DataView(
+    jsonwebtokenBuffer.buffer,
+    jsonwebtokenBuffer.byteOffset,
+    jsonwebtokenBuffer.byteLength
+  )
+  return keyFunc(jwtSecretDataview)
+}
+
 export async function compareSigning(payload, algorithm, privateKey, publicKey) {
   const isEdDSA = algorithm.slice(0, 2) === 'Ed'
 
@@ -137,6 +162,9 @@ export async function compareSigning(payload, algorithm, privateKey, publicKey) 
   const fastjwtVerify = createVerifier({ key: publicKey })
 
   const josePrivateKey = asKey(privateKey)
+  const jsonwebtokenKey = /^(?:RS|PS|ES)/.test(algorithm)
+    ? jsonwebtokenPrivateKeyFromString(privateKey)
+    : jsonwebtokenSecretKeyFromString(publicKey)
   const joseOptions = {
     algorithm,
     iat: false,
@@ -153,7 +181,7 @@ export async function compareSigning(payload, algorithm, privateKey, publicKey) 
     })
     const jsonwebtokenGenerated = isEdDSA
       ? null
-      : jsonwebtokenSign(payload, privateKey, { algorithm, noTimestamp: true })
+      : jsonwebtokenSign(payload, jsonwebtokenKey, { algorithm, noTimestamp: true })
 
     log('-------')
     log(`Generated ${algorithm} tokens:`)
@@ -165,7 +193,7 @@ export async function compareSigning(payload, algorithm, privateKey, publicKey) 
     log(`@node-rs/jsonwebtoken: ${JSON.stringify(nodeRsGenerated)}`)
     log('Generated tokens verification:')
     if (!isEdDSA) {
-      log(`         jsonwebtoken: ${JSON.stringify(jsonwebtokenVerify(jsonwebtokenGenerated, publicKey))}`)
+      log(`         jsonwebtoken: ${JSON.stringify(jsonwebtokenVerify(jsonwebtokenGenerated, jsonwebtokenKey))}`)
     }
     log(`                 jose: ${JSON.stringify(joseVerify(joseGenerated, asKey(publicKey)))}`)
     log(`              fastjwt: ${JSON.stringify(fastjwtVerify(fastjwtGenerated))}`)
@@ -184,10 +212,10 @@ export async function compareSigning(payload, algorithm, privateKey, publicKey) 
   if (!isEdDSA) {
     Object.assign(tests, {
       [`${algorithm} - jsonwebtoken (sync)`]: function () {
-        jsonwebtokenSign(payload, privateKey, { algorithm, noTimestamp: true })
+        jsonwebtokenSign(payload, jsonwebtokenKey, { algorithm, noTimestamp: true })
       },
       [`${algorithm} - jsonwebtoken (async)`]: function (done) {
-        jsonwebtokenSign(payload, privateKey, { algorithm, noTimestamp: true }, done)
+        jsonwebtokenSign(payload, jsonwebtokenKey, { algorithm, noTimestamp: true }, done)
       }
     })
   }
@@ -222,12 +250,15 @@ export function compareVerifying(token, algorithm, publicKey) {
   const fastjwtCachedVerifyAsync = createVerifier({ key: async () => publicKey, cache: true })
 
   const josePublicKey = asKey(publicKey)
+  const jsonwebtokenKey = /^(?:RS|PS|ES)/.test(algorithm)
+    ? jsonwebtokenPublicKeyFromString(publicKey)
+    : jsonwebtokenSecretKeyFromString(publicKey)
 
   if ((process.env.NODE_DEBUG || '').includes('fast-jwt')) {
     log('-------')
     log(`Verified ${algorithm} tokens:`)
     if (!isEdDSA) {
-      log(`        jsonwebtoken: ${JSON.stringify(jsonwebtokenVerify(token, publicKey))}`)
+      log(`        jsonwebtoken: ${JSON.stringify(jsonwebtokenVerify(token, jsonwebtokenKey))}`)
     }
     log(`                jose: ${JSON.stringify(joseVerify(token, josePublicKey))}`)
     log(`             fastjwt: ${JSON.stringify(fastjwtVerify(token))}`)
@@ -256,10 +287,10 @@ export function compareVerifying(token, algorithm, publicKey) {
 
   if (!isEdDSA) {
     tests[`${algorithm} - jsonwebtoken (sync)`] = function () {
-      jsonwebtokenVerify(token, publicKey)
+      jsonwebtokenVerify(token, jsonwebtokenKey)
     }
     tests[`${algorithm} - jsonwebtoken (async)`] = function (done) {
-      jsonwebtokenVerify(token, publicKey, done)
+      jsonwebtokenVerify(token, jsonwebtokenKey, done)
     }
   }
 

@@ -6,23 +6,23 @@ import { tokens, privateKeys, publicKeys, compareSigning, compareVerifying, save
 
 async function runSuites() {
   if (!isMainThread) {
-    const algorightm = process.env.CURRENT_ALGORITHM
+    const algorithm = process.env.CURRENT_ALGORITHM
 
     if (process.env.CURRENT_PHASE === 'sign') {
-      compareSigning({ a: 1, b: 2, c: 3 }, algorightm, privateKeys[algorightm], publicKeys[algorightm])
+      compareSigning({ a: 1, b: 2, c: 3 }, algorithm, privateKeys[algorithm], publicKeys[algorithm])
     } else {
-      compareVerifying(tokens[algorightm], algorightm, publicKeys[algorightm])
+      compareVerifying(tokens[algorithm], algorithm, publicKeys[algorithm])
     }
 
     return
   } else {
-    for (const algorightm of ['HS256', 'RS256']) {
-      process.env.CURRENT_ALGORITHM = algorightm
+    for (const algorithm of ['HS256', 'RS256']) {
+      process.env.CURRENT_ALGORITHM = algorithm
 
       process.env.CURRENT_PHASE = 'sign'
-      await compareSigning({ a: 1, b: 2, c: 3 }, algorightm, privateKeys[algorightm], publicKeys[algorightm])
+      await compareSigning({ a: 1, b: 2, c: 3 }, algorithm, privateKeys[algorithm], publicKeys[algorithm])
       process.env.CURRENT_PHASE = 'verify'
-      await compareVerifying(tokens[algorightm], algorightm, publicKeys[algorightm])
+      await compareVerifying(tokens[algorithm], algorithm, publicKeys[algorithm])
     }
   }
 
