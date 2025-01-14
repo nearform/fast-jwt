@@ -1,8 +1,8 @@
 'use strict'
 
-const { test } = require('node:test')
+import { test } from 'node:test'
 
-const { createDecoder } = require('../src')
+import { createDecoder } from '../src/index.mjs'
 
 const defaultDecoder = createDecoder()
 // const rawDecoder = createDecoder({ json: false })

@@ -1,6 +1,6 @@
 'use strict'
 
-const TOKEN_ERROR_CODES = {
+export const TOKEN_ERROR_CODES = {
   invalidType: 'FAST_JWT_INVALID_TYPE', //  Invalid token type
   invalidOption: 'FAST_JWT_INVALID_OPTION', // The option object is not valid
   invalidAlgorithm: 'FAST_JWT_INVALID_ALGORITHM', //  The token algorithm is invalid
@@ -20,7 +20,7 @@ const TOKEN_ERROR_CODES = {
   missingSignature: 'FAST_JWT_MISSING_SIGNATURE' // The token signature is missing
 }
 
-class TokenError extends Error {
+export class TokenError extends Error {
   constructor(code, message, additional) {
     super(message)
     Error.captureStackTrace(this, this.constructor)
@@ -43,9 +43,4 @@ TokenError.wrap = function (originalError, code, message) {
   }
 
   return new TokenError(code, message, { originalError })
-}
-
-module.exports = {
-  TokenError,
-  TOKEN_ERROR_CODES
 }

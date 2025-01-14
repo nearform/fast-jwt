@@ -1,12 +1,12 @@
 'use strict'
 
-const { createPublicKey, createSecretKey } = require('node:crypto')
-const Cache = require('mnemonist/lru-cache')
+import { createPublicKey, createSecretKey } from 'node:crypto'
+import { default as Cache } from 'mnemonist/lru-cache.js'
 
-const { hsAlgorithms, verifySignature, detectPublicKeyAlgorithms } = require('./crypto')
-const createDecoder = require('./decoder')
-const { TokenError } = require('./error')
-const { getAsyncKey, ensurePromiseCallback, hashToken } = require('./utils')
+import { hsAlgorithms, verifySignature, detectPublicKeyAlgorithms } from './crypto.mjs'
+import { createDecoder } from './decoder.mjs'
+import { TokenError } from './error.mjs'
+import { getAsyncKey, ensurePromiseCallback, hashToken } from './utils.mjs'
 
 const defaultCacheSize = 1000
 
@@ -360,7 +360,7 @@ function verify(
   return promise
 }
 
-module.exports = function createVerifier(options) {
+export function createVerifier(options) {
   let {
     key,
     algorithms: allowedAlgorithms,

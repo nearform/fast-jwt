@@ -1,7 +1,5 @@
 {
   "compilerOptions": {
-    "target": "es2019",
-    "module": "commonjs",
     "moduleResolution": "node",
     "jsx": "preserve",
     "outDir": "lib",

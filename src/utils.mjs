@@ -1,11 +1,11 @@
 'use strict'
 
-const { createHash } = require('node:crypto')
+import { createHash } from 'node:crypto'
 const algorithmMatcher = /"alg"\s*:\s*"[HERP]S(256|384)"/m
 const edAlgorithmMatcher = /"alg"\s*:\s*"EdDSA"/m
 const ed448CurveMatcher = /"crv"\s*:\s*"Ed448"/m
 
-function getAsyncKey(handler, decoded, callback) {
+export function getAsyncKey(handler, decoded, callback) {
   const result = handler(decoded, callback)
 
   if (result && typeof result.then === 'function') {
@@ -18,7 +18,7 @@ function getAsyncKey(handler, decoded, callback) {
   }
 }
 
-function ensurePromiseCallback(callback) {
+export function ensurePromiseCallback(callback) {
   if (typeof callback === 'function') {
     return [callback]
   }
@@ -42,7 +42,7 @@ function ensurePromiseCallback(callback) {
   ]
 }
 
-function hashToken(token) {
+export function hashToken(token) {
   const rawHeader = token.split('.', 1)[0]
   const header = Buffer.from(rawHeader, 'base64').toString('utf-8')
   let hasher = null
@@ -56,10 +56,4 @@ function hashToken(token) {
   }
 
   return hasher.update(token).digest('hex')
-}
-
-module.exports = {
-  getAsyncKey,
-  ensurePromiseCallback,
-  hashToken
 }
