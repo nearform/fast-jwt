@@ -54,7 +54,7 @@
     "@lukeed/ms": "^2.0.2",
     "asn1.js": "^5.4.1",
     "ecdsa-sig-formatter": "^1.0.11",
-    "mnemonist": "^0.39.8"
+    "mnemonist": "^0.40.0"
   },
   "devDependencies": {
     "@node-rs/jsonwebtoken": "^0.5.9",
