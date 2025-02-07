@@ -93,6 +93,15 @@ createVerifier<Record<string, number>>({
   checkTyp: 'JWT'
 })({ key: 1 }).then(console.log, console.log)
 
+// Verifier with cacheKeyBuilder
+createVerifier<Record<string, number>>({
+  key: 'KEY',
+  algorithms: ['RS256'],
+  requiredClaims: ['aud'],
+  checkTyp: 'JWT',
+  cacheKeyBuilder: (token: string) => token
+})({ key: 1 }).then(console.log, console.log)
+
 // Errors
 const wrapped = TokenError.wrap(new Error('ORIGINAL'), 'FAST_JWT_INVALID_TYPE', 'MESSAGE')
 wrapped.code === 'FAST_JWT_INVALID_TYPE'

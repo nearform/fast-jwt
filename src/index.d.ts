@@ -140,6 +140,7 @@ export interface VerifierOptions {
   clockTolerance?: number
   requiredClaims?: Array<string>
   checkTyp?: string
+  cacheKeyBuilder?: (token: string) => string
 }
 
 export interface PrivateKey {
