@@ -105,7 +105,7 @@ export function compareDecoding(token, algorithm) {
     log('-------')
   }
 
-  return cronometro(
+  const tests = 
     {
       [`${algorithm} - fast-jwt`]: function () {
         fastjwtDecoder(token)
@@ -125,9 +125,9 @@ export function compareDecoding(token, algorithm) {
       [`${algorithm} - jose (complete)`]: function () {
         joseDecode(token, { complete: true })
       }
-    },
-    cronometroOptions
-  )
+  }
+
+  return runMitata(tests)
 }
 
 export async function compareSigning(payload, algorithm, privateKey, publicKey) {
