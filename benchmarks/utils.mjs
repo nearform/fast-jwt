@@ -1,8 +1,7 @@
 'use strict'
 
 import nodeRsJwt, { Algorithm } from '@node-rs/jsonwebtoken'
-import cronometro from 'cronometro'
-import { run, bench, summary, do_not_optimize } from 'mitata'
+import { run, bench, summary } from 'mitata'
 import { readFileSync } from 'fs'
 import { mkdir, writeFile } from 'fs/promises'
 import { dirname, resolve } from 'path'
@@ -23,14 +22,18 @@ const { sign: nodeRsSign, signSync: nodeRsSignSync, verifySync: nodeRsVerifySync
 const { sign: joseSign, verify: joseVerify, decode: joseDecode } = JWTJose
 const { asKey } = JWKJose
 
-const iterations = process.env.BENCHMARK_ITERATIONS || 10000
+//const iterations = process.env.BENCHMARK_ITERATIONS || 10000
 
 const output = []
-const cronometroOptions = {
-  iterations: Number.parseInt(iterations, 10),
-  warmup: true,
-  print: { compare: true, compareMode: 'base' }
+const mitataOptions = {
+  format: 'mitata'
 }
+
+//const cronometroOpts = {
+//  iterations: Number.parseInt(iterations, 10),
+//  warmup: true,
+//  print: { compare: true, compareMode: 'base' }
+//}
 
 export const tokens = {
   /*
@@ -105,29 +108,28 @@ export function compareDecoding(token, algorithm) {
     log('-------')
   }
 
-  const tests = 
-    {
-      [`${algorithm} - fast-jwt`]: function () {
-        fastjwtDecoder(token)
-      },
-      [`${algorithm} - fast-jwt (complete)`]: function () {
-        fastjwtCompleteDecoder(token)
-      },
-      [`${algorithm} - jsonwebtoken`]: function () {
-        jsonwebtokenDecode(token)
-      },
-      [`${algorithm} - jsonwebtoken (complete)`]: function () {
-        jsonwebtokenDecode(token, { complete: true })
-      },
-      [`${algorithm} - jose`]: function () {
-        joseDecode(token)
-      },
-      [`${algorithm} - jose (complete)`]: function () {
-        joseDecode(token, { complete: true })
-      }
+  const tests = {
+    [`${algorithm} - fast-jwt`]: function () {
+      fastjwtDecoder(token)
+    },
+    [`${algorithm} - fast-jwt (complete)`]: function () {
+      fastjwtCompleteDecoder(token)
+    },
+    [`${algorithm} - jsonwebtoken`]: function () {
+      jsonwebtokenDecode(token)
+    },
+    [`${algorithm} - jsonwebtoken (complete)`]: function () {
+      jsonwebtokenDecode(token, { complete: true })
+    },
+    [`${algorithm} - jose`]: function () {
+      joseDecode(token)
+    },
+    [`${algorithm} - jose (complete)`]: function () {
+      joseDecode(token, { complete: true })
+    }
   }
 
-  return runMitata(tests)
+  return runMitata(tests, mitataOptions)
 }
 
 export async function compareSigning(payload, algorithm, privateKey, publicKey) {
@@ -199,10 +201,20 @@ export async function compareSigning(payload, algorithm, privateKey, publicKey) 
     },
     [`${algorithm} - fast-jwt (async)`]: async function () {
       return new Promise(resolve => fastjwtSignAsync(payload, resolve))
+    },
+    [`${algorithm} - @node-rs/jsonwebtoken (sync)`]: function () {
+      nodeRsSignSync({ data: payload }, privateKey, { algorithm: Algorithm[algorithm.toUpperCase()] })
+    },
+    [`${algorithm} - @node-rs/jsonwebtoken (async)`]: async function () {
+      return new Promise(resolve =>
+        nodeRsSign({ data: payload }, privateKey, { algorithm: Algorithm[algorithm.toUpperCase()] }).then(() =>
+          resolve()
+        )
+      )
     }
   })
 
-  return runMitata(tests)
+  return runMitata(tests, mitataOptions)
 }
 
 export function compareVerifying(token, algorithm, publicKey) {
@@ -240,7 +252,6 @@ export function compareVerifying(token, algorithm, publicKey) {
     },
     [`${algorithm} - fast-jwt (async with cache)`]: async function () {
       return new Promise(resolve => fastjwtCachedVerifyAsync(token, resolve))
-      
     },
     [`${algorithm} - jose (sync)`]: function () {
       joseVerify(token, josePublicKey)
@@ -256,16 +267,13 @@ export function compareVerifying(token, algorithm, publicKey) {
     }
   }
 
-  return runMitata(tests)
+  return runMitata(tests, mitataOptions)
 }
 
-function runMitata(tests) {
-
+function runMitata(tests, opts) {
   summary(() => {
-    Object.entries(tests).forEach(
-      ([t, fn]) => bench(t, fn)
-    )
-  });
+    Object.entries(tests).forEach(([t, fn]) => bench(t, fn))
+  })
 
-  return run()
+  return run(opts)
 }
