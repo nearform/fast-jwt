@@ -2,6 +2,7 @@
 
 import nodeRsJwt, { Algorithm } from '@node-rs/jsonwebtoken'
 import cronometro from 'cronometro'
+import { run, bench, summary, do_not_optimize } from 'mitata'
 import { readFileSync } from 'fs'
 import { mkdir, writeFile } from 'fs/promises'
 import { dirname, resolve } from 'path'
@@ -186,8 +187,8 @@ export async function compareSigning(payload, algorithm, privateKey, publicKey) 
       [`${algorithm} - jsonwebtoken (sync)`]: function () {
         jsonwebtokenSign(payload, privateKey, { algorithm, noTimestamp: true })
       },
-      [`${algorithm} - jsonwebtoken (async)`]: function (done) {
-        jsonwebtokenSign(payload, privateKey, { algorithm, noTimestamp: true }, done)
+      [`${algorithm} - jsonwebtoken (async)`]: async function () {
+        return new Promise(resolve => jsonwebtokenSign(payload, privateKey, { algorithm, noTimestamp: true }, resolve))
       }
     })
   }
@@ -196,21 +197,12 @@ export async function compareSigning(payload, algorithm, privateKey, publicKey) 
     [`${algorithm} - fast-jwt (sync)`]: function () {
       fastjwtSign(payload)
     },
-    [`${algorithm} - fast-jwt (async)`]: function (done) {
-      fastjwtSignAsync(payload, done)
+    [`${algorithm} - fast-jwt (async)`]: async function () {
+      return new Promise(resolve => fastjwtSignAsync(payload, resolve))
     }
   })
 
-  Object.assign(tests, {
-    [`${algorithm} - @node-rs/jsonwebtoken (sync)`]: function () {
-      nodeRsSignSync({ data: payload }, privateKey, { algorithm: Algorithm[algorithm.toUpperCase()] })
-    },
-    [`${algorithm} - @node-rs/jsonwebtoken (async)`]: function (done) {
-      nodeRsSign({ data: payload }, privateKey, { algorithm: Algorithm[algorithm.toUpperCase()] }).then(() => done())
-    }
-  })
-
-  return cronometro(tests, cronometroOptions)
+  return runMitata(tests)
 }
 
 export function compareVerifying(token, algorithm, publicKey) {
@@ -264,4 +256,15 @@ export function compareVerifying(token, algorithm, publicKey) {
   }
 
   return cronometro(tests, cronometroOptions)
+}
+
+function runMitata(tests) {
+
+  summary(() => {
+    Object.entries(tests).forEach(
+      ([t, fn]) => bench(t, fn)
+    )
+  });
+
+  return run()
 }

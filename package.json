@@ -54,6 +54,7 @@
     "@lukeed/ms": "^2.0.2",
     "asn1.js": "^5.4.1",
     "ecdsa-sig-formatter": "^1.0.11",
+    "mitata": "^1.0.34",
     "mnemonist": "^0.40.0"
   },
   "devDependencies": {
