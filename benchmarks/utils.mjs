@@ -232,14 +232,15 @@ export function compareVerifying(token, algorithm, publicKey) {
     [`${algorithm} - fast-jwt (sync)`]: function () {
       fastjwtVerify(token)
     },
-    [`${algorithm} - fast-jwt (async)`]: function (done) {
-      fastjwtVerifyAsync(token, done)
+    [`${algorithm} - fast-jwt (async)`]: async function () {
+      return new Promise(resolve => fastjwtVerifyAsync(token, resolve))
     },
     [`${algorithm} - fast-jwt (sync with cache)`]: function () {
       fastjwtCachedVerify(token)
     },
-    [`${algorithm} - fast-jwt (async with cache)`]: function (done) {
-      fastjwtCachedVerifyAsync(token, done)
+    [`${algorithm} - fast-jwt (async with cache)`]: async function () {
+      return new Promise(resolve => fastjwtCachedVerifyAsync(token, resolve))
+      
     },
     [`${algorithm} - jose (sync)`]: function () {
       joseVerify(token, josePublicKey)
@@ -250,12 +251,12 @@ export function compareVerifying(token, algorithm, publicKey) {
     tests[`${algorithm} - jsonwebtoken (sync)`] = function () {
       jsonwebtokenVerify(token, publicKey)
     }
-    tests[`${algorithm} - jsonwebtoken (async)`] = function (done) {
-      jsonwebtokenVerify(token, publicKey, done)
+    tests[`${algorithm} - jsonwebtoken (async)`] = async function () {
+      return new Promise(resolve => jsonwebtokenVerify(token, publicKey, resolve))
     }
   }
 
-  return cronometro(tests, cronometroOptions)
+  return runMitata(tests)
 }
 
 function runMitata(tests) {
