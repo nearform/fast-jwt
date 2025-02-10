@@ -48,7 +48,8 @@
     "benchmark:sign": "node benchmarks/sign.mjs",
     "benchmark:decode": "node benchmarks/decode.mjs",
     "benchmark:verify": "node benchmarks/verify.mjs",
-    "benchmark:auth0": "node benchmarks/auth0.mjs"
+    "benchmark:auth0": "node benchmarks/auth0.mjs",
+    "benchmark:update": "node benchmarks/update_benchmarks.mjs"
   },
   "dependencies": {
     "@lukeed/ms": "^2.0.2",

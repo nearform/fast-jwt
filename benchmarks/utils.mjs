@@ -22,21 +22,12 @@ const { sign: nodeRsSign, signSync: nodeRsSignSync, verifySync: nodeRsVerifySync
 const { sign: joseSign, verify: joseVerify, decode: joseDecode } = JWTJose
 const { asKey } = JWKJose
 
-//const iterations = process.env.BENCHMARK_ITERATIONS || 10000
-
 const output = []
 const mitataOptions = {
-  format: {
-    mitata: {},
-    throw: true
-  }
+  format: 'mitata',
+  colors: false,
+  throw: true
 }
-
-//const cronometroOpts = {
-//  iterations: Number.parseInt(iterations, 10),
-//  warmup: true,
-//  print: { compare: true, compareMode: 'base' }
-//}
 
 export const tokens = {
   /*
@@ -273,10 +264,17 @@ export function compareVerifying(token, algorithm, publicKey) {
   return runMitata(tests, mitataOptions)
 }
 
-function runMitata(tests, opts) {
+async function runMitata(tests, opts) {
+  const outputLines = []
+  opts.print = line => {
+    console.log(line)
+    outputLines.push(line)
+  }
+
   summary(() => {
     Object.entries(tests).forEach(([t, fn]) => bench(t, fn))
   })
 
-  return run(opts)
+  await run(opts)
+  return outputLines.join('\n')
 }
