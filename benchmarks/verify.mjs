@@ -1,6 +1,5 @@
 'use strict'
 
-import { fileURLToPath } from 'node:url'
 import { tokens, publicKeys, compareVerifying, saveLogs } from './utils.mjs'
 
 export async function runSuites() {
@@ -13,4 +12,4 @@ export async function runSuites() {
   return benchmarkOutput.join('\n')
 }
 
-if (fileURLToPath(import.meta.url) === process.argv[1]) runSuites().catch(console.error)
+if (import.meta.filename === process.argv[1]) runSuites().catch(console.error)

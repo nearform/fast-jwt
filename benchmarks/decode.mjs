@@ -1,6 +1,5 @@
 'use strict'
 
-import { fileURLToPath } from 'node:url'
 import { compareDecoding, saveLogs } from './utils.mjs'
 
 // Regenerate this token after regenerating the keys by running `npm run generate-tokens` and getting the RS512 token
@@ -15,4 +14,4 @@ export async function runSuites() {
   return benchmarkOutput
 }
 
-if (fileURLToPath(import.meta.url) === process.argv[1]) runSuites().catch(console.error)
+if (import.meta.filename === process.argv[1]) runSuites().catch(console.error)

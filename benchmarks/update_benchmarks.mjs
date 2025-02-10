@@ -30,4 +30,4 @@ ${verifyBenchmark}
 \`\`\`
 `
 
-await writeFile(new URL('BENCHMARKS.md', import.meta.url), pageMarkdownContent, 'utf8')
+await writeFile(new URL('README.md', import.meta.url), pageMarkdownContent, 'utf8')
