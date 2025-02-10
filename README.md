@@ -292,7 +292,7 @@ JWKS is supported via [get-jwks](https://github.com/nearform/get-jwks). Check ou
 
 ## Benchmarks
 
-See [benchmarks](./benchmarks/BENCHMARKS.md)
+See [BENCHMARKS.md](./benchmarks/BENCHMARKS.md)
 
 ## Contributing
 
