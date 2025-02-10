@@ -3,13 +3,14 @@
 import { tokens, publicKeys, compareVerifying, saveLogs } from './utils.mjs'
 
 export async function runSuites() {
-  const benchmarkOutput = []
-  for (const algorightm of ['HS512', 'ES512', 'RS512', 'PS512', 'EdDSA']) {
-    benchmarkOutput.push(await compareVerifying(tokens[algorightm], algorightm, publicKeys[algorightm]))
+  const benchmarkResults = []
+  for (const algorithm of ['HS512', 'ES512', 'RS512', 'PS512', 'EdDSA']) {
+    const result = await compareVerifying(tokens[algorithm], algorithm, publicKeys[algorithm])
+    benchmarkResults.push({ algorithm, result })
   }
 
   await saveLogs('verify')
-  return benchmarkOutput.join('\n')
+  return benchmarkResults
 }
 
 if (import.meta.filename === process.argv[1]) runSuites().catch(console.error)
