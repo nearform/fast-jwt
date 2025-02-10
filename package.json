@@ -55,7 +55,6 @@
     "@lukeed/ms": "^2.0.2",
     "asn1.js": "^5.4.1",
     "ecdsa-sig-formatter": "^1.0.11",
-    "mitata": "^1.0.34",
     "mnemonist": "^0.40.0"
   },
   "devDependencies": {
@@ -70,6 +69,7 @@
     "fastify": "^5.2.0",
     "jose": "^2.0.7",
     "jsonwebtoken": "^9.0.2",
+    "mitata": "^1.0.34",
     "prettier": "^3.4.2",
     "tsd": "^0.31.2",
     "typescript": "^5.7.2",
