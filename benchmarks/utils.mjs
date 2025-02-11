@@ -184,7 +184,7 @@ export async function compareSigning(payload, algorithm, privateKey, publicKey) 
         jsonwebtokenSign(payload, privateKey, { algorithm, noTimestamp: true })
       },
       [`${algorithm} - jsonwebtoken (async)`]: async function () {
-        return new Promise(resolve => jsonwebtokenSign(payload, privateKey, { algorithm, noTimestamp: true }, resolve))
+        return jsonwebtokenSign(payload, privateKey, { algorithm, noTimestamp: true })
       }
     })
   }
@@ -194,17 +194,13 @@ export async function compareSigning(payload, algorithm, privateKey, publicKey) 
       fastjwtSign(payload)
     },
     [`${algorithm} - fast-jwt (async)`]: async function () {
-      return new Promise(resolve => fastjwtSignAsync(payload, resolve))
+      return fastjwtSignAsync(payload)
     },
     [`${algorithm} - @node-rs/jsonwebtoken (sync)`]: function () {
       nodeRsSignSync({ data: payload }, privateKey, { algorithm: Algorithm[algorithm.toUpperCase()] })
     },
     [`${algorithm} - @node-rs/jsonwebtoken (async)`]: async function () {
-      return new Promise(resolve =>
-        nodeRsSign({ data: payload }, privateKey, { algorithm: Algorithm[algorithm.toUpperCase()] }).then(() =>
-          resolve()
-        )
-      )
+      return nodeRsSign({ data: payload }, privateKey, { algorithm: Algorithm[algorithm.toUpperCase()] })
     }
   })
 
@@ -239,13 +235,13 @@ export function compareVerifying(token, algorithm, publicKey) {
       fastjwtVerify(token)
     },
     [`${algorithm} - fast-jwt (async)`]: async function () {
-      return new Promise(resolve => fastjwtVerifyAsync(token, resolve))
+      return fastjwtVerifyAsync(token)
     },
     [`${algorithm} - fast-jwt (sync with cache)`]: function () {
       fastjwtCachedVerify(token)
     },
     [`${algorithm} - fast-jwt (async with cache)`]: async function () {
-      return new Promise(resolve => fastjwtCachedVerifyAsync(token, resolve))
+      return fastjwtCachedVerifyAsync(token)
     },
     [`${algorithm} - jose (sync)`]: function () {
       joseVerify(token, josePublicKey)
@@ -257,7 +253,7 @@ export function compareVerifying(token, algorithm, publicKey) {
       jsonwebtokenVerify(token, publicKey)
     }
     tests[`${algorithm} - jsonwebtoken (async)`] = async function () {
-      return new Promise(resolve => jsonwebtokenVerify(token, publicKey, resolve))
+      return jsonwebtokenVerify(token, publicKey)
     }
   }
 

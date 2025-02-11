@@ -13,4 +13,4 @@ export async function runSuites() {
   return benchmarkResults
 }
 
-if (import.meta.filename === process.argv[1]) runSuites()
+if (import.meta.filename === process.argv[1]) await runSuites()

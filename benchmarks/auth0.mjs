@@ -11,4 +11,4 @@ async function runSuites() {
   await saveLogs('auth0')
 }
 
-runSuites()
+await runSuites()

@@ -14,4 +14,4 @@ export async function runSuites() {
   return [{ algorithm: 'RS512', result }]
 }
 
-if (import.meta.filename === process.argv[1]) runSuites()
+if (import.meta.filename === process.argv[1]) await runSuites()
