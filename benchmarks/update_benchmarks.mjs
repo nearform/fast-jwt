@@ -2,6 +2,7 @@ import { runSuites as runSignSuites } from './sign.mjs'
 import { runSuites as runVerifySuites } from './verify.mjs'
 import { runSuites as runDecodeSuites } from './decode.mjs'
 import { writeFile } from 'fs/promises'
+import { join } from 'path'
 
 const signBenchmark = await runSignSuites().catch(console.error)
 const decodeBenchmark = await runDecodeSuites().catch(console.error)
@@ -38,4 +39,4 @@ Note that for decoding the algorithm is irrelevant, so only one was measured.
 ${verifyBenchmark.map(printDetail).join('\n')}
 `
 
-await writeFile(new URL('README.md', import.meta.url), pageMarkdownContent, 'utf8')
+await writeFile(join(import.meta.dirname, 'README.md'), pageMarkdownContent, 'utf8')
