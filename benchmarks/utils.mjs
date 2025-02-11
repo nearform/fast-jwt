@@ -6,6 +6,7 @@ import { readFileSync } from 'fs'
 import { mkdir, writeFile } from 'fs/promises'
 import { dirname, resolve } from 'path'
 import { fileURLToPath } from 'url'
+import { promisify } from 'util'
 
 import jwt from 'jsonwebtoken'
 
@@ -184,7 +185,7 @@ export async function compareSigning(payload, algorithm, privateKey, publicKey) 
         jsonwebtokenSign(payload, privateKey, { algorithm, noTimestamp: true })
       },
       [`${algorithm} - jsonwebtoken (async)`]: async function () {
-        return jsonwebtokenSign(payload, privateKey, { algorithm, noTimestamp: true })
+        return new Promise(resolve => jsonwebtokenSign(payload, privateKey, { algorithm, noTimestamp: true }, resolve))
       }
     })
   }
@@ -253,7 +254,7 @@ export function compareVerifying(token, algorithm, publicKey) {
       jsonwebtokenVerify(token, publicKey)
     }
     tests[`${algorithm} - jsonwebtoken (async)`] = async function () {
-      return jsonwebtokenVerify(token, publicKey)
+      return new Promise(resolve => jsonwebtokenVerify(token, publicKey, resolve))
     }
   }
 
