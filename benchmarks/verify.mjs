@@ -1,21 +1,16 @@
 'use strict'
 
-import { isMainThread } from 'worker_threads'
 import { tokens, publicKeys, compareVerifying, saveLogs } from './utils.mjs'
 
-async function runSuites() {
-  if (!isMainThread) {
-    const algorightm = process.env.CURRENT_ALGORITHM
-    compareVerifying(tokens[algorightm], algorightm, publicKeys[algorightm])
-    return
-  } else {
-    for (const algorightm of ['HS512', 'ES512', 'RS512', 'PS512', 'EdDSA']) {
-      process.env.CURRENT_ALGORITHM = algorightm
-      await compareVerifying(tokens[algorightm], algorightm, publicKeys[algorightm])
-    }
+export async function runSuites() {
+  const benchmarkResults = []
+  for (const algorithm of ['HS512', 'ES512', 'RS512', 'PS512', 'EdDSA']) {
+    const result = await compareVerifying(tokens[algorithm], algorithm, publicKeys[algorithm])
+    benchmarkResults.push({ algorithm, result })
   }
 
   await saveLogs('verify')
+  return benchmarkResults
 }
 
-runSuites().catch(console.error)
+if (import.meta.filename === process.argv[1]) await runSuites()

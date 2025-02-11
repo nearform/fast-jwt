@@ -48,7 +48,8 @@
     "benchmark:sign": "node benchmarks/sign.mjs",
     "benchmark:decode": "node benchmarks/decode.mjs",
     "benchmark:verify": "node benchmarks/verify.mjs",
-    "benchmark:auth0": "node benchmarks/auth0.mjs"
+    "benchmark:auth0": "node benchmarks/auth0.mjs",
+    "benchmark:update": "node benchmarks/update_benchmarks.mjs"
   },
   "dependencies": {
     "@lukeed/ms": "^2.0.2",
@@ -59,7 +60,6 @@
   "devDependencies": {
     "@node-rs/jsonwebtoken": "^0.5.9",
     "@types/node": "^22.10.2",
-    "cronometro": "^4.0.0",
     "eslint": "^9.17.0",
     "eslint-config-prettier": "^10.0.1",
     "eslint-plugin-import": "^2.31.0",
@@ -69,6 +69,7 @@
     "fastify": "^5.2.0",
     "jose": "^2.0.7",
     "jsonwebtoken": "^9.0.2",
+    "mitata": "^1.0.34",
     "prettier": "^3.4.2",
     "tsd": "^0.31.2",
     "typescript": "^5.7.2",

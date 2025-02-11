@@ -1,7 +1,7 @@
 'use strict'
 
 import nodeRsJwt, { Algorithm } from '@node-rs/jsonwebtoken'
-import cronometro from 'cronometro'
+import { run, bench, summary } from 'mitata'
 import { readFileSync } from 'fs'
 import { mkdir, writeFile } from 'fs/promises'
 import { dirname, resolve } from 'path'
@@ -22,13 +22,11 @@ const { sign: nodeRsSign, signSync: nodeRsSignSync, verifySync: nodeRsVerifySync
 const { sign: joseSign, verify: joseVerify, decode: joseDecode } = JWTJose
 const { asKey } = JWKJose
 
-const iterations = process.env.BENCHMARK_ITERATIONS || 10000
-
 const output = []
-const cronometroOptions = {
-  iterations: Number.parseInt(iterations, 10),
-  warmup: true,
-  print: { compare: true, compareMode: 'base' }
+const mitataOptions = {
+  format: 'mitata',
+  colors: false,
+  throw: true
 }
 
 export const tokens = {
@@ -47,7 +45,7 @@ export const tokens = {
   RS512:
     'eyJhbGciOiJSUzUxMiIsInR5cCI6IkpXVCIsImtpZCI6IjEyMyJ9.eyJhIjoxLCJiIjoyLCJjIjozLCJpYXQiOjE1ODA5MTUyOTZ9.JEHZDpA99hww-5-PKcCvwialNy1QcyDSJXJ-qvzV0fU56NXPxZRfn2rEwdX4g-8N-oXLsjCjNZzr0Hl39FXSK0ke_vnzwPW6D4r5mVL6Ak0K-jMgNFidxElM7PRg2XE7N72dI5ClQJCJMqex7NYmIN4OUj9psx1NDv8bM_Oj44kXyI6ozYrkV-6tvowLXUX9BOZH55jF3aAA1DLI4rVBKc_JYqiHf376xu6zvFxzZ8XP3-S-dTR7OBRZLe5_Y6YJweWiL2n0lRkEjYrpK3Ht9MlfaCmW2_KMH0DpUKVS6nnKmzqGjdutnzP6PYXZsJikCQOrIcPW97LdQWLLRIptSpn7YHH1xbNbq__kryaggwpKuNd6qhdXqREEhpaYl3Xc4yjGnBR0zMq7J-GxDo7mSujMMFmb4ZQLQWwANCEHSfqYIJYp7Upc1Rd__lo56Mr1Bd9claZPBNgKqAvhlmjZT9lELA-eyEzhH_yrcVzMcVpCC_oVIzvpiDQ0jgOLcDIz0q8uzoSCks3M0IK3flefopY8g1e-OExqBoYrfoktFciabLfTM5g-rIpC0CrrDN-TfXLqZAPkIv7suGBmQn9-HbcFL8eZEIg-q6D3o7EAfCO7ki9ncrm47C2y5SX3zDOjG37_5pN2JGWztfSFRQ-YbbEV13-TuKvRG3HLJjJQk6g',
   PS512:
-    'eyJhbGciOiJQUzUxMiIsInR5cCI6IkpXVCIsImtpZCI6IjEyMyJ9.eyJhIjoxLCJiIjoyLCJjIjozLCJpYXQiOjE1ODA5MTUyOTd9.IfPgE2aPz9dBzvb8hvn_RjBvdq5jLgfzRw-lM5Q2Ah67NYuRYjCzpvywJASY-0Y-tvk94kwwmDUpqR7nPPPlcv9o_OYQVGhPnndh6iMww0D-MGZwP0sqIauu6NgUsCY4rFG2_K8lxCYbdNThJJVDDN8v_VmKrK3qh7DJC89PE-ZbIMr4N3AuLww-vPgB-9hFmuVnjgO43scZb8C_SaA1HuSbw_SU6OWguAlaTP3zUKlyQmTvvx843J8byi5jDcqK4Rtah5gRaO8U1l6bzmVCKs8Fh3tv7A7GWs-eFukFu5dUr-Ig0iyIhPSAVOjnk0dEZ4s5YI1XaPrnm3wAKV9fyzSri2LaaElp_8Cy7xyJNDPgWSTUmm4BGU7m5x_zwamRbQ1zI7p-YxftwkL4Jl8VD1km7CP9T_6cOEt6RzSTNbTgkk3XhcqYZ0oTgAJ4nXa4j47-7E0n5drtM1xoYeWBaWQvXPdMwGTAwXMx33B1WOm80B7Ncn6AzZKtJtEYalFEKntNfJhWi5x9nZNc4-3cja4o1appVm5PWSOtV4mkLsrLL1T0x1c9ymyF_XtYkRAuxdOKaRs2N5YxHcikgX-iifI1Ih4l79BrWAgyioGjMTU78VMV_gLRQ1VLexmgYJLKL2fBUrBR-k8fI4VwbKEtEZF3wBINWBAp4-urFV3QVig',
+    'eyJhbGciOiJQUzUxMiIsInR5cCI6IkpXVCJ9.eyJhIjoxLCJiIjoyLCJjIjozfQ.iUpS__v2Lcw-1ahbVrnoLzi0SeW54YCkn0LMlsPdpmgUR09KR0MTYh949oQK0OpiMj0ZyHBjynn8v8-pbY0Y9g2Q-fT0zX18s55trHxv1ynBXmDQjiA_RNHWBgWfxRFYu9eqIE6MQcbQon7dTPptW7irPkUNS3inBesnRGx9k9hrRlMqp5ncB9XENJYDtj20oIIutCXzmUM3m4vrrVdIlwpTCb_bs6TK6oYtJC9TjPwX6UwCMp-0vEOQdmgf0qhW4LkgGzg0IRhJ-gc6ETVqOuKKTKcV2DYc9vy0sNh4gMRX-1N3y63Q_nNdSdtkCYy6yrzIXpoV-nhtxgPezsapdTRrqLD_3cITvq8YN1EHxZ8UF1ps7TB2sMIQOP4bH5a7pGzLhy_HjKp1kORkqVthXVaEQ3Q1p9FC7uligGCg6GWgDCYi4wTWJCSH00qWt9NG_8HMSHBWRAJf8zyEplJlY6WAfCG-qYQCqGYd8-yG1exMBEu7vuyumW-41gRxa1q5rT_2oI8N1WCqn-pPzXfEQ8NpBpzZucfUtSFp7T2V_a_86r4-tcQXvX0N5iGRs3KT-60AMdDDO2GePrBubkq4DFniSgpX-1-DNdJbwZf0Ip94ogU5Np9i2syoRR8mtGDXKPG_My4xA6gk8WqM-GoVHtpjhuclZ-EJCjRKVqWiRz8',
   EdDSA:
     'eyJhbGciOiJFZERTQSIsInR5cCI6IkpXVCIsImt0eSI6Ik9LUCIsImNydiI6IkVkMjU1MTkiLCJraWQiOiIxMjMifQ.eyJhIjoxLCJiIjoyLCJjIjozLCJpYXQiOjE1ODY3ODQ3ODF9.PDIxWOWhAHr-7Zy7UC8W4pRuk7dMYTD8xy0DR0N102P0pXK6U4r6THHe66muTdSM3qiDHZnync1WQp-10QFLCQ'
 }
@@ -104,29 +102,28 @@ export function compareDecoding(token, algorithm) {
     log('-------')
   }
 
-  return cronometro(
-    {
-      [`${algorithm} - fast-jwt`]: function () {
-        fastjwtDecoder(token)
-      },
-      [`${algorithm} - fast-jwt (complete)`]: function () {
-        fastjwtCompleteDecoder(token)
-      },
-      [`${algorithm} - jsonwebtoken`]: function () {
-        jsonwebtokenDecode(token)
-      },
-      [`${algorithm} - jsonwebtoken (complete)`]: function () {
-        jsonwebtokenDecode(token, { complete: true })
-      },
-      [`${algorithm} - jose`]: function () {
-        joseDecode(token)
-      },
-      [`${algorithm} - jose (complete)`]: function () {
-        joseDecode(token, { complete: true })
-      }
+  const tests = {
+    [`${algorithm} - fast-jwt`]: function () {
+      fastjwtDecoder(token)
     },
-    cronometroOptions
-  )
+    [`${algorithm} - fast-jwt (complete)`]: function () {
+      fastjwtCompleteDecoder(token)
+    },
+    [`${algorithm} - jsonwebtoken`]: function () {
+      jsonwebtokenDecode(token)
+    },
+    [`${algorithm} - jsonwebtoken (complete)`]: function () {
+      jsonwebtokenDecode(token, { complete: true })
+    },
+    [`${algorithm} - jose`]: function () {
+      joseDecode(token)
+    },
+    [`${algorithm} - jose (complete)`]: function () {
+      joseDecode(token, { complete: true })
+    }
+  }
+
+  return runMitata(tests, mitataOptions)
 }
 
 export async function compareSigning(payload, algorithm, privateKey, publicKey) {
@@ -186,8 +183,8 @@ export async function compareSigning(payload, algorithm, privateKey, publicKey) 
       [`${algorithm} - jsonwebtoken (sync)`]: function () {
         jsonwebtokenSign(payload, privateKey, { algorithm, noTimestamp: true })
       },
-      [`${algorithm} - jsonwebtoken (async)`]: function (done) {
-        jsonwebtokenSign(payload, privateKey, { algorithm, noTimestamp: true }, done)
+      [`${algorithm} - jsonwebtoken (async)`]: async function () {
+        return new Promise(resolve => jsonwebtokenSign(payload, privateKey, { algorithm, noTimestamp: true }, resolve))
       }
     })
   }
@@ -196,21 +193,18 @@ export async function compareSigning(payload, algorithm, privateKey, publicKey) 
     [`${algorithm} - fast-jwt (sync)`]: function () {
       fastjwtSign(payload)
     },
-    [`${algorithm} - fast-jwt (async)`]: function (done) {
-      fastjwtSignAsync(payload, done)
-    }
-  })
-
-  Object.assign(tests, {
+    [`${algorithm} - fast-jwt (async)`]: async function () {
+      return fastjwtSignAsync(payload)
+    },
     [`${algorithm} - @node-rs/jsonwebtoken (sync)`]: function () {
       nodeRsSignSync({ data: payload }, privateKey, { algorithm: Algorithm[algorithm.toUpperCase()] })
     },
-    [`${algorithm} - @node-rs/jsonwebtoken (async)`]: function (done) {
-      nodeRsSign({ data: payload }, privateKey, { algorithm: Algorithm[algorithm.toUpperCase()] }).then(() => done())
+    [`${algorithm} - @node-rs/jsonwebtoken (async)`]: async function () {
+      return nodeRsSign({ data: payload }, privateKey, { algorithm: Algorithm[algorithm.toUpperCase()] })
     }
   })
 
-  return cronometro(tests, cronometroOptions)
+  return runMitata(tests, mitataOptions)
 }
 
 export function compareVerifying(token, algorithm, publicKey) {
@@ -240,14 +234,14 @@ export function compareVerifying(token, algorithm, publicKey) {
     [`${algorithm} - fast-jwt (sync)`]: function () {
       fastjwtVerify(token)
     },
-    [`${algorithm} - fast-jwt (async)`]: function (done) {
-      fastjwtVerifyAsync(token, done)
+    [`${algorithm} - fast-jwt (async)`]: async function () {
+      return fastjwtVerifyAsync(token)
     },
     [`${algorithm} - fast-jwt (sync with cache)`]: function () {
       fastjwtCachedVerify(token)
     },
-    [`${algorithm} - fast-jwt (async with cache)`]: function (done) {
-      fastjwtCachedVerifyAsync(token, done)
+    [`${algorithm} - fast-jwt (async with cache)`]: async function () {
+      return fastjwtCachedVerifyAsync(token)
     },
     [`${algorithm} - jose (sync)`]: function () {
       joseVerify(token, josePublicKey)
@@ -258,10 +252,25 @@ export function compareVerifying(token, algorithm, publicKey) {
     tests[`${algorithm} - jsonwebtoken (sync)`] = function () {
       jsonwebtokenVerify(token, publicKey)
     }
-    tests[`${algorithm} - jsonwebtoken (async)`] = function (done) {
-      jsonwebtokenVerify(token, publicKey, done)
+    tests[`${algorithm} - jsonwebtoken (async)`] = async function () {
+      return new Promise(resolve => jsonwebtokenVerify(token, publicKey, resolve))
     }
   }
 
-  return cronometro(tests, cronometroOptions)
+  return runMitata(tests, mitataOptions)
+}
+
+async function runMitata(tests, opts) {
+  const outputLines = []
+  opts.print = line => {
+    console.log(line)
+    outputLines.push(line)
+  }
+
+  summary(() => {
+    Object.entries(tests).forEach(([t, fn]) => bench(t, fn))
+  })
+
+  await run(opts)
+  return outputLines.join('\n')
 }
