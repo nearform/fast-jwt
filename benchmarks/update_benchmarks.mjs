@@ -8,15 +8,20 @@ const decodeBenchmark = await runDecodeSuites().catch(console.error)
 const verifyBenchmark = await runVerifySuites().catch(console.error)
 
 const printDetail = ({ algorithm, result }) =>
-  `<details>
-        <summary>${algorithm}</summary>
-        \`\`\`
-            ${result}
-        \`\`\`
-    </details>
-    `
+  `
+<details>
+    <summary>${algorithm}</summary>
+
+## ${algorithm}
+\`\`\`
+${result}
+\`\`\`
+</details>
+`
 
 const pageMarkdownContent = `# Benchmarks
+
+Made with [mitata](https://github.com/evanwashere/mitata) library
 
 ## Signing
 
