@@ -6,7 +6,6 @@ import { readFileSync } from 'fs'
 import { mkdir, writeFile } from 'fs/promises'
 import { dirname, resolve } from 'path'
 import { fileURLToPath } from 'url'
-import { promisify } from 'util'
 
 import jwt from 'jsonwebtoken'
 
