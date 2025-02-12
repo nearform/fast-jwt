@@ -30,8 +30,6 @@ const mitataOptions = {
   throw: true
 }
 
-export const algorithms = ['HS256', 'RS256', 'HS512', 'ES512', 'RS512', 'PS512', 'EdDSA']
-
 export const tokens = {
   /*
     Regenerate these tokens after regenerating the keys
