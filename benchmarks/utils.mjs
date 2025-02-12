@@ -212,7 +212,9 @@ export async function compareSigning(payload, algorithm, privateKey, publicKey) 
         jsonwebtokenSign(payload, jsonwebtokenKey, { algorithm, noTimestamp: true })
       },
       [`${algorithm} - jsonwebtoken (async)`]: async function () {
-        return new Promise(resolve => jsonwebtokenSign(payload, jsonwebtokenKey, { algorithm, noTimestamp: true }, resolve))
+        return new Promise(resolve =>
+          jsonwebtokenSign(payload, jsonwebtokenKey, { algorithm, noTimestamp: true }, resolve)
+        )
       }
     })
   }
