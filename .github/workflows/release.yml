@@ -23,7 +23,7 @@ jobs:
       id-token: write
     runs-on: ubuntu-latest
     steps:
-      - uses: msgadi/optic-release-automation-action@feat/adding-alternate-otp-flow
+      - uses: nearform-actions/optic-release-automation-action@v4
         with:
           github-token: ${{ secrets.github_token }}
           npm-token: >-
