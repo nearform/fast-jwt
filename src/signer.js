@@ -88,14 +88,15 @@ function sign(
   let encodedPayload = ''
 
   // Add claims
-  const iat = payload.iat * 1000 || clockTimestamp || Date.now()
-
+  const iat = payload.iat * 1000 || clockTimestamp || Date.now(); // Handle `iat` in milliseconds
+  const iatSec = (iat / 1000); // Convert `iat` to seconds
+  
   const finalPayload = {
-    ...payload,
-    ...fixedPayload,
-    iat: noTimestamp ? undefined : Math.floor(iat / 1000),
-    exp: payload.exp ? payload.exp : expiresIn ? Math.floor((iat + expiresIn) / 1000) : undefined,
-    nbf: payload.nbf ? payload.nbf : notBefore ? Math.floor((iat + notBefore) / 1000) : undefined
+      ...payload,
+      ...fixedPayload,
+      iat: noTimestamp ? undefined : Math.floor(iatSec),
+      exp: payload.exp ? payload.exp : expiresIn ? Math.floor(iatSec + expiresIn) : undefined,
+      nbf: payload.nbf ? payload.nbf : notBefore ? Math.floor(iatSec + notBefore) : undefined
   }
 
   if (mutatePayload) {
