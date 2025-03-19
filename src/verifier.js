@@ -227,7 +227,7 @@ function verifyToken(
     if (type === 'date') {
       validateClaimDateValue(value, modifier, now, greater, errorCode, errorVerb)
     } else {
-      validateClaimValues(values, claim, allowed, arrayValue, array)
+      validateClaimValues(values, claim, allowed, arrayValue)
     }
   }
 }
