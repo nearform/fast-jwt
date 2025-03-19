@@ -1,6 +1,6 @@
 {
   "name": "fast-jwt",
-  "version": "5.0.5",
+  "version": "5.0.6",
   "description": "Fast JSON Web Token implementation",
   "author": "NearForm Ltd",
   "homepage": "https://github.com/nearform/fast-jwt",
