@@ -500,6 +500,41 @@ test('it validates the jti claim only if explicitily enabled', t => {
     { message: 'The jti claim value is not allowed.' }
   )
 
+  t.assert.throws(
+    () => {
+      return verify(
+        'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxLCJqdGkiOlsiSlRJIiwiSlRJMSJdLCJhdWQiOlsiQVVEMSJdLCJpc3MiOiJJU1MiLCJzdWIiOiJTVUIiLCJub25jZSI6Ik5PTkNFIn0.H2GACKIYvauUswRaK3SVsSwUOTjEcQDb1Qj_iCuLWoM',
+        { allowedJti: ['JTI'], key: 'secret-secret-secret-secret-secret' }
+      )
+    },
+    { message: 'Not all of the jti claim values are allowed.' }
+  )
+
+  t.assert.throws(
+    () => {
+      return verify(
+        'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxLCJqdGkiOlsiSlRJIiwiSlRJMSJdLCJhdWQiOlsiQVVEMSJdLCJpc3MiOiJJU1MiLCJzdWIiOiJTVUIiLCJub25jZSI6Ik5PTkNFIn0.H2GACKIYvauUswRaK3SVsSwUOTjEcQDb1Qj_iCuLWoM',
+        { allowedJti: ['JTI', 'JTI2'], key: 'secret-secret-secret-secret-secret' }
+      )
+    },
+    { message: 'Not all of the jti claim values are allowed.' }
+  )
+
+  t.assert.deepStrictEqual(
+    verify(
+      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxLCJqdGkiOlsiSlRJIiwiSlRJMSJdLCJhdWQiOlsiQVVEMSJdLCJpc3MiOiJJU1MiLCJzdWIiOiJTVUIiLCJub25jZSI6Ik5PTkNFIn0.H2GACKIYvauUswRaK3SVsSwUOTjEcQDb1Qj_iCuLWoM',
+      { allowedJti: ['JTI', 'JTI1'], key: 'secret-secret-secret-secret-secret' }
+    ),
+    {
+      a: 1,
+      jti: ['JTI', 'JTI1'],
+      aud: ['AUD1'],
+      iss: 'ISS',
+      sub: 'SUB',
+      nonce: 'NONCE'
+    }
+  )
+
   t.assert.deepStrictEqual(
     verify(
       'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxLCJqdGkiOiJKVEkiLCJhdWQiOlsiQVVEMSIsIkRVQTIiXSwiaXNzIjoiSVNTIiwic3ViIjoiU1VCIiwibm9uY2UiOiJOT05DRSJ9.8fqzi23J-GjaD7rW3OYJv8UtBYkx8MOkViJjS4sXmVw',
@@ -664,6 +699,41 @@ test('it validates the iss claim only if explicitily enabled', t => {
     { message: 'The iss claim value is not allowed.' }
   )
 
+  t.assert.throws(
+    () => {
+      return verify(
+        'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxLCJqdGkiOiJKVEkiLCJhdWQiOlsiQVVEMSJdLCJpc3MiOlsiSVNTIiwiSVNTMSJdLCJzdWIiOiJTVUIiLCJub25jZSI6Ik5PTkNFIn0.IS9XILuqYEAKycN8j2MT0121j19T02CbW_h0erVh5IE',
+        { allowedIss: ['ISS'], key: 'secret-secret-secret-secret-secret' }
+      )
+    },
+    { message: 'Not all of the iss claim values are allowed.' }
+  )
+
+  t.assert.throws(
+    () => {
+      return verify(
+        'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxLCJqdGkiOiJKVEkiLCJhdWQiOlsiQVVEMSJdLCJpc3MiOlsiSVNTIiwiSVNTMSJdLCJzdWIiOiJTVUIiLCJub25jZSI6Ik5PTkNFIn0.IS9XILuqYEAKycN8j2MT0121j19T02CbW_h0erVh5IE',
+        { allowedIss: ['ISS', 'ISS2'], key: 'secret-secret-secret-secret-secret' }
+      )
+    },
+    { message: 'Not all of the iss claim values are allowed.' }
+  )
+
+  t.assert.deepStrictEqual(
+    verify(
+      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxLCJqdGkiOiJKVEkiLCJhdWQiOlsiQVVEMSJdLCJpc3MiOlsiSVNTIiwiSVNTMSJdLCJzdWIiOiJTVUIiLCJub25jZSI6Ik5PTkNFIn0.IS9XILuqYEAKycN8j2MT0121j19T02CbW_h0erVh5IE',
+      { allowedIss: ['ISS', 'ISS1'], key: 'secret-secret-secret-secret-secret' }
+    ),
+    {
+      a: 1,
+      jti: 'JTI',
+      aud: ['AUD1'],
+      iss: ['ISS', 'ISS1'],
+      sub: 'SUB',
+      nonce: 'NONCE'
+    }
+  )
+
   t.assert.deepStrictEqual(
     verify(
       'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxLCJqdGkiOiJKVEkiLCJhdWQiOlsiQVVEMSIsIkRVQTIiXSwiaXNzIjoiSVNTIiwic3ViIjoiU1VCIiwibm9uY2UiOiJOT05DRSJ9.8fqzi23J-GjaD7rW3OYJv8UtBYkx8MOkViJjS4sXmVw',
@@ -741,6 +811,41 @@ test('it validates the sub claim only if explicitily enabled', t => {
     { message: 'The sub claim value is not allowed.' }
   )
 
+  t.assert.throws(
+    () => {
+      return verify(
+        'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxLCJqdGkiOiJKVEkiLCJhdWQiOlsiQVVEMSJdLCJpc3MiOiJJU1MiLCJzdWIiOlsiU1VCMSIsIlNVQjIiXSwibm9uY2UiOiJOT05DRSJ9.RwBpdTCEFCxO0jIFPnJpxjRd0JVIhP2Eettmsh0uwzY',
+        { allowedSub: ['SUB1'], key: 'secret-secret-secret-secret-secret' }
+      )
+    },
+    { message: 'Not all of the sub claim values are allowed.' }
+  )
+
+  t.assert.throws(
+    () => {
+      return verify(
+        'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxLCJqdGkiOiJKVEkiLCJhdWQiOlsiQVVEMSJdLCJpc3MiOiJJU1MiLCJzdWIiOlsiU1VCMSIsIlNVQjIiXSwibm9uY2UiOiJOT05DRSJ9.RwBpdTCEFCxO0jIFPnJpxjRd0JVIhP2Eettmsh0uwzY',
+        { allowedSub: ['SUB1', 'SUB3'], key: 'secret-secret-secret-secret-secret' }
+      )
+    },
+    { message: 'Not all of the sub claim values are allowed.' }
+  )
+
+  t.assert.deepStrictEqual(
+    verify(
+      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxLCJqdGkiOiJKVEkiLCJhdWQiOlsiQVVEMSJdLCJpc3MiOiJJU1MiLCJzdWIiOlsiU1VCMSIsIlNVQjIiXSwibm9uY2UiOiJOT05DRSJ9.RwBpdTCEFCxO0jIFPnJpxjRd0JVIhP2Eettmsh0uwzY',
+      { allowedSub: ['SUB1', 'SUB2'], key: 'secret-secret-secret-secret-secret' }
+    ),
+    {
+      a: 1,
+      jti: 'JTI',
+      aud: ['AUD1'],
+      iss: 'ISS',
+      sub: ['SUB1', 'SUB2'],
+      nonce: 'NONCE'
+    }
+  )
+
   t.assert.deepStrictEqual(
     verify(
       'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxLCJqdGkiOiJKVEkiLCJhdWQiOlsiQVVEMSIsIkRVQTIiXSwiaXNzIjoiSVNTIiwic3ViIjoiU1VCIiwibm9uY2UiOiJOT05DRSJ9.8fqzi23J-GjaD7rW3OYJv8UtBYkx8MOkViJjS4sXmVw',
@@ -816,6 +921,41 @@ test('it validates the nonce claim only if explicitily enabled', t => {
       )
     },
     { message: 'The nonce claim value is not allowed.' }
+  )
+
+  t.assert.throws(
+    () => {
+      return verify(
+        'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxLCJqdGkiOiJKVEkiLCJhdWQiOlsiQVVEMSJdLCJpc3MiOiJJU1MiLCJzdWIiOiJTVUIiLCJub25jZSI6WyJOT05DRSIsIk5PTkNFMSJdfQ.a8ZSzXebJvaw32jyWgbBo9aeLNTgs_sqxD2llV4f8KQ',
+        { allowedNonce: ['NONCE'], key: 'secret-secret-secret-secret-secret' }
+      )
+    },
+    { message: 'Not all of the nonce claim values are allowed.' }
+  )
+
+  t.assert.throws(
+    () => {
+      return verify(
+        'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxLCJqdGkiOiJKVEkiLCJhdWQiOlsiQVVEMSJdLCJpc3MiOiJJU1MiLCJzdWIiOiJTVUIiLCJub25jZSI6WyJOT05DRSIsIk5PTkNFMSJdfQ.a8ZSzXebJvaw32jyWgbBo9aeLNTgs_sqxD2llV4f8KQ',
+        { allowedNonce: ['NONCE', 'NONCE2'], key: 'secret-secret-secret-secret-secret' }
+      )
+    },
+    { message: 'Not all of the nonce claim values are allowed.' }
+  )
+
+  t.assert.deepStrictEqual(
+    verify(
+      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxLCJqdGkiOiJKVEkiLCJhdWQiOlsiQVVEMSJdLCJpc3MiOiJJU1MiLCJzdWIiOiJTVUIiLCJub25jZSI6WyJOT05DRSIsIk5PTkNFMSJdfQ.a8ZSzXebJvaw32jyWgbBo9aeLNTgs_sqxD2llV4f8KQ',
+      { allowedNonce: ['NONCE', 'NONCE1'], key: 'secret-secret-secret-secret-secret' }
+    ),
+    {
+      a: 1,
+      jti: 'JTI',
+      aud: ['AUD1'],
+      iss: 'ISS',
+      sub: 'SUB',
+      nonce: ['NONCE', 'NONCE1']
+    }
   )
 
   t.assert.deepStrictEqual(

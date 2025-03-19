@@ -153,6 +153,16 @@ function validateClaimType(values, claim, array, type) {
 
 function validateClaimValues(values, claim, allowed, arrayValue) {
   const failureMessage = arrayValue
+    ? `Not all of the ${claim} claim values are allowed.`
+    : `The ${claim} claim value is not allowed.`
+
+  if (!values.every(v => allowed.some(a => a.test(v)))) {
+    throw new TokenError(TokenError.codes.invalidClaimValue, failureMessage)
+  }
+}
+
+function validateClaimArrayValues(values, claim, allowed, arrayValue) {
+  const failureMessage = arrayValue
     ? `None of ${claim} claim values are allowed.`
     : `The ${claim} claim value is not allowed.`
 
@@ -222,6 +232,8 @@ function verifyToken(
 
     if (type === 'date') {
       validateClaimDateValue(value, modifier, now, greater, errorCode, errorVerb)
+    } else if (array) {
+      validateClaimArrayValues(values, claim, allowed, arrayValue)
     } else {
       validateClaimValues(values, claim, allowed, arrayValue)
     }
