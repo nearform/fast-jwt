@@ -141,10 +141,14 @@ function validateAlgorithmAndSignature(input, header, signature, key, allowedAlg
   }
 }
 
-function validateClaimType(values, claim, array, type) {
-  const typeFailureMessage = array
+function validateClaimType(values, claim, allowArray, arrayValue, type) {
+  const typeFailureMessage = allowArray
     ? `The ${claim} claim must be a ${type} or an array of ${type}s.`
     : `The ${claim} claim must be a ${type}.`
+
+  if (arrayValue && !allowArray) {
+    throw new TokenError(TokenError.codes.invalidClaimValue, typeFailureMessage)
+  }
 
   if (values.map(v => typeof v).some(t => t !== type)) {
     throw new TokenError(TokenError.codes.invalidClaimType, typeFailureMessage)
@@ -152,16 +156,6 @@ function validateClaimType(values, claim, array, type) {
 }
 
 function validateClaimValues(values, claim, allowed, arrayValue) {
-  const failureMessage = arrayValue
-    ? `Not all of the ${claim} claim values are allowed.`
-    : `The ${claim} claim value is not allowed.`
-
-  if (!values.every(v => allowed.some(a => a.test(v)))) {
-    throw new TokenError(TokenError.codes.invalidClaimValue, failureMessage)
-  }
-}
-
-function validateClaimArrayValues(values, claim, allowed, arrayValue) {
   const failureMessage = arrayValue
     ? `None of ${claim} claim values are allowed.`
     : `The ${claim} claim value is not allowed.`
@@ -228,14 +222,12 @@ function verifyToken(
     }
 
     // Validate type
-    validateClaimType(values, claim, array, type === 'date' ? 'number' : 'string')
+    validateClaimType(values, claim, array, arrayValue, type === 'date' ? 'number' : 'string')
 
     if (type === 'date') {
       validateClaimDateValue(value, modifier, now, greater, errorCode, errorVerb)
-    } else if (array) {
-      validateClaimArrayValues(values, claim, allowed, arrayValue)
     } else {
-      validateClaimValues(values, claim, allowed, arrayValue)
+      validateClaimValues(values, claim, allowed, arrayValue, array)
     }
   }
 }

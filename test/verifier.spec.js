@@ -507,7 +507,7 @@ test('it validates the jti claim only if explicitily enabled', t => {
         { allowedJti: ['JTI'], key: 'secret-secret-secret-secret-secret' }
       )
     },
-    { message: 'Not all of the jti claim values are allowed.' }
+    { message: 'The jti claim must be a string.' }
   )
 
   t.assert.throws(
@@ -517,22 +517,17 @@ test('it validates the jti claim only if explicitily enabled', t => {
         { allowedJti: ['JTI', 'JTI2'], key: 'secret-secret-secret-secret-secret' }
       )
     },
-    { message: 'Not all of the jti claim values are allowed.' }
+    { message: 'The jti claim must be a string.' }
   )
 
-  t.assert.deepStrictEqual(
-    verify(
-      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxLCJqdGkiOlsiSlRJIiwiSlRJMSJdLCJhdWQiOlsiQVVEMSJdLCJpc3MiOiJJU1MiLCJzdWIiOiJTVUIiLCJub25jZSI6Ik5PTkNFIn0.H2GACKIYvauUswRaK3SVsSwUOTjEcQDb1Qj_iCuLWoM',
-      { allowedJti: ['JTI', 'JTI1'], key: 'secret-secret-secret-secret-secret' }
-    ),
-    {
-      a: 1,
-      jti: ['JTI', 'JTI1'],
-      aud: ['AUD1'],
-      iss: 'ISS',
-      sub: 'SUB',
-      nonce: 'NONCE'
-    }
+  t.assert.throws(
+    () => {
+      return verify(
+        'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxLCJqdGkiOlsiSlRJIiwiSlRJMSJdLCJhdWQiOlsiQVVEMSJdLCJpc3MiOiJJU1MiLCJzdWIiOiJTVUIiLCJub25jZSI6Ik5PTkNFIn0.H2GACKIYvauUswRaK3SVsSwUOTjEcQDb1Qj_iCuLWoM',
+        { allowedJti: ['JTI', 'JTI1'], key: 'secret-secret-secret-secret-secret' }
+      )
+    },
+    { message: 'The jti claim must be a string.' }
   )
 
   t.assert.deepStrictEqual(
@@ -706,7 +701,7 @@ test('it validates the iss claim only if explicitily enabled', t => {
         { allowedIss: ['ISS'], key: 'secret-secret-secret-secret-secret' }
       )
     },
-    { message: 'Not all of the iss claim values are allowed.' }
+    { message: 'The iss claim must be a string.' }
   )
 
   t.assert.throws(
@@ -716,22 +711,17 @@ test('it validates the iss claim only if explicitily enabled', t => {
         { allowedIss: ['ISS', 'ISS2'], key: 'secret-secret-secret-secret-secret' }
       )
     },
-    { message: 'Not all of the iss claim values are allowed.' }
+    { message: 'The iss claim must be a string.' }
   )
 
-  t.assert.deepStrictEqual(
-    verify(
-      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxLCJqdGkiOiJKVEkiLCJhdWQiOlsiQVVEMSJdLCJpc3MiOlsiSVNTIiwiSVNTMSJdLCJzdWIiOiJTVUIiLCJub25jZSI6Ik5PTkNFIn0.IS9XILuqYEAKycN8j2MT0121j19T02CbW_h0erVh5IE',
-      { allowedIss: ['ISS', 'ISS1'], key: 'secret-secret-secret-secret-secret' }
-    ),
-    {
-      a: 1,
-      jti: 'JTI',
-      aud: ['AUD1'],
-      iss: ['ISS', 'ISS1'],
-      sub: 'SUB',
-      nonce: 'NONCE'
-    }
+  t.assert.throws(
+    () => {
+      return verify(
+        'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxLCJqdGkiOiJKVEkiLCJhdWQiOlsiQVVEMSJdLCJpc3MiOlsiSVNTIiwiSVNTMSJdLCJzdWIiOiJTVUIiLCJub25jZSI6Ik5PTkNFIn0.IS9XILuqYEAKycN8j2MT0121j19T02CbW_h0erVh5IE',
+        { allowedIss: ['ISS', 'ISS1'], key: 'secret-secret-secret-secret-secret' }
+      )
+    },
+    { message: 'The iss claim must be a string.' }
   )
 
   t.assert.deepStrictEqual(
@@ -818,7 +808,7 @@ test('it validates the sub claim only if explicitily enabled', t => {
         { allowedSub: ['SUB1'], key: 'secret-secret-secret-secret-secret' }
       )
     },
-    { message: 'Not all of the sub claim values are allowed.' }
+    { message: 'The sub claim must be a string.' }
   )
 
   t.assert.throws(
@@ -828,22 +818,17 @@ test('it validates the sub claim only if explicitily enabled', t => {
         { allowedSub: ['SUB1', 'SUB3'], key: 'secret-secret-secret-secret-secret' }
       )
     },
-    { message: 'Not all of the sub claim values are allowed.' }
+    { message: 'The sub claim must be a string.' }
   )
 
-  t.assert.deepStrictEqual(
-    verify(
-      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxLCJqdGkiOiJKVEkiLCJhdWQiOlsiQVVEMSJdLCJpc3MiOiJJU1MiLCJzdWIiOlsiU1VCMSIsIlNVQjIiXSwibm9uY2UiOiJOT05DRSJ9.RwBpdTCEFCxO0jIFPnJpxjRd0JVIhP2Eettmsh0uwzY',
-      { allowedSub: ['SUB1', 'SUB2'], key: 'secret-secret-secret-secret-secret' }
-    ),
-    {
-      a: 1,
-      jti: 'JTI',
-      aud: ['AUD1'],
-      iss: 'ISS',
-      sub: ['SUB1', 'SUB2'],
-      nonce: 'NONCE'
-    }
+  t.assert.throws(
+    () => {
+      verify(
+        'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxLCJqdGkiOiJKVEkiLCJhdWQiOlsiQVVEMSJdLCJpc3MiOiJJU1MiLCJzdWIiOlsiU1VCMSIsIlNVQjIiXSwibm9uY2UiOiJOT05DRSJ9.RwBpdTCEFCxO0jIFPnJpxjRd0JVIhP2Eettmsh0uwzY',
+        { allowedSub: ['SUB1', 'SUB2'], key: 'secret-secret-secret-secret-secret' }
+      )
+    },
+    { message: 'The sub claim must be a string.' }
   )
 
   t.assert.deepStrictEqual(
@@ -930,7 +915,7 @@ test('it validates the nonce claim only if explicitily enabled', t => {
         { allowedNonce: ['NONCE'], key: 'secret-secret-secret-secret-secret' }
       )
     },
-    { message: 'Not all of the nonce claim values are allowed.' }
+    { message: 'The nonce claim must be a string.' }
   )
 
   t.assert.throws(
@@ -940,22 +925,17 @@ test('it validates the nonce claim only if explicitily enabled', t => {
         { allowedNonce: ['NONCE', 'NONCE2'], key: 'secret-secret-secret-secret-secret' }
       )
     },
-    { message: 'Not all of the nonce claim values are allowed.' }
+    { message: 'The nonce claim must be a string.' }
   )
 
-  t.assert.deepStrictEqual(
-    verify(
-      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxLCJqdGkiOiJKVEkiLCJhdWQiOlsiQVVEMSJdLCJpc3MiOiJJU1MiLCJzdWIiOiJTVUIiLCJub25jZSI6WyJOT05DRSIsIk5PTkNFMSJdfQ.a8ZSzXebJvaw32jyWgbBo9aeLNTgs_sqxD2llV4f8KQ',
-      { allowedNonce: ['NONCE', 'NONCE1'], key: 'secret-secret-secret-secret-secret' }
-    ),
-    {
-      a: 1,
-      jti: 'JTI',
-      aud: ['AUD1'],
-      iss: 'ISS',
-      sub: 'SUB',
-      nonce: ['NONCE', 'NONCE1']
-    }
+  t.assert.throws(
+    () => {
+      verify(
+        'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxLCJqdGkiOiJKVEkiLCJhdWQiOlsiQVVEMSJdLCJpc3MiOiJJU1MiLCJzdWIiOiJTVUIiLCJub25jZSI6WyJOT05DRSIsIk5PTkNFMSJdfQ.a8ZSzXebJvaw32jyWgbBo9aeLNTgs_sqxD2llV4f8KQ',
+        { allowedNonce: ['NONCE', 'NONCE1'], key: 'secret-secret-secret-secret-secret' }
+      )
+    },
+    { message: 'The nonce claim must be a string.' }
   )
 
   t.assert.deepStrictEqual(
