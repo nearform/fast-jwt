@@ -141,12 +141,12 @@ function validateAlgorithmAndSignature(input, header, signature, key, allowedAlg
   }
 }
 
-function validateClaimType(values, claim, allowArray, arrayValue, type) {
+function validateClaimType(values, claim, allowArray, isArray, type) {
   const typeFailureMessage = allowArray
     ? `The ${claim} claim must be a ${type} or an array of ${type}s.`
     : `The ${claim} claim must be a ${type}.`
 
-  if (arrayValue && !allowArray) {
+  if (isArray && !allowArray) {
     throw new TokenError(TokenError.codes.invalidClaimValue, typeFailureMessage)
   }
 
@@ -155,8 +155,8 @@ function validateClaimType(values, claim, allowArray, arrayValue, type) {
   }
 }
 
-function validateClaimValues(values, claim, allowed, arrayValue) {
-  const failureMessage = arrayValue
+function validateClaimValues(values, claim, allowed, isArray) {
+  const failureMessage = isArray
     ? `None of ${claim} claim values are allowed.`
     : `The ${claim} claim value is not allowed.`
 
@@ -212,8 +212,8 @@ function verifyToken(
 
   for (const { type, claim, allowed, array, modifier, greater, errorCode, errorVerb } of validators) {
     const value = payload[claim]
-    const arrayValue = Array.isArray(value)
-    const values = arrayValue ? value : [value]
+    const isArray = Array.isArray(value)
+    const values = isArray ? value : [value]
 
     // We have already checked above that all required claims are present
     // Therefore we can skip this validator if the claim is not present
@@ -222,12 +222,12 @@ function verifyToken(
     }
 
     // Validate type
-    validateClaimType(values, claim, array, arrayValue, type === 'date' ? 'number' : 'string')
+    validateClaimType(values, claim, array, isArray, type === 'date' ? 'number' : 'string')
 
     if (type === 'date') {
       validateClaimDateValue(value, modifier, now, greater, errorCode, errorVerb)
     } else {
-      validateClaimValues(values, claim, allowed, arrayValue)
+      validateClaimValues(values, claim, allowed, isArray)
     }
   }
 }
