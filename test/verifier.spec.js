@@ -653,6 +653,24 @@ test('it validates the aud claim only if explicitily enabled', t => {
   token = sign({
     a: 1,
     jti: 'JTI',
+    aud: 'AUD',
+    iss: 'ISS',
+    sub: 'SUB',
+    nonce: 'NONCE'
+  })
+  t.assert.deepStrictEqual(verify(token, { allowedAud: 'AUD' }), {
+    a: 1,
+    iat: 100,
+    jti: 'JTI',
+    aud: 'AUD',
+    iss: 'ISS',
+    sub: 'SUB',
+    nonce: 'NONCE'
+  })
+
+  token = sign({
+    a: 1,
+    jti: 'JTI',
     aud: ['AUD1', 'DUA2'],
     iss: 'ISS',
     sub: 'SUB',
@@ -681,6 +699,24 @@ test('it validates the aud claim only if explicitily enabled', t => {
     iat: 100,
     jti: 'JTI',
     aud: ['AUD1', 'DUA2'],
+    iss: 'ISS',
+    sub: 'SUB',
+    nonce: 'NONCE'
+  })
+
+  token = sign({
+    a: 1,
+    jti: 'JTI',
+    aud: 'DUA2',
+    iss: 'ISS',
+    sub: 'SUB',
+    nonce: 'NONCE'
+  })
+  t.assert.deepStrictEqual(verify(token, { allowedAud: ['ABX', /^D/] }), {
+    a: 1,
+    iat: 100,
+    jti: 'JTI',
+    aud: 'DUA2',
     iss: 'ISS',
     sub: 'SUB',
     nonce: 'NONCE'
