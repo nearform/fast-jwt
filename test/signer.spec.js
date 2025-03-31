@@ -297,7 +297,7 @@ test('it supports expiresIn as a string', async t => {
   )
 })
 
-test('it supports negative expiresIn', async t => {
+test('it supports negative expiresIn value', async t => {
   t.assert.equal(
     sign({ a: 1, iat: 100 }, { expiresIn: -1 }),
     'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxLCJpYXQiOjEwMCwiZXhwIjo5OX0.KqZa0DfwU41PqeDTct_kWCUKXeyQpzJJSZhGd76TR40'
