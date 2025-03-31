@@ -235,7 +235,7 @@ module.exports = function createSigner(options) {
     if (typeof expiresIn === 'string') {
       expiresIn = parseMs(expiresIn)
     }
-    if (typeof expiresIn !== 'number' || expiresIn < 0) {
+    if (typeof expiresIn !== 'number') {
       throw new TokenError(
         TokenError.codes.invalidOption,
         'The expiresIn option must be a positive number or a valid string.'

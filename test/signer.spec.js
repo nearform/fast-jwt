@@ -297,6 +297,13 @@ test('it supports expiresIn as a string', async t => {
   )
 })
 
+test('it supports negative expiresIn', async t => {
+  t.assert.equal(
+    sign({ a: 1, iat: 100 }, { expiresIn: -1 }),
+    'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxLCJpYXQiOjEwMCwiZXhwIjo5OX0.KqZa0DfwU41PqeDTct_kWCUKXeyQpzJJSZhGd76TR40'
+  )
+})
+
 test('it adds the payload exp claim', async t => {
   t.assert.equal(
     sign({ a: 1, iat: 100, exp: 200 }, {}),
@@ -596,10 +603,6 @@ test('options validation - expiresIn', async t => {
   })
 
   t.assert.throws(() => createSigner({ key: 'secret', expiresIn: 'invalid string' }), {
-    message: 'The expiresIn option must be a positive number or a valid string.'
-  })
-
-  t.assert.throws(() => createSigner({ key: 'secret', expiresIn: -1 }), {
     message: 'The expiresIn option must be a positive number or a valid string.'
   })
 })
