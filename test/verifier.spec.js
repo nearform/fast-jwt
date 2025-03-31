@@ -469,6 +469,13 @@ test('it validates if the token has not expired including the clock tolerance', 
   )
 })
 
+test('rejects token with negative exp', t => {
+  t.mock.timers.enable({ now: 0 })
+  const token = createSigner({ key: 'secret', expiresIn: -120000 })({ a: 1 })
+
+  t.assert.throws(() => verify(token), { message: 'The token has expired at 1969-12-31T23:58:00.000Z.' })
+})
+
 test('it validates the jti claim only if explicitily enabled', t => {
   t.mock.timers.enable({ now: 100000 })
   const sign = createSigner({ key: 'secret' })
