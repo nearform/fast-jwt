@@ -71,7 +71,7 @@
     "jsonwebtoken": "^9.0.2",
     "mitata": "^1.0.34",
     "prettier": "^3.4.2",
-    "tsd": "^0.31.2",
+    "tsd": "^0.32.0",
     "typescript": "^5.7.2",
     "typescript-eslint": "^8.18.0"
   },
