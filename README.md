@@ -286,6 +286,51 @@ For a detailed discussion about it, take a look at [this issue](https://github.c
 
 [Error codes](https://github.com/nearform/fast-jwt/blob/master/src/error.js) exported by `TOKEN_ERROR_CODES`.
 
+## Error Handling
+
+When using the verifier, errors can occur due to various reasons such as an expired token, an invalid signature, or a malformed token. `fast-jwt` throws a `TokenError` when such issues are encountered. You can catch this error and inspect its `code` property to determine the specific cause of the error. The possible values for the `code` property are listed in the `TOKEN_ERROR_CODES` object (see the "Token Error Codes" section above for more details).
+
+```javascript
+const { createVerifier, createSigner, TOKEN_ERROR_CODES } = require('fast-jwt')
+
+// Example 1: Handling an expired token
+const sign = createSigner({ key: 'secret', expiresIn: '1ms' }) // Token expires almost immediately
+const verify = createVerifier({ key: 'secret' })
+
+const expiredToken = sign({ foo: 'bar' })
+
+// Wait for a moment to ensure the token expires
+setTimeout(() => {
+  try {
+    verify(expiredToken)
+  } catch (err) {
+    if (err.code === TOKEN_ERROR_CODES.expired) {
+      console.error('Token verification failed because the token has expired.')
+      // Handle expired token error (e.g., prompt user to re-authenticate)
+    } else {
+      console.error('An unexpected error occurred:', err.message)
+    }
+  }
+}, 100); // Wait 100ms, which is longer than the token's 1ms validity
+
+// Example 2: Handling an invalid signature (e.g., wrong secret)
+const correctSigner = createSigner({ key: 'correct-secret' })
+const verifierWithWrongKey = createVerifier({ key: 'wrong-secret' })
+
+const tokenSignedWithCorrectKey = correctSigner({ data: 'payload' })
+
+try {
+  verifierWithWrongKey(tokenSignedWithCorrectKey)
+} catch (err) {
+  if (err.code === TOKEN_ERROR_CODES.invalidSignature) {
+    console.error('Token verification failed due to an invalid signature. This might be due to a key mismatch.')
+    // Handle invalid signature error
+  } else {
+    console.error('An unexpected error occurred:', err.message)
+  }
+}
+```
+
 ## JWKS
 
 JWKS is supported via [get-jwks](https://github.com/nearform/get-jwks). Check out the documentation for integration examples.
