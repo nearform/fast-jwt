@@ -103,6 +103,19 @@ createVerifier<Record<string, number>>({
 })({ key: 1 }).then(console.log, console.log)
 
 // Errors
+const errorWithNoMsg = new TokenError(TokenError.codes.expired)
+expectType<TokenError>(errorWithNoMsg)
+expectType<string>(errorWithNoMsg.message)
+
+const errorWithMsg = new TokenError(TokenError.codes.expired, 'MESSAGE')
+expectType<TokenError>(errorWithMsg)
+expectType<string>(errorWithMsg.message)
+
+const errorWithAdditional = new TokenError(TokenError.codes.expired, 'MESSAGE', { additional: 'data' })
+expectType<TokenError>(errorWithAdditional)
+expectType<string>(errorWithAdditional.message)
+expectType<any>(errorWithAdditional.additional)
+
 const wrapped = TokenError.wrap(new Error('ORIGINAL'), 'FAST_JWT_INVALID_TYPE', 'MESSAGE')
 wrapped.code === 'FAST_JWT_INVALID_TYPE'
 wrapped.message === 'MESSAGE'
