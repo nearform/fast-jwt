@@ -34,6 +34,7 @@ export type TokenValidationErrorCode =
   | 'FAST_JWT_MISSING_SIGNATURE'
 
 declare class TokenError extends Error {
+  constructor(code: TokenValidationErrorCode, message?: string, additional?: { [key: string]: any });
   static wrap(originalError: Error, code: TokenValidationErrorCode, message: string): TokenError
   static codes: {
     invalidType: 'FAST_JWT_INVALID_TYPE'
