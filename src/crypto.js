@@ -13,9 +13,10 @@ const {
     RSA_PKCS1_PADDING,
     RSA_PSS_SALTLEN_MAX_SIGN,
     RSA_PSS_SALTLEN_AUTO
-  }
+  },
+  sign: directSign,
+  verify: directVerify
 } = require('node:crypto')
-const { sign: directSign, verify: directVerify } = require('node:crypto')
 const { joseToDer, derToJose } = require('ecdsa-sig-formatter')
 const Cache = require('mnemonist/lru-cache')
 const { TokenError } = require('./error')
