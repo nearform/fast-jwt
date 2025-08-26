@@ -16,24 +16,17 @@ on:
 
 jobs:
   release:
+    runs-on: ubuntu-latest
+    environment: production
     permissions:
       contents: write
       issues: write
       pull-requests: write
       id-token: write
-    runs-on: ubuntu-latest
     steps:
       - uses: nearform-actions/optic-release-automation-action@v4
         with:
-          github-token: ${{ secrets.github_token }}
-          npm-token: >-
-            ${{ secrets[format('NPM_TOKEN_{0}', github.actor)] ||
-            secrets.NPM_TOKEN }}
-          optic-token: >-
-            ${{ secrets[format('OPTIC_TOKEN_{0}', github.actor)] ||
-            secrets.OPTIC_TOKEN }}
-          ngrok-token: ${{ secrets.NGROK_TOKEN }}
+          publish-mode: oidc
           semver: ${{ github.event.inputs.semver }}
           build-command: |
             npm install
-          provenance: true
