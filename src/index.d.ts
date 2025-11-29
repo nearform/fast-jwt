@@ -19,25 +19,7 @@ export type TokenValidationErrorCode = typeof TOKEN_ERROR_CODES[keyof typeof TOK
 declare class TokenError extends Error {
   constructor(code: TokenValidationErrorCode, message?: string, additional?: { [key: string]: any });
   static wrap(originalError: Error, code: TokenValidationErrorCode, message: string): TokenError
-  static codes: {
-    invalidType: typeof TOKEN_ERROR_CODES.invalidType
-    invalidOption: typeof TOKEN_ERROR_CODES.invalidOption
-    invalidAlgorithm: typeof TOKEN_ERROR_CODES.invalidAlgorithm
-    invalidClaimType: typeof TOKEN_ERROR_CODES.invalidClaimType
-    invalidClaimValue: typeof TOKEN_ERROR_CODES.invalidClaimValue
-    invalidKey: typeof TOKEN_ERROR_CODES.invalidKey
-    invalidSignature: typeof TOKEN_ERROR_CODES.invalidSignature
-    invalidPayload: typeof TOKEN_ERROR_CODES.invalidPayload
-    malformed: typeof TOKEN_ERROR_CODES.malformed
-    inactive: typeof TOKEN_ERROR_CODES.inactive
-    expired: typeof TOKEN_ERROR_CODES.expired
-    missingKey: typeof TOKEN_ERROR_CODES.missingKey
-    keyFetchingError: typeof TOKEN_ERROR_CODES.keyFetchingError
-    signError: typeof TOKEN_ERROR_CODES.signError
-    verifyError: typeof TOKEN_ERROR_CODES.verifyError
-    missingRequiredClaim: typeof TOKEN_ERROR_CODES.missingRequiredClaim
-    missingSignature: typeof TOKEN_ERROR_CODES.missingSignature
-  }
+  static codes: typeof TOKEN_ERROR_CODES
 
   code: TokenValidationErrorCode;
   [key: string]: any
