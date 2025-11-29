@@ -177,8 +177,8 @@ expectType<typeof TOKEN_ERROR_CODES>(TOKEN_ERROR_CODES)
 expectType<typeof TOKEN_ERROR_CODES>(TokenError.codes)
 
 // Check all enum values are assignable to TokenValidationErrorCode union
-expectType<TokenValidationErrorCode[]>(Object.values(TokenError.codes))
 expectType<TokenValidationErrorCode[]>(Object.values(TOKEN_ERROR_CODES))
+expectType<TokenValidationErrorCode[]>(Object.values(TokenError.codes))
 
 // Check enums resolve to correct string literals
 const code: TokenValidationErrorCode = TOKEN_ERROR_CODES.expired
