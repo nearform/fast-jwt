@@ -9,7 +9,8 @@ import {
   DecodedJwt,
   JwtHeader,
   TokenError,
-  TokenValidationErrorCode
+  TokenValidationErrorCode,
+  TOKEN_ERROR_CODES
 } from '..'
 
 // Signing
@@ -173,6 +174,7 @@ expectNotAssignable<JwtHeader>(signerOptionsNoAlg.header)
 
 // Check all errors are typed correctly
 expectType<TokenValidationErrorCode[]>(Object.values(TokenError.codes))
+expectAssignable<Record<string, TokenValidationErrorCode>>(TOKEN_ERROR_CODES)
 
 const decodedJwt: DecodedJwt = {
   header: { alg: 'RS256', typ: 'JWT' },
