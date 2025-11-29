@@ -172,9 +172,19 @@ const signerOptionsNoAlg = {
 }
 expectNotAssignable<JwtHeader>(signerOptionsNoAlg.header)
 
-// Check all errors are typed correctly
+// Check object and class static matches its own type
+expectType<typeof TOKEN_ERROR_CODES>(TOKEN_ERROR_CODES)
+expectType<typeof TOKEN_ERROR_CODES>(TokenError.codes)
+
+// Check all enum values are assignable to TokenValidationErrorCode union
 expectType<TokenValidationErrorCode[]>(Object.values(TokenError.codes))
-expectAssignable<Record<string, TokenValidationErrorCode>>(TOKEN_ERROR_CODES)
+Object.values(TOKEN_ERROR_CODES).forEach(value => {
+  expectType<TokenValidationErrorCode>(value)
+})
+
+// Check enums resolve to correct string literals
+const code: TokenValidationErrorCode = TOKEN_ERROR_CODES.expired
+expectType<"FAST_JWT_EXPIRED">(code)
 
 const decodedJwt: DecodedJwt = {
   header: { alg: 'RS256', typ: 'JWT' },
