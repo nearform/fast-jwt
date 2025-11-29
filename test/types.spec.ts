@@ -172,7 +172,7 @@ const signerOptionsNoAlg = {
 }
 expectNotAssignable<JwtHeader>(signerOptionsNoAlg.header)
 
-// Check object and class static matches its own type
+// Check object and class static matches their own type
 expectType<typeof TOKEN_ERROR_CODES>(TOKEN_ERROR_CODES)
 expectType<typeof TOKEN_ERROR_CODES>(TokenError.codes)
 
