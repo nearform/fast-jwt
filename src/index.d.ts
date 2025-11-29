@@ -14,46 +14,29 @@ export type Algorithm =
   | 'PS512'
   | 'EdDSA'
 
-export type TokenValidationErrorCode =
-  | 'FAST_JWT_INVALID_TYPE'
-  | 'FAST_JWT_INVALID_OPTION'
-  | 'FAST_JWT_INVALID_ALGORITHM'
-  | 'FAST_JWT_INVALID_CLAIM_TYPE'
-  | 'FAST_JWT_INVALID_CLAIM_VALUE'
-  | 'FAST_JWT_INVALID_KEY'
-  | 'FAST_JWT_INVALID_SIGNATURE'
-  | 'FAST_JWT_INVALID_PAYLOAD'
-  | 'FAST_JWT_MALFORMED'
-  | 'FAST_JWT_INACTIVE'
-  | 'FAST_JWT_EXPIRED'
-  | 'FAST_JWT_MISSING_KEY'
-  | 'FAST_JWT_KEY_FETCHING_ERROR'
-  | 'FAST_JWT_SIGN_ERROR'
-  | 'FAST_JWT_VERIFY_ERROR'
-  | 'FAST_JWT_MISSING_REQUIRED_CLAIM'
-  | 'FAST_JWT_MISSING_SIGNATURE'
+export type TokenValidationErrorCode = typeof TOKEN_ERROR_CODES[keyof typeof TOKEN_ERROR_CODES]
 
 declare class TokenError extends Error {
   constructor(code: TokenValidationErrorCode, message?: string, additional?: { [key: string]: any });
   static wrap(originalError: Error, code: TokenValidationErrorCode, message: string): TokenError
   static codes: {
-    invalidType: 'FAST_JWT_INVALID_TYPE'
-    invalidOption: 'FAST_JWT_INVALID_OPTION'
-    invalidAlgorithm: 'FAST_JWT_INVALID_ALGORITHM'
-    invalidClaimType: 'FAST_JWT_INVALID_CLAIM_TYPE'
-    invalidClaimValue: 'FAST_JWT_INVALID_CLAIM_VALUE'
-    invalidKey: 'FAST_JWT_INVALID_KEY'
-    invalidSignature: 'FAST_JWT_INVALID_SIGNATURE'
-    invalidPayload: 'FAST_JWT_INVALID_PAYLOAD'
-    malformed: 'FAST_JWT_MALFORMED'
-    inactive: 'FAST_JWT_INACTIVE'
-    expired: 'FAST_JWT_EXPIRED'
-    missingKey: 'FAST_JWT_MISSING_KEY'
-    keyFetchingError: 'FAST_JWT_KEY_FETCHING_ERROR'
-    signError: 'FAST_JWT_SIGN_ERROR'
-    verifyError: 'FAST_JWT_VERIFY_ERROR'
-    missingRequiredClaim: 'FAST_JWT_MISSING_REQUIRED_CLAIM'
-    missingSignature: 'FAST_JWT_MISSING_SIGNATURE'
+    invalidType: typeof TOKEN_ERROR_CODES.invalidType
+    invalidOption: typeof TOKEN_ERROR_CODES.invalidOption
+    invalidAlgorithm: typeof TOKEN_ERROR_CODES.invalidAlgorithm
+    invalidClaimType: typeof TOKEN_ERROR_CODES.invalidClaimType
+    invalidClaimValue: typeof TOKEN_ERROR_CODES.invalidClaimValue
+    invalidKey: typeof TOKEN_ERROR_CODES.invalidKey
+    invalidSignature: typeof TOKEN_ERROR_CODES.invalidSignature
+    invalidPayload: typeof TOKEN_ERROR_CODES.invalidPayload
+    malformed: typeof TOKEN_ERROR_CODES.malformed
+    inactive: typeof TOKEN_ERROR_CODES.inactive
+    expired: typeof TOKEN_ERROR_CODES.expired
+    missingKey: typeof TOKEN_ERROR_CODES.missingKey
+    keyFetchingError: typeof TOKEN_ERROR_CODES.keyFetchingError
+    signError: typeof TOKEN_ERROR_CODES.signError
+    verifyError: typeof TOKEN_ERROR_CODES.verifyError
+    missingRequiredClaim: typeof TOKEN_ERROR_CODES.missingRequiredClaim
+    missingSignature: typeof TOKEN_ERROR_CODES.missingSignature
   }
 
   code: TokenValidationErrorCode;
@@ -148,6 +131,26 @@ export interface PrivateKey {
   key: Bufferable
   passphrase: string | undefined
 }
+
+export const TOKEN_ERROR_CODES: {
+  readonly invalidType: 'FAST_JWT_INVALID_TYPE';
+  readonly invalidOption: 'FAST_JWT_INVALID_OPTION';
+  readonly invalidAlgorithm: 'FAST_JWT_INVALID_ALGORITHM';
+  readonly invalidClaimType: 'FAST_JWT_INVALID_CLAIM_TYPE';
+  readonly invalidClaimValue: 'FAST_JWT_INVALID_CLAIM_VALUE';
+  readonly invalidKey: 'FAST_JWT_INVALID_KEY';
+  readonly invalidSignature: 'FAST_JWT_INVALID_SIGNATURE';
+  readonly invalidPayload: 'FAST_JWT_INVALID_PAYLOAD';
+  readonly malformed: 'FAST_JWT_MALFORMED';
+  readonly inactive: 'FAST_JWT_INACTIVE';
+  readonly expired: 'FAST_JWT_EXPIRED';
+  readonly missingKey: 'FAST_JWT_MISSING_KEY';
+  readonly keyFetchingError: 'FAST_JWT_KEY_FETCHING_ERROR';
+  readonly signError: 'FAST_JWT_SIGN_ERROR';
+  readonly verifyError: 'FAST_JWT_VERIFY_ERROR';
+  readonly missingRequiredClaim: 'FAST_JWT_MISSING_REQUIRED_CLAIM';
+  readonly missingSignature: 'FAST_JWT_MISSING_SIGNATURE';
+};
 
 export function createSigner<T = SignerPayload>(
   options?: Partial<SignerOptions & { key: Bufferable | PrivateKey }>
