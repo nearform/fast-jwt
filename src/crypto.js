@@ -72,7 +72,7 @@ function cacheSet(cache, key, value, error) {
 }
 
 function performDetectPrivateKeyAlgorithm(key, providedAlgorithm) {
-  if (providedAlgorithm && providedAlgorithm[0] === 'H') {
+  if (providedAlgorithm?.[0] === 'H') {
     // the key string might look like a public/private key, but it should be used as a raw string
     return providedAlgorithm
   }
