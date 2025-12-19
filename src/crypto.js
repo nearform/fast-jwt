@@ -71,7 +71,12 @@ function cacheSet(cache, key, value, error) {
   return value || error
 }
 
-function performDetectPrivateKeyAlgorithm(key) {
+function performDetectPrivateKeyAlgorithm(key, providedAlgorithm) {
+  if (providedAlgorithm?.[0] === 'H') {
+    // the key string might look like a public/private key, but it should be used as a raw string
+    return providedAlgorithm
+  }
+
   if (key.match(publicKeyPemMatcher) || key.includes(publicKeyX509CertMatcher)) {
     throw new TokenError(TokenError.codes.invalidKey, 'Public keys are not supported for signing.')
   }
@@ -185,7 +190,7 @@ function detectPrivateKeyAlgorithm(key, providedAlgorithm) {
 
   // Try detecting
   try {
-    const detectedAlgorithm = performDetectPrivateKeyAlgorithm(key)
+    const detectedAlgorithm = performDetectPrivateKeyAlgorithm(key, providedAlgorithm)
 
     if (detectedAlgorithm === 'ENCRYPTED') {
       return cacheSet(privateKeysCache, key, providedAlgorithm)
