@@ -143,8 +143,8 @@ test('detectPrivateKeyAlgorithm - public keys should be rejected', t => {
   })
 })
 
-test('detectPrivateKeyAlgorithm - public keys should be accepted if HS256, HS364, HS512 is used', t => {
-  ;['HS256', 'HS364', 'HS512'].forEach(algorithm => {
+test('detectPrivateKeyAlgorithm - public keys should be accepted if HS256, HS384, HS512 is used', t => {
+  ;['HS256', 'HS384', 'HS512'].forEach(algorithm => {
     t.assert.equal(detectPrivateKeyAlgorithm(`-----BEGIN PUBLIC KEY-----\nUSED IN ${algorithm}`, algorithm), algorithm)
   })
 })
