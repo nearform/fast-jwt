@@ -1734,3 +1734,90 @@ test('default errorCacheTTL should not cache errors when sub millisecond executi
 
   t.mock.timers.reset()
 })
+
+// --- crit header validation (RFC 7515 §4.1.11) ---
+
+test('crit: rejects token with unknown critical extension (secure-by-default, no allowedCritHeaders)', t => {
+  const signer = createSigner({ key: 'secret', algorithm: 'HS256', header: { crit: ['x-custom-policy'], 'x-custom-policy': 'require-mfa' } })
+  const token = signer({ sub: 'user' })
+  const verifier = createVerifier({ key: 'secret' })
+  t.assert.throws(() => verifier(token), {
+    code: 'FAST_JWT_INVALID_CRIT_HEADER',
+    message: 'Critical extension "x-custom-policy" is not supported.'
+  })
+})
+
+test('crit: accepts token when extension is in allowedCritHeaders and present in header', t => {
+  const signer = createSigner({ key: 'secret', algorithm: 'HS256', header: { crit: ['x-custom-policy'], 'x-custom-policy': 'require-mfa' } })
+  const token = signer({ sub: 'user' })
+  const verifier = createVerifier({ key: 'secret', allowedCritHeaders: ['x-custom-policy'] })
+  const payload = verifier(token)
+  t.assert.equal(payload.sub, 'user')
+})
+
+test('crit: rejects token when allowed extension is listed in crit but missing from header', t => {
+  // Manually craft a token where crit lists an extension not actually present in the header
+  const signer = createSigner({ key: 'secret', algorithm: 'HS256', header: { crit: ['x-missing'] } })
+  const token = signer({ sub: 'user' })
+  const verifier = createVerifier({ key: 'secret', allowedCritHeaders: ['x-missing'] })
+  t.assert.throws(() => verifier(token), {
+    code: 'FAST_JWT_INVALID_CRIT_HEADER',
+    message: 'Critical extension "x-missing" is listed in crit but is not present in the header.'
+  })
+})
+
+test('crit: rejects token with empty crit array', t => {
+  // Build token manually since the signer would spread an empty array
+  const header = Buffer.from(JSON.stringify({ alg: 'HS256', typ: 'JWT', crit: [] })).toString('base64url')
+  const payload = Buffer.from(JSON.stringify({ sub: 'user' })).toString('base64url')
+  const { createHmac } = require('node:crypto')
+  const sig = createHmac('sha256', 'secret').update(`${header}.${payload}`).digest('base64url')
+  const token = `${header}.${payload}.${sig}`
+  const verifier = createVerifier({ key: 'secret' })
+  t.assert.throws(() => verifier(token), {
+    code: 'FAST_JWT_INVALID_CRIT_HEADER',
+    message: 'The crit header must be a non-empty array.'
+  })
+})
+
+test('crit: rejects token with a standard JWS header name in crit (e.g. "alg")', t => {
+  // Craft token manually — signer won't let you set crit: ['alg'] easily
+  const header = Buffer.from(JSON.stringify({ alg: 'HS256', typ: 'JWT', crit: ['alg'] })).toString('base64url')
+  const payload = Buffer.from(JSON.stringify({ sub: 'user' })).toString('base64url')
+  const { createHmac } = require('node:crypto')
+  const sig = createHmac('sha256', 'secret').update(`${header}.${payload}`).digest('base64url')
+  const token = `${header}.${payload}.${sig}`
+  const verifier = createVerifier({ key: 'secret', allowedCritHeaders: ['alg'] })
+  t.assert.throws(() => verifier(token), {
+    code: 'FAST_JWT_INVALID_CRIT_HEADER',
+    message: 'The crit header must not contain the standard header parameter name "alg".'
+  })
+})
+
+test('crit: rejects token with duplicate entries in crit', t => {
+  const header = Buffer.from(JSON.stringify({ alg: 'HS256', typ: 'JWT', crit: ['x-ext', 'x-ext'], 'x-ext': '1' })).toString('base64url')
+  const payload = Buffer.from(JSON.stringify({ sub: 'user' })).toString('base64url')
+  const { createHmac } = require('node:crypto')
+  const sig = createHmac('sha256', 'secret').update(`${header}.${payload}`).digest('base64url')
+  const token = `${header}.${payload}.${sig}`
+  const verifier = createVerifier({ key: 'secret', allowedCritHeaders: ['x-ext'] })
+  t.assert.throws(() => verifier(token), {
+    code: 'FAST_JWT_INVALID_CRIT_HEADER',
+    message: 'Duplicate entry "x-ext" in crit header.'
+  })
+})
+
+test('crit: token without crit header is accepted normally', t => {
+  const signer = createSigner({ key: 'secret', algorithm: 'HS256' })
+  const token = signer({ sub: 'user' })
+  const verifier = createVerifier({ key: 'secret' })
+  const payload = verifier(token)
+  t.assert.equal(payload.sub, 'user')
+})
+
+test('crit: throws on invalid allowedCritHeaders option (not an array)', t => {
+  t.assert.throws(
+    () => createVerifier({ key: 'secret', allowedCritHeaders: 'x-ext' }),
+    { code: 'FAST_JWT_INVALID_OPTION', message: 'The allowedCritHeaders option must be an array of strings.' }
+  )
+})
