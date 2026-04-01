@@ -72,11 +72,12 @@ function cacheSet(cache, key, value, error) {
 }
 
 function performDetectPrivateKeyAlgorithm(key) {
-  if (key.match(publicKeyPemMatcher) || key.includes(publicKeyX509CertMatcher)) {
+  const trimmedKey = key.trim()
+  if (trimmedKey.match(publicKeyPemMatcher) || trimmedKey.includes(publicKeyX509CertMatcher)) {
     throw new TokenError(TokenError.codes.invalidKey, 'Public keys are not supported for signing.')
   }
 
-  const pemData = key.trim().match(privateKeyPemMatcher)
+  const pemData = trimmedKey.match(privateKeyPemMatcher)
 
   if (!pemData) {
     return 'HS256'
@@ -124,24 +125,26 @@ function performDetectPrivateKeyAlgorithm(key) {
 }
 
 function performDetectPublicKeyAlgorithms(key) {
-  const publicKeyPemMatch = key.match(publicKeyPemMatcher)
+  const trimmedKey = key.trim()
+  const publicKeyPemMatch = trimmedKey.match(publicKeyPemMatcher)
 
-  if (key.match(privateKeyPemMatcher)) {
+  if (trimmedKey.match(privateKeyPemMatcher)) {
     throw new TokenError(TokenError.codes.invalidKey, 'Private keys are not supported for verifying.')
   } else if (publicKeyPemMatch && publicKeyPemMatch[1] === 'RSA') {
     // pkcs1 format - Can only be RSA key
     return rsaAlgorithms
-  } else if (!publicKeyPemMatch && !key.includes(publicKeyX509CertMatcher)) {
+  } else if (!publicKeyPemMatch && !trimmedKey.includes(publicKeyX509CertMatcher)) {
     // Not a PEM, assume a plain secret
     return hsAlgorithms
   }
 
   // if the key is a X509 cert we need to convert it
-  if (key.includes(publicKeyX509CertMatcher)) {
-    key = createPublicKey(key).export({ type: 'spki', format: 'pem' })
+  let resolvedKey = trimmedKey
+  if (trimmedKey.includes(publicKeyX509CertMatcher)) {
+    resolvedKey = createPublicKey(trimmedKey).export({ type: 'spki', format: 'pem' })
   }
 
-  const keyData = PublicKey.decode(key, 'pem', { label: 'PUBLIC KEY' })
+  const keyData = PublicKey.decode(resolvedKey, 'pem', { label: 'PUBLIC KEY' })
   const oid = keyData.algorithm.algorithm.join('.')
   let curveId
 
