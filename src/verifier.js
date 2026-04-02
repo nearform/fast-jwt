@@ -36,6 +36,22 @@ function prepareKeyOrSecret(key, isSecret) {
   return isSecret ? createSecretKey(key) : createPublicKey(key)
 }
 
+// Detects the most common class of ReDoS-vulnerable patterns: a group containing
+// a quantifier followed immediately by another quantifier, e.g. (a+)+, (a*)*, (\w+)+.
+const unsafeRegExpPattern = /\([^)]*[+*][^)]*\)[+*{]/
+
+function checkForUnsafeRegExp(raw, optionName) {
+  const patterns = Array.isArray(raw) ? raw : [raw]
+  for (const r of patterns) {
+    if (r instanceof RegExp && unsafeRegExpPattern.test(r.source)) {
+      throw new TokenError(
+        TokenError.codes.invalidOption,
+        `The ${optionName} option contains an unsafe RegExp with nested quantifiers that may cause a ReDoS attack.`
+      )
+    }
+  }
+}
+
 function ensureStringClaimMatcher(raw) {
   if (!Array.isArray(raw)) {
     raw = [raw]
@@ -438,6 +454,12 @@ module.exports = function createVerifier(options) {
   if (requiredClaims && !Array.isArray(requiredClaims)) {
     throw new TokenError(TokenError.codes.invalidOption, 'The requiredClaims option must be an array.')
   }
+
+  if (allowedJti) checkForUnsafeRegExp(allowedJti, 'allowedJti')
+  if (allowedAud) checkForUnsafeRegExp(allowedAud, 'allowedAud')
+  if (allowedIss) checkForUnsafeRegExp(allowedIss, 'allowedIss')
+  if (allowedSub) checkForUnsafeRegExp(allowedSub, 'allowedSub')
+  if (allowedNonce) checkForUnsafeRegExp(allowedNonce, 'allowedNonce')
 
   // Add validators
   const validators = []
