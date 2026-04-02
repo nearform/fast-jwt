@@ -44,6 +44,10 @@ function ensureStringClaimMatcher(raw) {
   return raw
     .filter(r => r)
     .map(r => {
+      if (r instanceof RegExp) {
+        return { test: v => { r.lastIndex = 0; return r.test(v) } }
+      }
+
       if (r && typeof r.test === 'function') {
         return r
       }
@@ -386,6 +390,13 @@ module.exports = function createVerifier(options) {
     requiredClaims,
     cacheKeyBuilder
   } = { cacheTTL: 600_000, clockTolerance: 0, errorCacheTTL: -1, cacheKeyBuilder: hashToken, ...options }
+
+  // When a custom cacheKeyBuilder is provided, compose it with hashToken to prevent
+  // cache confusion attacks caused by key collisions between different tokens.
+  if (options && options.cacheKeyBuilder) {
+    const userBuilder = cacheKeyBuilder
+    cacheKeyBuilder = token => userBuilder(token) + ':' + hashToken(token)
+  }
 
   // Validate options
   if (!Array.isArray(allowedAlgorithms)) {

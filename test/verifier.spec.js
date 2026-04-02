@@ -1192,8 +1192,79 @@ test('caching - sync - custom cacheKeyBuilder', t => {
   t.assert.throws(() => verifier(invalidToken), { message: 'The token signature is invalid.' })
   t.assert.equal(verifier.cache.size, 2)
 
-  t.assert.deepStrictEqual(verifier.cache.get(token)[0], { a: 1 })
-  t.assert.ok(verifier.cache.get(invalidToken)[0] instanceof TokenError)
+  t.assert.deepStrictEqual(verifier.cache.get(token + ':' + hashToken(token))[0], { a: 1 })
+  t.assert.ok(verifier.cache.get(invalidToken + ':' + hashToken(invalidToken))[0] instanceof TokenError)
+})
+
+// Helper used by the collision-prone cacheKeyBuilder tests below
+function parseToken(token) {
+  return JSON.parse(Buffer.from(token.split('.')[1], 'base64url').toString('utf8'))
+}
+
+test('caching - custom cacheKeyBuilder collision-prone: same audience key', t => {
+  const sign = createSigner({ key: 'secret' })
+  const t1 = sign({ sub: 'userA', aud: 'admin' })
+  const t2 = sign({ sub: 'userB', aud: 'admin' })
+
+  const verify = createVerifier({
+    key: 'secret',
+    cache: true,
+    cacheKeyBuilder: token => `aud=${parseToken(token).aud}`
+  })
+
+  const p1 = verify(t1)
+  const p2 = verify(t2)
+
+  t.assert.equal(p1.sub, 'userA', 'first token must return userA claims')
+  t.assert.equal(p2.sub, 'userB', 'second token must return userB claims, not userA cached ones')
+  t.assert.deepStrictEqual(verify(t1), p1, 're-verifying t1 returns original claims')
+  t.assert.deepStrictEqual(verify(t2), p2, 're-verifying t2 returns original claims')
+})
+
+test('caching - custom cacheKeyBuilder collision-prone: user type grouping', t => {
+  const sign = createSigner({ key: 'secret' })
+  const t1 = sign({ sub: 'userA', aud: 'admin' })
+  const t2 = sign({ sub: 'userB', aud: 'admin' })
+
+  const verify = createVerifier({
+    key: 'secret',
+    cache: true,
+    cacheKeyBuilder: token => {
+      const { aud } = parseToken(token)
+      return aud.includes('admin') ? 'admin-users' : 'regular-users'
+    }
+  })
+
+  const p1 = verify(t1)
+  const p2 = verify(t2)
+
+  t.assert.equal(p1.sub, 'userA', 'first token must return userA claims')
+  t.assert.equal(p2.sub, 'userB', 'second token must return userB claims, not userA cached ones')
+  t.assert.deepStrictEqual(verify(t1), p1, 're-verifying t1 returns original claims')
+  t.assert.deepStrictEqual(verify(t2), p2, 're-verifying t2 returns original claims')
+})
+
+test('caching - custom cacheKeyBuilder collision-prone: tenant + service grouping', t => {
+  const sign = createSigner({ key: 'secret' })
+  const t1 = sign({ sub: 'userA', aud: 'api', iss: 'tenant-x' })
+  const t2 = sign({ sub: 'userB', aud: 'api', iss: 'tenant-x' })
+
+  const verify = createVerifier({
+    key: 'secret',
+    cache: true,
+    cacheKeyBuilder: token => {
+      const { iss, aud } = parseToken(token)
+      return `${iss}-${aud}`
+    }
+  })
+
+  const p1 = verify(t1)
+  const p2 = verify(t2)
+
+  t.assert.equal(p1.sub, 'userA', 'first token must return userA claims')
+  t.assert.equal(p2.sub, 'userB', 'second token must return userB claims, not userA cached ones')
+  t.assert.deepStrictEqual(verify(t1), p1, 're-verifying t1 returns original claims')
+  t.assert.deepStrictEqual(verify(t2), p2, 're-verifying t2 returns original claims')
 })
 
 test('caching - async', async t => {
@@ -1733,4 +1804,71 @@ test('default errorCacheTTL should not cache errors when sub millisecond executi
   t.assert.notDeepStrictEqual(verifier.cache.get(hashToken(token))[0], checkToken)
 
   t.mock.timers.reset()
+})
+
+test('stateful RegExp /g flag must not cause non-deterministic claim validation - allowedAud', t => {
+  t.mock.timers.enable({ now: 100000 })
+  const sign = createSigner({ key: 'secret' })
+  const token = sign({ aud: 'admin', iss: 'issuer', sub: 'subject', jti: 'id-123', nonce: 'nonce-xyz' })
+  const verifier = createVerifier({ key: 'secret', allowedAud: /^admin$/g })
+
+  // All 8 successive calls with the same valid token must succeed
+  for (let i = 0; i < 8; i++) {
+    t.assert.doesNotThrow(() => verifier(token), `call ${i} should pass with /g flag on allowedAud`)
+  }
+})
+
+test('stateful RegExp /y flag must not cause non-deterministic claim validation - allowedAud', t => {
+  t.mock.timers.enable({ now: 100000 })
+  const sign = createSigner({ key: 'secret' })
+  const token = sign({ aud: 'admin', iss: 'issuer', sub: 'subject', jti: 'id-123', nonce: 'nonce-xyz' })
+  const verifier = createVerifier({ key: 'secret', allowedAud: /^admin$/y })
+
+  for (let i = 0; i < 8; i++) {
+    t.assert.doesNotThrow(() => verifier(token), `call ${i} should pass with /y flag on allowedAud`)
+  }
+})
+
+test('stateful RegExp /g flag must not cause non-deterministic claim validation - allowedIss', t => {
+  t.mock.timers.enable({ now: 100000 })
+  const sign = createSigner({ key: 'secret' })
+  const token = sign({ aud: 'admin', iss: 'issuer', sub: 'subject', jti: 'id-123', nonce: 'nonce-xyz' })
+  const verifier = createVerifier({ key: 'secret', allowedIss: /^issuer$/g })
+
+  for (let i = 0; i < 8; i++) {
+    t.assert.doesNotThrow(() => verifier(token), `call ${i} should pass with /g flag on allowedIss`)
+  }
+})
+
+test('stateful RegExp /g flag must not cause non-deterministic claim validation - allowedSub', t => {
+  t.mock.timers.enable({ now: 100000 })
+  const sign = createSigner({ key: 'secret' })
+  const token = sign({ aud: 'admin', iss: 'issuer', sub: 'subject', jti: 'id-123', nonce: 'nonce-xyz' })
+  const verifier = createVerifier({ key: 'secret', allowedSub: /^subject$/g })
+
+  for (let i = 0; i < 8; i++) {
+    t.assert.doesNotThrow(() => verifier(token), `call ${i} should pass with /g flag on allowedSub`)
+  }
+})
+
+test('stateful RegExp /g flag must not cause non-deterministic claim validation - allowedJti', t => {
+  t.mock.timers.enable({ now: 100000 })
+  const sign = createSigner({ key: 'secret' })
+  const token = sign({ aud: 'admin', iss: 'issuer', sub: 'subject', jti: 'id-123', nonce: 'nonce-xyz' })
+  const verifier = createVerifier({ key: 'secret', allowedJti: /^id-123$/g })
+
+  for (let i = 0; i < 8; i++) {
+    t.assert.doesNotThrow(() => verifier(token), `call ${i} should pass with /g flag on allowedJti`)
+  }
+})
+
+test('stateful RegExp /g flag must not cause non-deterministic claim validation - allowedNonce', t => {
+  t.mock.timers.enable({ now: 100000 })
+  const sign = createSigner({ key: 'secret' })
+  const token = sign({ aud: 'admin', iss: 'issuer', sub: 'subject', jti: 'id-123', nonce: 'nonce-xyz' })
+  const verifier = createVerifier({ key: 'secret', allowedNonce: /^nonce-xyz$/g })
+
+  for (let i = 0; i < 8; i++) {
+    t.assert.doesNotThrow(() => verifier(token), `call ${i} should pass with /g flag on allowedNonce`)
+  }
 })
