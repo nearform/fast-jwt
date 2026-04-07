@@ -516,6 +516,18 @@ module.exports = function createVerifier(options) {
 
   const allowedCritHeadersSet = new Set(allowedCritHeaders || [])
 
+  const cache = createCache(cacheSize)
+
+  if (cache && options?.cacheKeyBuilder) {
+    process.emitWarning(
+      'A custom cacheKeyBuilder is in use with caching enabled. ' +
+        'Cache key collisions can lead to identity/authorization bypass. ' +
+        'Make sure your cacheKeyBuilder generates unique keys for different tokens. ' +
+        'See https://github.com/nearform/fast-jwt/security/advisories/GHSA-rp9m-7r4c-75qg',
+      { code: 'FAST_JWT_CACHE_KEY_BUILDER_SECURITY_RISK' }
+    )
+  }
+
   // Add validators
   const validators = []
 
@@ -581,7 +593,7 @@ module.exports = function createVerifier(options) {
     isAsync: keyType === 'function',
     validators,
     decode: createDecoder({ complete: true }),
-    cache: createCache(cacheSize),
+    cache,
     requiredClaims,
     allowedCritHeaders: allowedCritHeadersSet,
     cacheKeyBuilder
