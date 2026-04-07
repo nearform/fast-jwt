@@ -248,7 +248,7 @@ test('detectPublicKeyAlgorithms - EC public key with leading whitespace must be 
 test('detectPublicKeyAlgorithms - Ed25519 public key with leading whitespace must be detected as EdDSA (not HMAC)', t => {
   for (const prefix of leadingWhitespacePrefixes) {
     t.assert.deepStrictEqual(detectPublicKeyAlgorithms(prefix + publicKeys.Ed25519.toString('utf-8')), ['EdDSA'])
-  } 
+  }
 })
 
 test('detectPublicKeyAlgorithms - private key with leading whitespace must still be rejected', t => {

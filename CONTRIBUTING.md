@@ -20,7 +20,7 @@ All contributions should fit the [standard](https://github.com/standard/standard
 You can test this by running:
 
 ```
-npm lint
+npm run lint
 npm test
 ```
 
