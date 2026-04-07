@@ -176,7 +176,7 @@ Create a verifier function by calling `createVerifier` and providing one or more
 
 - `clockTolerance`: Timespan in milliseconds is the tolerance to apply to the current timestamp when performing time comparisons. Default is `0`.
 
-- `cacheKeyBuilder`: The function that will be used to create the [cache's key](#caching) for each token. To mitigate the risk of leaking sensitive information and generate collisions, [a hashing function](./src/utils.js) is used by default. When using a custom function, users must be aware of the possible risks. Check the [Caching section](#caching) for more information.
+- `cacheKeyBuilder`: The function that will be used to create the [cache's key](#caching) for each token. To mitigate the risk of leaking sensitive information and reduce the risk of collisions, [a hashing function](./src/utils.js) is used by default. When using a custom function, users must be aware of the possible risks. Check the [Caching section](#caching) for more information.
 
 The verifier is a function which accepts a token (as Buffer or string) and returns the payload or the sections of the token.
 

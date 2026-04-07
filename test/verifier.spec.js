@@ -1197,19 +1197,25 @@ test('caching - sync - custom cacheKeyBuilder', t => {
 })
 
 test('caching - sync - custom cacheKeyBuilder emits security warning', async t => {
+  let onWarning
   const warningPromise = new Promise(resolve => {
-    const onWarning = w => {
+    onWarning = w => {
       if (w.code === 'FAST_JWT_CACHE_KEY_BUILDER_SECURITY_RISK') {
-        process.off('warning', onWarning)
         resolve(w)
       }
     }
     process.on('warning', onWarning)
   })
 
+  t.after(() => process.off('warning', onWarning))
+
   createVerifier({ key: 'secret', cache: true, cacheKeyBuilder: id => id })
 
-  const warning = await warningPromise
+  const timeout = new Promise((_, reject) =>
+    setTimeout(() => reject(new Error('Timed out waiting for FAST_JWT_CACHE_KEY_BUILDER_SECURITY_RISK warning')), 1000)
+  )
+
+  const warning = await Promise.race([warningPromise, timeout])
   t.assert.equal(warning.code, 'FAST_JWT_CACHE_KEY_BUILDER_SECURITY_RISK')
   t.assert.ok(warning.message.includes('cacheKeyBuilder'))
 })
