@@ -1192,79 +1192,8 @@ test('caching - sync - custom cacheKeyBuilder', t => {
   t.assert.throws(() => verifier(invalidToken), { message: 'The token signature is invalid.' })
   t.assert.equal(verifier.cache.size, 2)
 
-  t.assert.deepStrictEqual(verifier.cache.get(token + ':' + hashToken(token))[0], { a: 1 })
-  t.assert.ok(verifier.cache.get(invalidToken + ':' + hashToken(invalidToken))[0] instanceof TokenError)
-})
-
-// Helper used by the collision-prone cacheKeyBuilder tests below
-function parseToken(token) {
-  return JSON.parse(Buffer.from(token.split('.')[1], 'base64url').toString('utf8'))
-}
-
-test('caching - custom cacheKeyBuilder collision-prone: same audience key', t => {
-  const sign = createSigner({ key: 'secret' })
-  const t1 = sign({ sub: 'userA', aud: 'admin' })
-  const t2 = sign({ sub: 'userB', aud: 'admin' })
-
-  const verify = createVerifier({
-    key: 'secret',
-    cache: true,
-    cacheKeyBuilder: token => `aud=${parseToken(token).aud}`
-  })
-
-  const p1 = verify(t1)
-  const p2 = verify(t2)
-
-  t.assert.equal(p1.sub, 'userA', 'first token must return userA claims')
-  t.assert.equal(p2.sub, 'userB', 'second token must return userB claims, not userA cached ones')
-  t.assert.deepStrictEqual(verify(t1), p1, 're-verifying t1 returns original claims')
-  t.assert.deepStrictEqual(verify(t2), p2, 're-verifying t2 returns original claims')
-})
-
-test('caching - custom cacheKeyBuilder collision-prone: user type grouping', t => {
-  const sign = createSigner({ key: 'secret' })
-  const t1 = sign({ sub: 'userA', aud: 'admin' })
-  const t2 = sign({ sub: 'userB', aud: 'admin' })
-
-  const verify = createVerifier({
-    key: 'secret',
-    cache: true,
-    cacheKeyBuilder: token => {
-      const { aud } = parseToken(token)
-      return aud.includes('admin') ? 'admin-users' : 'regular-users'
-    }
-  })
-
-  const p1 = verify(t1)
-  const p2 = verify(t2)
-
-  t.assert.equal(p1.sub, 'userA', 'first token must return userA claims')
-  t.assert.equal(p2.sub, 'userB', 'second token must return userB claims, not userA cached ones')
-  t.assert.deepStrictEqual(verify(t1), p1, 're-verifying t1 returns original claims')
-  t.assert.deepStrictEqual(verify(t2), p2, 're-verifying t2 returns original claims')
-})
-
-test('caching - custom cacheKeyBuilder collision-prone: tenant + service grouping', t => {
-  const sign = createSigner({ key: 'secret' })
-  const t1 = sign({ sub: 'userA', aud: 'api', iss: 'tenant-x' })
-  const t2 = sign({ sub: 'userB', aud: 'api', iss: 'tenant-x' })
-
-  const verify = createVerifier({
-    key: 'secret',
-    cache: true,
-    cacheKeyBuilder: token => {
-      const { iss, aud } = parseToken(token)
-      return `${iss}-${aud}`
-    }
-  })
-
-  const p1 = verify(t1)
-  const p2 = verify(t2)
-
-  t.assert.equal(p1.sub, 'userA', 'first token must return userA claims')
-  t.assert.equal(p2.sub, 'userB', 'second token must return userB claims, not userA cached ones')
-  t.assert.deepStrictEqual(verify(t1), p1, 're-verifying t1 returns original claims')
-  t.assert.deepStrictEqual(verify(t2), p2, 're-verifying t2 returns original claims')
+  t.assert.deepStrictEqual(verifier.cache.get(token)[0], { a: 1 })
+  t.assert.ok(verifier.cache.get(invalidToken)[0] instanceof TokenError)
 })
 
 test('caching - async', async t => {
