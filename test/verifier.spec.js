@@ -1196,6 +1196,42 @@ test('caching - sync - custom cacheKeyBuilder', t => {
   t.assert.ok(verifier.cache.get(invalidToken)[0] instanceof TokenError)
 })
 
+test('caching - sync - custom cacheKeyBuilder emits security warning', async t => {
+  const warningPromise = new Promise(resolve => {
+    const onWarning = w => {
+      if (w.code === 'FAST_JWT_CACHE_KEY_BUILDER_SECURITY_RISK') {
+        process.off('warning', onWarning)
+        resolve(w)
+      }
+    }
+    process.on('warning', onWarning)
+  })
+
+  createVerifier({ key: 'secret', cache: true, cacheKeyBuilder: id => id })
+
+  const warning = await warningPromise
+  t.assert.equal(warning.code, 'FAST_JWT_CACHE_KEY_BUILDER_SECURITY_RISK')
+  t.assert.ok(warning.message.includes('cacheKeyBuilder'))
+})
+
+test('caching - sync - default cacheKeyBuilder does not emit security warning', async t => {
+  let warningReceived = false
+  const onWarning = w => {
+    if (w.code === 'FAST_JWT_CACHE_KEY_BUILDER_SECURITY_RISK') {
+      warningReceived = true
+    }
+  }
+  process.on('warning', onWarning)
+
+  createVerifier({ key: 'secret', cache: true })
+
+  // Wait a tick to allow any potential warning to be emitted
+  await new Promise(resolve => setImmediate(resolve))
+
+  process.off('warning', onWarning)
+  t.assert.equal(warningReceived, false)
+})
+
 test('caching - async', async t => {
   const token = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxfQ.57TF7smP9XDhIexBqPC-F1toZReYZLWb_YRU5tv0sxM'
   const invalidToken = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxfQ.aaa'
