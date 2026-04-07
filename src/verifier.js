@@ -174,10 +174,68 @@ function validateClaimDateValue(value, modifier, now, greater, errorCode, errorV
   }
 }
 
+// Standard JWS header parameter names (RFC 7515 §4 + JWA) that MUST NOT appear in crit
+const JWS_REGISTERED_HEADERS = new Set([
+  'alg',
+  'jku',
+  'jwk',
+  'kid',
+  'x5u',
+  'x5c',
+  'x5t',
+  'x5t#S256',
+  'typ',
+  'cty',
+  'crit'
+])
+
+function validateCrit(header, allowedCritHeaders) {
+  if (!header.crit) return
+
+  // crit MUST be a non-empty array
+  if (!Array.isArray(header.crit) || header.crit.length === 0) {
+    throw new TokenError(TokenError.codes.invalidCritHeader, 'The crit header must be a non-empty array.')
+  }
+
+  const seen = new Set()
+  for (const ext of header.crit) {
+    if (typeof ext !== 'string') {
+      throw new TokenError(TokenError.codes.invalidCritHeader, 'Each crit entry must be a string.')
+    }
+
+    // MUST NOT contain standard JWS/JWA header names (recipients MAY reject)
+    if (JWS_REGISTERED_HEADERS.has(ext)) {
+      throw new TokenError(
+        TokenError.codes.invalidCritHeader,
+        `The crit header must not contain the standard header parameter name "${ext}".`
+      )
+    }
+
+    // MUST NOT contain duplicate names (recipients MAY reject)
+    if (seen.has(ext)) {
+      throw new TokenError(TokenError.codes.invalidCritHeader, `Duplicate entry "${ext}" in crit header.`)
+    }
+    seen.add(ext)
+
+    // Extension listed in crit MUST be understood by the recipient
+    if (!allowedCritHeaders.has(ext)) {
+      throw new TokenError(TokenError.codes.invalidCritHeader, `Critical extension "${ext}" is not supported.`)
+    }
+
+    // Extension listed in crit MUST be present in the header
+    if (!(ext in header)) {
+      throw new TokenError(
+        TokenError.codes.invalidCritHeader,
+        `Critical extension "${ext}" is listed in crit but is not present in the header.`
+      )
+    }
+  }
+}
+
 function verifyToken(
   key,
   { input, header, payload, signature },
-  { validators, allowedAlgorithms, checkTyp, clockTimestamp, requiredClaims }
+  { validators, allowedAlgorithms, checkTyp, clockTimestamp, requiredClaims, allowedCritHeaders }
 ) {
   // Verify the key
   /* istanbul ignore next */
@@ -190,6 +248,9 @@ function verifyToken(
   }
 
   validateAlgorithmAndSignature(input, header, signature, key, allowedAlgorithms)
+
+  // Verify crit (RFC 7515 §4.1.11)
+  validateCrit(header, allowedCritHeaders)
 
   // Verify typ
   if (
@@ -249,6 +310,7 @@ function verify(
     decode,
     cache,
     requiredClaims,
+    allowedCritHeaders,
     errorCacheTTL,
     cacheKeyBuilder
   },
@@ -306,7 +368,15 @@ function verify(
     payload,
     cacheKeyBuilder
   }
-  const validationContext = { validators, allowedAlgorithms, checkTyp, clockTimestamp, clockTolerance, requiredClaims }
+  const validationContext = {
+    validators,
+    allowedAlgorithms,
+    checkTyp,
+    clockTimestamp,
+    clockTolerance,
+    requiredClaims,
+    allowedCritHeaders
+  }
 
   // We have the key
   if (!callback) {
@@ -384,6 +454,7 @@ module.exports = function createVerifier(options) {
     allowedSub,
     allowedNonce,
     requiredClaims,
+    allowedCritHeaders,
     cacheKeyBuilder
   } = { cacheTTL: 600_000, clockTolerance: 0, errorCacheTTL: -1, cacheKeyBuilder: hashToken, ...options }
 
@@ -438,6 +509,12 @@ module.exports = function createVerifier(options) {
   if (requiredClaims && !Array.isArray(requiredClaims)) {
     throw new TokenError(TokenError.codes.invalidOption, 'The requiredClaims option must be an array.')
   }
+
+  if (allowedCritHeaders !== undefined && !Array.isArray(allowedCritHeaders)) {
+    throw new TokenError(TokenError.codes.invalidOption, 'The allowedCritHeaders option must be an array of strings.')
+  }
+
+  const allowedCritHeadersSet = new Set(allowedCritHeaders || [])
 
   if (cacheSize && options?.cacheKeyBuilder) {
     process.emitWarning(
@@ -516,6 +593,7 @@ module.exports = function createVerifier(options) {
     decode: createDecoder({ complete: true }),
     cache: createCache(cacheSize),
     requiredClaims,
+    allowedCritHeaders: allowedCritHeadersSet,
     cacheKeyBuilder
   }
 
