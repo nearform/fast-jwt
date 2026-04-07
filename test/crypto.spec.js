@@ -75,6 +75,8 @@ T7r5sAUIWaF0Q5uk5NYmLOnCFxoP8Ua16sraCbAozdvg0wfvT7Cq
 -----END PUBLIC KEY-----
 `
 
+const leadingWhitespacePrefixes = ['\n', ' ', ' \n', '\n ', '\t\t']
+
 for (const type of ['HS', 'ES', 'RS', 'PS']) {
   for (const bits of [256, 384, 512]) {
     const algorithm = `${type}${bits}`
@@ -232,47 +234,60 @@ test('detectPublicKeyAlgorithms - unrecognized EC curves should be rejected', t 
 // GHSA-mvf2-f6gm-w987: leading whitespace must not defeat the ^ anchor and cause
 // an RSA/EC/Ed public key to be misclassified as an HMAC secret.
 test('detectPublicKeyAlgorithms - RSA public key with leading whitespace must be detected as RSA (not HMAC)', t => {
-  const keyWithLeadingNewline = '\n' + publicKeys.RS.toString('utf-8')
-  t.assert.deepStrictEqual(detectPublicKeyAlgorithms(keyWithLeadingNewline), rsaAlgorithms)
+  for (const prefix of leadingWhitespacePrefixes) {
+    t.assert.deepStrictEqual(detectPublicKeyAlgorithms(prefix + publicKeys.RS.toString('utf-8')), rsaAlgorithms)
+  }
 })
 
 test('detectPublicKeyAlgorithms - RSA public key with leading spaces/tabs must be detected as RSA (not HMAC)', t => {
-  const keyWithLeadingSpaces = '  \t  ' + publicKeys.RS.toString('utf-8')
-  t.assert.deepStrictEqual(detectPublicKeyAlgorithms(keyWithLeadingSpaces), rsaAlgorithms)
+  for (const prefix of leadingWhitespacePrefixes) {
+    t.assert.deepStrictEqual(detectPublicKeyAlgorithms(prefix + publicKeys.ES256.toString('utf-8')), ['ES256'])
+  }
 })
 
 test('detectPublicKeyAlgorithms - EC public key with leading whitespace must be detected as EC (not HMAC)', t => {
-  const keyWithLeadingNewline = '\n' + publicKeys.ES256.toString('utf-8')
-  t.assert.deepStrictEqual(detectPublicKeyAlgorithms(keyWithLeadingNewline), ['ES256'])
+  for (const prefix of leadingWhitespacePrefixes) {
+    t.assert.deepStrictEqual(detectPublicKeyAlgorithms(prefix + publicKeys.ES256.toString('utf-8')), ['ES256'])
+  }
 })
 
 test('detectPublicKeyAlgorithms - Ed25519 public key with leading whitespace must be detected as EdDSA (not HMAC)', t => {
-  const keyWithLeadingNewline = '\n' + publicKeys.Ed25519.toString('utf-8')
-  t.assert.deepStrictEqual(detectPublicKeyAlgorithms(keyWithLeadingNewline), ['EdDSA'])
+  for (const prefix of leadingWhitespacePrefixes) {
+    t.assert.deepStrictEqual(detectPublicKeyAlgorithms(prefix + publicKeys.Ed25519.toString('utf-8')), ['EdDSA'])
+  }
 })
 
 test('detectPublicKeyAlgorithms - private key with leading whitespace must still be rejected', t => {
-  const keyWithLeadingNewline = '\n' + privateKeys.RS.toString('utf-8')
-  t.assert.throws(() => detectPublicKeyAlgorithms(keyWithLeadingNewline), {
-    message: 'Private keys are not supported for verifying.'
-  })
+  for (const prefix of leadingWhitespacePrefixes) {
+    t.assert.throws(() => detectPublicKeyAlgorithms(prefix + privateKeys.RS.toString('utf-8')), {
+      message: 'Private keys are not supported for verifying.'
+    })
+  }
 })
 
 // GHSA-mvf2-f6gm-w987 (signer side): public key with leading whitespace must not
 // bypass the "Public keys are not supported for signing" guard.
 test('detectPrivateKeyAlgorithm - public key with leading whitespace must still be rejected', t => {
-  const keyWithLeadingNewline = '\n' + publicKeys.RS.toString('utf-8')
-  t.assert.throws(() => detectPrivateKeyAlgorithm(keyWithLeadingNewline), {
-    message: 'Public keys are not supported for signing.'
-  })
+  for (const prefix of leadingWhitespacePrefixes) {
+    t.assert.throws(() => detectPrivateKeyAlgorithm(prefix + publicKeys.RS.toString('utf-8')), {
+      message: 'Public keys are not supported for signing.'
+    })
+  }
 })
 
 test('detectPrivateKeyAlgorithm - X.509 cert with leading whitespace must still be rejected', t => {
   const cert = readFileSync(resolve(__dirname, '../benchmarks/keys/rs-x509-public.key'))
-  const keyWithLeadingNewline = '\n' + cert.toString('utf-8')
-  t.assert.throws(() => detectPrivateKeyAlgorithm(keyWithLeadingNewline), {
-    message: 'Public keys are not supported for signing.'
-  })
+  for (const prefix of leadingWhitespacePrefixes) {
+    t.assert.throws(() => detectPrivateKeyAlgorithm(prefix + cert.toString('utf-8')), {
+      message: 'Public keys are not supported for signing.'
+    })
+  }
+})
+
+test('detectPrivateKeyAlgorithm - EC private key with leading whitespace must still be detected', t => {
+  for (const prefix of leadingWhitespacePrefixes) {
+    t.assert.equal(detectPrivateKeyAlgorithm(prefix + privateKeys.ES256.toString('utf-8')), 'ES256')
+  }
 })
 
 for (const bits of [256, 384, 512]) {

@@ -91,14 +91,14 @@ function performDetectPrivateKeyAlgorithm(key) {
     case 'RSA': // pkcs1 format - Can only be RSA key
       return 'RS256'
     case 'EC': // sec1 format - Can only be a EC key
-      keyData = ECPrivateKey.decode(key, 'pem', { label: 'EC PRIVATE KEY' })
+      keyData = ECPrivateKey.decode(trimmedKey, 'pem', { label: 'EC PRIVATE KEY' })
       curveId = keyData.parameters.value.join('.')
       break
     case 'ENCRYPTED': // Can be either RSA or EC key - we'll used the supplied algorithm
       return 'ENCRYPTED'
     default:
       // pkcs8
-      keyData = PrivateKey.decode(key, 'pem', { label: 'PRIVATE KEY' })
+      keyData = PrivateKey.decode(trimmedKey, 'pem', { label: 'PRIVATE KEY' })
       oid = keyData.algorithm.algorithm.join('.')
 
       switch (oid) {
