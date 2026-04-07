@@ -1222,13 +1222,14 @@ test('caching - sync - default cacheKeyBuilder does not emit security warning', 
     }
   }
   process.on('warning', onWarning)
+  t.after(() => {
+    process.off('warning', onWarning)
+  })
 
   createVerifier({ key: 'secret', cache: true })
 
   // Wait a tick to allow any potential warning to be emitted
   await new Promise(resolve => setImmediate(resolve))
-
-  process.off('warning', onWarning)
   t.assert.equal(warningReceived, false)
 })
 
