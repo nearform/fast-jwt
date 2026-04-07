@@ -239,12 +239,6 @@ test('detectPublicKeyAlgorithms - RSA public key with leading whitespace must be
   }
 })
 
-test('detectPublicKeyAlgorithms - RSA public key with leading spaces/tabs must be detected as RSA (not HMAC)', t => {
-  for (const prefix of leadingWhitespacePrefixes) {
-    t.assert.deepStrictEqual(detectPublicKeyAlgorithms(prefix + publicKeys.ES256.toString('utf-8')), ['ES256'])
-  }
-})
-
 test('detectPublicKeyAlgorithms - EC public key with leading whitespace must be detected as EC (not HMAC)', t => {
   for (const prefix of leadingWhitespacePrefixes) {
     t.assert.deepStrictEqual(detectPublicKeyAlgorithms(prefix + publicKeys.ES256.toString('utf-8')), ['ES256'])
