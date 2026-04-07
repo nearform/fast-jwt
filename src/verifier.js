@@ -176,7 +176,17 @@ function validateClaimDateValue(value, modifier, now, greater, errorCode, errorV
 
 // Standard JWS header parameter names (RFC 7515 §4 + JWA) that MUST NOT appear in crit
 const JWS_REGISTERED_HEADERS = new Set([
-  'alg', 'jku', 'jwk', 'kid', 'x5u', 'x5c', 'x5t', 'x5t#S256', 'typ', 'cty', 'crit'
+  'alg',
+  'jku',
+  'jwk',
+  'kid',
+  'x5u',
+  'x5c',
+  'x5t',
+  'x5t#S256',
+  'typ',
+  'cty',
+  'crit'
 ])
 
 function validateCrit(header, allowedCritHeaders) {
@@ -209,10 +219,7 @@ function validateCrit(header, allowedCritHeaders) {
 
     // Extension listed in crit MUST be understood by the recipient
     if (!allowedCritHeaders.has(ext)) {
-      throw new TokenError(
-        TokenError.codes.invalidCritHeader,
-        `Critical extension "${ext}" is not supported.`
-      )
+      throw new TokenError(TokenError.codes.invalidCritHeader, `Critical extension "${ext}" is not supported.`)
     }
 
     // Extension listed in crit MUST be present in the header
@@ -361,7 +368,15 @@ function verify(
     payload,
     cacheKeyBuilder
   }
-  const validationContext = { validators, allowedAlgorithms, checkTyp, clockTimestamp, clockTolerance, requiredClaims, allowedCritHeaders }
+  const validationContext = {
+    validators,
+    allowedAlgorithms,
+    checkTyp,
+    clockTimestamp,
+    clockTolerance,
+    requiredClaims,
+    allowedCritHeaders
+  }
 
   // We have the key
   if (!callback) {
