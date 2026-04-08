@@ -1778,57 +1778,99 @@ test('default errorCacheTTL should not cache errors when sub millisecond executi
   t.mock.timers.reset()
 })
 
-test('createVerifier throws at construction time for unsafe RegExp with nested quantifiers in allowedAud', t => {
-  t.assert.throws(() => createVerifier({ key: 'secret', allowedAud: /^(a+)+X$/ }), {
-    message: 'The allowedAud option contains an unsafe RegExp with nested quantifiers that may cause a ReDoS attack.'
+async function captureWarning(code, fn) {
+  let onWarning
+  const warningPromise = new Promise(resolve => {
+    onWarning = w => {
+      if (w.code === code) resolve(w)
+    }
+    process.on('warning', onWarning)
   })
+  fn()
+  const timeout = new Promise((_, reject) =>
+    setTimeout(() => reject(new Error(`Timed out waiting for ${code} warning`)), 500)
+  )
+  try {
+    return await Promise.race([warningPromise, timeout])
+  } finally {
+    process.off('warning', onWarning)
+  }
+}
+
+test('createVerifier emits FAST_JWT_UNSAFE_REGEXP warning for unsafe RegExp in allowedAud', async t => {
+  const w = await captureWarning('FAST_JWT_UNSAFE_REGEXP', () =>
+    createVerifier({ key: 'secret', allowedAud: /^(a+)+X$/ })
+  )
+  t.assert.equal(w.code, 'FAST_JWT_UNSAFE_REGEXP')
+  t.assert.ok(w.message.includes('allowedAud'))
 })
 
-test('createVerifier throws at construction time for unsafe RegExp with nested quantifiers in allowedIss', t => {
-  t.assert.throws(() => createVerifier({ key: 'secret', allowedIss: /^(a+)+X$/ }), {
-    message: 'The allowedIss option contains an unsafe RegExp with nested quantifiers that may cause a ReDoS attack.'
-  })
+test('createVerifier emits FAST_JWT_UNSAFE_REGEXP warning for unsafe RegExp in allowedIss', async t => {
+  const w = await captureWarning('FAST_JWT_UNSAFE_REGEXP', () =>
+    createVerifier({ key: 'secret', allowedIss: /^(a+)+X$/ })
+  )
+  t.assert.equal(w.code, 'FAST_JWT_UNSAFE_REGEXP')
+  t.assert.ok(w.message.includes('allowedIss'))
 })
 
-test('createVerifier throws at construction time for unsafe RegExp with nested quantifiers in allowedSub', t => {
-  t.assert.throws(() => createVerifier({ key: 'secret', allowedSub: /^(a+)+X$/ }), {
-    message: 'The allowedSub option contains an unsafe RegExp with nested quantifiers that may cause a ReDoS attack.'
-  })
+test('createVerifier emits FAST_JWT_UNSAFE_REGEXP warning for unsafe RegExp in allowedSub', async t => {
+  const w = await captureWarning('FAST_JWT_UNSAFE_REGEXP', () =>
+    createVerifier({ key: 'secret', allowedSub: /^(a+)+X$/ })
+  )
+  t.assert.equal(w.code, 'FAST_JWT_UNSAFE_REGEXP')
+  t.assert.ok(w.message.includes('allowedSub'))
 })
 
-test('createVerifier throws at construction time for unsafe RegExp with nested quantifiers in allowedJti', t => {
-  t.assert.throws(() => createVerifier({ key: 'secret', allowedJti: /^(a+)+X$/ }), {
-    message: 'The allowedJti option contains an unsafe RegExp with nested quantifiers that may cause a ReDoS attack.'
-  })
+test('createVerifier emits FAST_JWT_UNSAFE_REGEXP warning for unsafe RegExp in allowedJti', async t => {
+  const w = await captureWarning('FAST_JWT_UNSAFE_REGEXP', () =>
+    createVerifier({ key: 'secret', allowedJti: /^(a+)+X$/ })
+  )
+  t.assert.equal(w.code, 'FAST_JWT_UNSAFE_REGEXP')
+  t.assert.ok(w.message.includes('allowedJti'))
 })
 
-test('createVerifier throws at construction time for unsafe RegExp with nested quantifiers in allowedNonce', t => {
-  t.assert.throws(() => createVerifier({ key: 'secret', allowedNonce: /^(a+)+X$/ }), {
-    message: 'The allowedNonce option contains an unsafe RegExp with nested quantifiers that may cause a ReDoS attack.'
-  })
+test('createVerifier emits FAST_JWT_UNSAFE_REGEXP warning for unsafe RegExp in allowedNonce', async t => {
+  const w = await captureWarning('FAST_JWT_UNSAFE_REGEXP', () =>
+    createVerifier({ key: 'secret', allowedNonce: /^(a+)+X$/ })
+  )
+  t.assert.equal(w.code, 'FAST_JWT_UNSAFE_REGEXP')
+  t.assert.ok(w.message.includes('allowedNonce'))
 })
 
-test('createVerifier throws for various nested quantifier patterns that may cause ReDoS', t => {
-  const unsafePatterns = [/^(a+)+X$/, /(a*)+b/, /(\w+)+@/, /(a+)*b/]
+test('createVerifier emits warning for various nested quantifier patterns that may cause ReDoS', async t => {
+  const unsafePatterns = [/^(a+)+X$/, /(a*)+b/, /(\w+)+@/, /(a+)*b/, /(( a+))+X/, /(a{2,})+X/]
   for (const pattern of unsafePatterns) {
-    t.assert.throws(() => createVerifier({ key: 'secret', allowedAud: pattern }), {
-      message: 'The allowedAud option contains an unsafe RegExp with nested quantifiers that may cause a ReDoS attack.'
-    })
+    const w = await captureWarning('FAST_JWT_UNSAFE_REGEXP', () =>
+      createVerifier({ key: 'secret', allowedAud: pattern })
+    )
+    t.assert.equal(w.code, 'FAST_JWT_UNSAFE_REGEXP', `expected warning for pattern ${pattern}`)
   }
 })
 
-test('createVerifier throws when an unsafe RegExp is among an array of allowed values', t => {
-  t.assert.throws(() => createVerifier({ key: 'secret', allowedAud: ['safe-audience', /^(a+)+X$/] }), {
-    message: 'The allowedAud option contains an unsafe RegExp with nested quantifiers that may cause a ReDoS attack.'
-  })
+test('createVerifier emits warning when an unsafe RegExp is among an array of allowed values', async t => {
+  const w = await captureWarning('FAST_JWT_UNSAFE_REGEXP', () =>
+    createVerifier({ key: 'secret', allowedAud: ['safe-audience', /^(a+)+X$/] })
+  )
+  t.assert.equal(w.code, 'FAST_JWT_UNSAFE_REGEXP')
+  t.assert.ok(w.message.includes('allowedAud'))
 })
 
-test('createVerifier does not throw for safe RegExp patterns in allowed options', t => {
-  t.assert.doesNotThrow(() => createVerifier({ key: 'secret', allowedAud: /^api\.company\.com$/ }))
-  t.assert.doesNotThrow(() => createVerifier({ key: 'secret', allowedAud: /^[a-z]+$/ }))
-  t.assert.doesNotThrow(() => createVerifier({ key: 'secret', allowedAud: /^admin$/ }))
-  t.assert.doesNotThrow(() => createVerifier({ key: 'secret', allowedIss: /^https:\/\/auth\.example\.com$/ }))
-  t.assert.doesNotThrow(() => createVerifier({ key: 'secret', allowedSub: /^user-\d+$/ }))
+test('createVerifier does not emit warning for safe RegExp patterns in allowed options', async t => {
+  let warningReceived = false
+  const onWarning = w => {
+    if (w.code === 'FAST_JWT_UNSAFE_REGEXP') warningReceived = true
+  }
+  process.on('warning', onWarning)
+  t.after(() => process.off('warning', onWarning))
+
+  createVerifier({ key: 'secret', allowedAud: /^api\.company\.com$/ })
+  createVerifier({ key: 'secret', allowedAud: /^[a-z]+$/ })
+  createVerifier({ key: 'secret', allowedAud: /^admin$/ })
+  createVerifier({ key: 'secret', allowedIss: /^https:\/\/auth\.example\.com$/ })
+  createVerifier({ key: 'secret', allowedSub: /^user-\d+$/ })
+
+  await new Promise(resolve => setImmediate(resolve))
+  t.assert.equal(warningReceived, false)
 })
 
 test('tokens are still verified correctly with a safe RegExp in allowedAud', t => {

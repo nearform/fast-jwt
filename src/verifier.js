@@ -3,6 +3,8 @@
 const { createPublicKey, createSecretKey } = require('node:crypto')
 const Cache = require('mnemonist/lru-cache')
 
+const safeRegex = require('safe-regex2')
+
 const { hsAlgorithms, verifySignature, detectPublicKeyAlgorithms } = require('./crypto')
 const createDecoder = require('./decoder')
 const { TokenError } = require('./error')
@@ -36,17 +38,13 @@ function prepareKeyOrSecret(key, isSecret) {
   return isSecret ? createSecretKey(key) : createPublicKey(key)
 }
 
-// Detects the most common class of ReDoS-vulnerable patterns: a group containing
-// a quantifier followed immediately by another quantifier, e.g. (a+)+, (a*)*, (\w+)+.
-const unsafeRegExpPattern = /\([^)]*[+*][^)]*\)[+*{]/
-
 function checkForUnsafeRegExp(raw, optionName) {
   const patterns = Array.isArray(raw) ? raw : [raw]
   for (const r of patterns) {
-    if (r instanceof RegExp && unsafeRegExpPattern.test(r.source)) {
-      throw new TokenError(
-        TokenError.codes.invalidOption,
-        `The ${optionName} option contains an unsafe RegExp with nested quantifiers that may cause a ReDoS attack.`
+    if (r instanceof RegExp && !safeRegex(r)) {
+      process.emitWarning(
+        `The ${optionName} option contains a RegExp that may cause a ReDoS attack. Please review it.`,
+        { code: 'FAST_JWT_UNSAFE_REGEXP' }
       )
     }
   }
@@ -60,6 +58,15 @@ function ensureStringClaimMatcher(raw) {
   return raw
     .filter(r => r)
     .map(r => {
+      if (r instanceof RegExp) {
+        return {
+          test: v => {
+            r.lastIndex = 0
+            return r.test(v)
+          }
+        }
+      }
+
       if (r && typeof r.test === 'function') {
         return r
       }
