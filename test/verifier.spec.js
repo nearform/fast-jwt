@@ -1736,55 +1736,48 @@ test('default errorCacheTTL should not cache errors when sub millisecond executi
 })
 
 test('createVerifier throws at construction time for unsafe RegExp with nested quantifiers in allowedAud', t => {
-  t.assert.throws(
-    () => createVerifier({ key: 'secret', allowedAud: /^(a+)+X$/ }),
-    { message: 'The allowedAud option contains an unsafe RegExp with nested quantifiers that may cause a ReDoS attack.' }
-  )
+  t.assert.throws(() => createVerifier({ key: 'secret', allowedAud: /^(a+)+X$/ }), {
+    message: 'The allowedAud option contains an unsafe RegExp with nested quantifiers that may cause a ReDoS attack.'
+  })
 })
 
 test('createVerifier throws at construction time for unsafe RegExp with nested quantifiers in allowedIss', t => {
-  t.assert.throws(
-    () => createVerifier({ key: 'secret', allowedIss: /^(a+)+X$/ }),
-    { message: 'The allowedIss option contains an unsafe RegExp with nested quantifiers that may cause a ReDoS attack.' }
-  )
+  t.assert.throws(() => createVerifier({ key: 'secret', allowedIss: /^(a+)+X$/ }), {
+    message: 'The allowedIss option contains an unsafe RegExp with nested quantifiers that may cause a ReDoS attack.'
+  })
 })
 
 test('createVerifier throws at construction time for unsafe RegExp with nested quantifiers in allowedSub', t => {
-  t.assert.throws(
-    () => createVerifier({ key: 'secret', allowedSub: /^(a+)+X$/ }),
-    { message: 'The allowedSub option contains an unsafe RegExp with nested quantifiers that may cause a ReDoS attack.' }
-  )
+  t.assert.throws(() => createVerifier({ key: 'secret', allowedSub: /^(a+)+X$/ }), {
+    message: 'The allowedSub option contains an unsafe RegExp with nested quantifiers that may cause a ReDoS attack.'
+  })
 })
 
 test('createVerifier throws at construction time for unsafe RegExp with nested quantifiers in allowedJti', t => {
-  t.assert.throws(
-    () => createVerifier({ key: 'secret', allowedJti: /^(a+)+X$/ }),
-    { message: 'The allowedJti option contains an unsafe RegExp with nested quantifiers that may cause a ReDoS attack.' }
-  )
+  t.assert.throws(() => createVerifier({ key: 'secret', allowedJti: /^(a+)+X$/ }), {
+    message: 'The allowedJti option contains an unsafe RegExp with nested quantifiers that may cause a ReDoS attack.'
+  })
 })
 
 test('createVerifier throws at construction time for unsafe RegExp with nested quantifiers in allowedNonce', t => {
-  t.assert.throws(
-    () => createVerifier({ key: 'secret', allowedNonce: /^(a+)+X$/ }),
-    { message: 'The allowedNonce option contains an unsafe RegExp with nested quantifiers that may cause a ReDoS attack.' }
-  )
+  t.assert.throws(() => createVerifier({ key: 'secret', allowedNonce: /^(a+)+X$/ }), {
+    message: 'The allowedNonce option contains an unsafe RegExp with nested quantifiers that may cause a ReDoS attack.'
+  })
 })
 
 test('createVerifier throws for various nested quantifier patterns that may cause ReDoS', t => {
   const unsafePatterns = [/^(a+)+X$/, /(a*)+b/, /(\w+)+@/, /(a+)*b/]
   for (const pattern of unsafePatterns) {
-    t.assert.throws(
-      () => createVerifier({ key: 'secret', allowedAud: pattern }),
-      { message: 'The allowedAud option contains an unsafe RegExp with nested quantifiers that may cause a ReDoS attack.' }
-    )
+    t.assert.throws(() => createVerifier({ key: 'secret', allowedAud: pattern }), {
+      message: 'The allowedAud option contains an unsafe RegExp with nested quantifiers that may cause a ReDoS attack.'
+    })
   }
 })
 
 test('createVerifier throws when an unsafe RegExp is among an array of allowed values', t => {
-  t.assert.throws(
-    () => createVerifier({ key: 'secret', allowedAud: ['safe-audience', /^(a+)+X$/] }),
-    { message: 'The allowedAud option contains an unsafe RegExp with nested quantifiers that may cause a ReDoS attack.' }
-  )
+  t.assert.throws(() => createVerifier({ key: 'secret', allowedAud: ['safe-audience', /^(a+)+X$/] }), {
+    message: 'The allowedAud option contains an unsafe RegExp with nested quantifiers that may cause a ReDoS attack.'
+  })
 })
 
 test('createVerifier does not throw for safe RegExp patterns in allowed options', t => {
