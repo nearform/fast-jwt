@@ -45,7 +45,12 @@ function ensureStringClaimMatcher(raw) {
     .filter(r => r)
     .map(r => {
       if (r instanceof RegExp) {
-        return { test: v => { r.lastIndex = 0; return r.test(v) } }
+        return {
+          test: v => {
+            r.lastIndex = 0
+            return r.test(v)
+          }
+        }
       }
 
       if (r && typeof r.test === 'function') {
@@ -514,7 +519,10 @@ module.exports = function createVerifier(options) {
     throw new TokenError(TokenError.codes.invalidOption, 'The requiredClaims option must be an array.')
   }
 
-  if (allowedCritHeaders !== undefined && !Array.isArray(allowedCritHeaders)) {
+  if (
+    allowedCritHeaders !== undefined &&
+    (!Array.isArray(allowedCritHeaders) || allowedCritHeaders.some(h => typeof h !== 'string' || h.length === 0))
+  ) {
     throw new TokenError(TokenError.codes.invalidOption, 'The allowedCritHeaders option must be an array of strings.')
   }
 

@@ -1843,6 +1843,8 @@ test('stateful RegExp /g flag must not cause non-deterministic claim validation 
   for (let i = 0; i < 8; i++) {
     t.assert.doesNotThrow(() => verifier(token), `call ${i} should pass with /g flag on allowedNonce`)
   }
+})
+
 // --- crit header validation (RFC 7515 §4.1.11) ---
 
 test('crit: rejects token with unknown critical extension (secure-by-default, no allowedCritHeaders)', t => {
@@ -1935,6 +1937,13 @@ test('crit: token without crit header is accepted normally', t => {
 
 test('crit: throws on invalid allowedCritHeaders option (not an array)', t => {
   t.assert.throws(() => createVerifier({ key: 'secret', allowedCritHeaders: 'x-ext' }), {
+    code: 'FAST_JWT_INVALID_OPTION',
+    message: 'The allowedCritHeaders option must be an array of strings.'
+  })
+})
+
+test('crit: throws on invalid allowedCritHeaders option (empty string)', t => {
+  t.assert.throws(() => createVerifier({ key: 'secret', allowedCritHeaders: [''] }), {
     code: 'FAST_JWT_INVALID_OPTION',
     message: 'The allowedCritHeaders option must be an array of strings.'
   })
