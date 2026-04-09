@@ -43,7 +43,8 @@ function checkForUnsafeRegExp(raw, optionName) {
   for (const r of patterns) {
     if (r instanceof RegExp && !safeRegex(r)) {
       process.emitWarning(
-        `The ${optionName} option contains a RegExp that may cause a ReDoS attack. Please review it.`,
+        `The ${optionName} option contains an unsafe RegExp ${r} that may cause a ReDoS attack. Please review it. ` +
+          'See https://github.com/nearform/fast-jwt/security/advisories/GHSA-cjw9-ghj4-fwxf for details.',
         { code: 'FAST_JWT_UNSAFE_REGEXP' }
       )
     }
