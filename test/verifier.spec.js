@@ -1778,6 +1778,153 @@ test('default errorCacheTTL should not cache errors when sub millisecond executi
   t.mock.timers.reset()
 })
 
+async function captureWarnings(code, count, fn) {
+  const collected = []
+  let resolve
+  const done = new Promise(r => (resolve = r))
+  const onWarning = w => {
+    if (w.code === code) {
+      collected.push(w)
+      if (collected.length === count) resolve()
+    }
+  }
+  process.on('warning', onWarning)
+  fn()
+  const timeout = new Promise((_, reject) =>
+    setTimeout(
+      () => reject(new Error(`Timed out waiting for ${count} ${code} warnings (got ${collected.length})`)),
+      500
+    )
+  )
+  try {
+    await Promise.race([done, timeout])
+    return collected
+  } finally {
+    process.off('warning', onWarning)
+  }
+}
+
+async function captureWarning(code, fn) {
+  let onWarning
+  const warningPromise = new Promise(resolve => {
+    onWarning = w => {
+      if (w.code === code) resolve(w)
+    }
+    process.on('warning', onWarning)
+  })
+  fn()
+  const timeout = new Promise((_, reject) =>
+    setTimeout(() => reject(new Error(`Timed out waiting for ${code} warning`)), 500)
+  )
+  try {
+    return await Promise.race([warningPromise, timeout])
+  } finally {
+    process.off('warning', onWarning)
+  }
+}
+
+test('createVerifier emits FAST_JWT_UNSAFE_REGEXP warning for unsafe RegExp in allowedAud', async t => {
+  const w = await captureWarning('FAST_JWT_UNSAFE_REGEXP', () =>
+    createVerifier({ key: 'secret', allowedAud: /^(a+)+X$/ })
+  )
+  t.assert.equal(w.code, 'FAST_JWT_UNSAFE_REGEXP')
+  t.assert.ok(w.message.includes('allowedAud'))
+  t.assert.ok(w.message.includes('/^(a+)+X$/'), 'warning should include the offending regex')
+  t.assert.ok(w.message.includes('https://'), 'warning should include an advisory link')
+})
+
+test('createVerifier emits FAST_JWT_UNSAFE_REGEXP warning for unsafe RegExp in allowedIss', async t => {
+  const w = await captureWarning('FAST_JWT_UNSAFE_REGEXP', () =>
+    createVerifier({ key: 'secret', allowedIss: /^(a+)+X$/ })
+  )
+  t.assert.equal(w.code, 'FAST_JWT_UNSAFE_REGEXP')
+  t.assert.ok(w.message.includes('allowedIss'))
+  t.assert.ok(w.message.includes('/^(a+)+X$/'), 'warning should include the offending regex')
+})
+
+test('createVerifier emits FAST_JWT_UNSAFE_REGEXP warning for unsafe RegExp in allowedSub', async t => {
+  const w = await captureWarning('FAST_JWT_UNSAFE_REGEXP', () =>
+    createVerifier({ key: 'secret', allowedSub: /^(a+)+X$/ })
+  )
+  t.assert.equal(w.code, 'FAST_JWT_UNSAFE_REGEXP')
+  t.assert.ok(w.message.includes('allowedSub'))
+  t.assert.ok(w.message.includes('/^(a+)+X$/'), 'warning should include the offending regex')
+})
+
+test('createVerifier emits FAST_JWT_UNSAFE_REGEXP warning for unsafe RegExp in allowedJti', async t => {
+  const w = await captureWarning('FAST_JWT_UNSAFE_REGEXP', () =>
+    createVerifier({ key: 'secret', allowedJti: /^(a+)+X$/ })
+  )
+  t.assert.equal(w.code, 'FAST_JWT_UNSAFE_REGEXP')
+  t.assert.ok(w.message.includes('allowedJti'))
+  t.assert.ok(w.message.includes('/^(a+)+X$/'), 'warning should include the offending regex')
+})
+
+test('createVerifier emits FAST_JWT_UNSAFE_REGEXP warning for unsafe RegExp in allowedNonce', async t => {
+  const w = await captureWarning('FAST_JWT_UNSAFE_REGEXP', () =>
+    createVerifier({ key: 'secret', allowedNonce: /^(a+)+X$/ })
+  )
+  t.assert.equal(w.code, 'FAST_JWT_UNSAFE_REGEXP')
+  t.assert.ok(w.message.includes('allowedNonce'))
+  t.assert.ok(w.message.includes('/^(a+)+X$/'), 'warning should include the offending regex')
+})
+
+test('createVerifier emits warning for various nested quantifier patterns that may cause ReDoS', async t => {
+  const unsafePatterns = [/^(a+)+X$/, /(a*)+b/, /(\w+)+@/, /(a+)*b/, /(( a+))+X/, /(a{2,})+X/]
+  for (const pattern of unsafePatterns) {
+    const w = await captureWarning('FAST_JWT_UNSAFE_REGEXP', () =>
+      createVerifier({ key: 'secret', allowedAud: pattern })
+    )
+    t.assert.equal(w.code, 'FAST_JWT_UNSAFE_REGEXP', `expected warning for pattern ${pattern}`)
+  }
+})
+
+test('createVerifier emits warning when an unsafe RegExp is among an array of allowed values', async t => {
+  const w = await captureWarning('FAST_JWT_UNSAFE_REGEXP', () =>
+    createVerifier({ key: 'secret', allowedAud: ['safe-audience', /^(a+)+X$/] })
+  )
+  t.assert.equal(w.code, 'FAST_JWT_UNSAFE_REGEXP')
+  t.assert.ok(w.message.includes('allowedAud'))
+  t.assert.ok(w.message.includes('/^(a+)+X$/'), 'warning should identify the specific offending regex')
+})
+
+test('createVerifier emits one warning per unsafe RegExp when multiple are passed in the same option', async t => {
+  const unsafePatterns = [/^(a+)+X$/, /(a*)+b/, /(\w+)+@/]
+  const warnings = await captureWarnings('FAST_JWT_UNSAFE_REGEXP', 3, () =>
+    createVerifier({ key: 'secret', allowedAud: unsafePatterns })
+  )
+  t.assert.equal(warnings.length, 3, 'should emit one warning per unsafe pattern')
+  for (const [i, w] of warnings.entries()) {
+    t.assert.equal(w.code, 'FAST_JWT_UNSAFE_REGEXP')
+    t.assert.ok(w.message.includes(String(unsafePatterns[i])), `warning ${i} should name the offending regex`)
+  }
+})
+
+test('createVerifier does not emit warning for safe RegExp patterns in allowed options', async t => {
+  let warningReceived = false
+  const onWarning = w => {
+    if (w.code === 'FAST_JWT_UNSAFE_REGEXP') warningReceived = true
+  }
+  process.on('warning', onWarning)
+  t.after(() => process.off('warning', onWarning))
+
+  createVerifier({ key: 'secret', allowedAud: /^api\.company\.com$/ })
+  createVerifier({ key: 'secret', allowedAud: /^[a-z]+$/ })
+  createVerifier({ key: 'secret', allowedAud: /^admin$/ })
+  createVerifier({ key: 'secret', allowedIss: /^https:\/\/auth\.example\.com$/ })
+  createVerifier({ key: 'secret', allowedSub: /^user-\d+$/ })
+
+  await new Promise(resolve => setImmediate(resolve))
+  t.assert.equal(warningReceived, false)
+})
+
+test('tokens are still verified correctly with a safe RegExp in allowedAud', t => {
+  t.mock.timers.enable({ now: 100000 })
+  const sign = createSigner({ key: 'secret' })
+  const token = sign({ aud: 'api.company.com' })
+  const verifier = createVerifier({ key: 'secret', allowedAud: /^api\.company\.com$/ })
+  t.assert.doesNotThrow(() => verifier(token))
+})
 test('stateful RegExp /g flag must not cause non-deterministic claim validation - allowedAud', t => {
   t.mock.timers.enable({ now: 100000 })
   const sign = createSigner({ key: 'secret' })
