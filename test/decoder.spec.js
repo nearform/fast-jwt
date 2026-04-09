@@ -56,6 +56,26 @@ test('invalid header', t => {
   t.assert.throws(() => typDecoder(nonJwtToken), { message: 'The type must be "JWT".' })
 })
 
+test('header must be a JSON object', t => {
+  // null header
+  const nullHeaderToken = `${Buffer.from('null').toString('base64url')}.${Buffer.from('{"sub":"test"}').toString('base64url')}.x`
+  t.assert.throws(() => defaultDecoder(nullHeaderToken), {
+    message: 'The token header is not a valid JSON object.'
+  })
+
+  // array header
+  const arrayHeaderToken = `${Buffer.from('[]').toString('base64url')}.${Buffer.from('{"sub":"test"}').toString('base64url')}.x`
+  t.assert.throws(() => defaultDecoder(arrayHeaderToken), {
+    message: 'The token header is not a valid JSON object.'
+  })
+
+  // string header
+  const stringHeaderToken = `${Buffer.from('"foo"').toString('base64url')}.${Buffer.from('{"sub":"test"}').toString('base64url')}.x`
+  t.assert.throws(() => defaultDecoder(stringHeaderToken), {
+    message: 'The token header is not a valid JSON object.'
+  })
+})
+
 test('invalid payload', t => {
   t.assert.throws(() => defaultDecoder('eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.bbb.ccc'), {
     message: 'The token payload is not a valid base64url serialized JSON.'

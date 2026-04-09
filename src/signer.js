@@ -68,7 +68,7 @@ function sign(
   const [callback, promise] = isAsync ? ensurePromiseCallback(cb) : []
 
   // Validate payload
-  if (typeof payload !== 'object') {
+  if (payload === null || typeof payload !== 'object') {
     throw new TokenError(TokenError.codes.invalidType, 'The payload must be an object.')
   }
 

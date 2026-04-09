@@ -328,6 +328,16 @@ function verify(
 ) {
   const [callback, promise] = isAsync ? ensurePromiseCallback(cb) : []
 
+  // Validate token type before any processing
+  if (!(token instanceof Buffer) && typeof token !== 'string') {
+    const error = new TokenError(TokenError.codes.invalidType, 'The token must be a string or a buffer.')
+    if (callback) {
+      callback(error)
+      return promise
+    }
+    throw error
+  }
+
   // Check the cache
   if (cache) {
     const [value, min, max] = cache.get(cacheKeyBuilder(token)) || [undefined, 0, 0]
