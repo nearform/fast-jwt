@@ -539,7 +539,10 @@ module.exports = function createVerifier(options) {
   if (allowedSub) checkForUnsafeRegExp(allowedSub, 'allowedSub')
   if (allowedNonce) checkForUnsafeRegExp(allowedNonce, 'allowedNonce')
 
-  if (allowedCritHeaders !== undefined && !Array.isArray(allowedCritHeaders)) {
+  if (
+    allowedCritHeaders !== undefined &&
+    (!Array.isArray(allowedCritHeaders) || allowedCritHeaders.some(h => typeof h !== 'string' || h.length === 0))
+  ) {
     throw new TokenError(TokenError.codes.invalidOption, 'The allowedCritHeaders option must be an array of strings.')
   }
 
