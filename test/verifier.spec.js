@@ -1791,7 +1791,10 @@ async function captureWarnings(code, count, fn) {
   process.on('warning', onWarning)
   fn()
   const timeout = new Promise((_, reject) =>
-    setTimeout(() => reject(new Error(`Timed out waiting for ${count} ${code} warnings (got ${collected.length})`)), 500)
+    setTimeout(
+      () => reject(new Error(`Timed out waiting for ${count} ${code} warnings (got ${collected.length})`)),
+      500
+    )
   )
   try {
     await Promise.race([done, timeout])
