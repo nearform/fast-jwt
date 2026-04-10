@@ -1110,6 +1110,23 @@ test('token type validation', t => {
   t.assert.throws(() => createVerifier({ key: 'secret' })(123), {
     message: 'The token must be a string or a buffer.'
   })
+
+  t.assert.throws(() => createVerifier({ key: 'secret', cache: true })(null), {
+    message: 'The token must be a string or a buffer.'
+  })
+})
+
+test('token type validation - async', async t => {
+  await t.assert.rejects(async () => createVerifier({ key: async () => 'secret', cache: true })(null), {
+    message: 'The token must be a string or a buffer.'
+  })
+})
+
+test('null header token', t => {
+  const nullHeaderToken = `${Buffer.from('null').toString('base64url')}.${Buffer.from('{"sub":"test"}').toString('base64url')}.x`
+  t.assert.throws(() => createVerifier({ key: 'secret' })(nullHeaderToken), {
+    message: 'The token header is not a valid JSON object.'
+  })
 })
 
 test('options validation - key', t => {

@@ -545,6 +545,14 @@ test('payload validation', async t => {
   t.assert.rejects(async () => createSigner({ key: () => 'secret' })(123), {
     message: 'The payload must be an object.'
   })
+
+  t.assert.throws(() => createSigner({ key: 'secret' })(null), {
+    message: 'The payload must be an object.'
+  })
+
+  t.assert.rejects(async () => createSigner({ key: () => 'secret' })(null), {
+    message: 'The payload must be an object.'
+  })
 })
 
 test('exp claim validation', async t => {

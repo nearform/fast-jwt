@@ -22,6 +22,9 @@ function decode({ complete, checkTyp }, token) {
   let validHeader = false
   try {
     const header = JSON.parse(Buffer.from(token.slice(0, firstSeparator), 'base64').toString('utf-8'))
+    if (!header || typeof header !== 'object' || Array.isArray(header)) {
+      throw new TokenError(TokenError.codes.malformed, 'The token header is not a valid JSON object.')
+    }
     if (checkTyp && header.typ !== checkTyp) {
       throw new TokenError(TokenError.codes.invalidType, `The type must be "${checkTyp}".`, { header })
     }
