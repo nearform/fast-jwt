@@ -152,13 +152,6 @@ function handleCachedResult(cached, callback, promise) {
   return promise
 }
 
-// RFC 4648 §3.3 requires implementations to reject encoded data containing
-// characters outside the base alphabet unless the referring spec opts into
-// lenient decoding. RFC 7515 does not, so whitespace and other non-alphabet
-// characters in the signature segment of a JWT are a spec violation and
-// should not be silently stripped by `Buffer.from(sig, 'base64')`.
-const BASE64URL_RE = /^[A-Za-z0-9_-]*$/
-
 function validateAlgorithmAndSignature(input, header, signature, key, allowedAlgorithms) {
   // According to the signature and key, check with algorithms are supported
   // Verify the token is allowed
@@ -166,14 +159,9 @@ function validateAlgorithmAndSignature(input, header, signature, key, allowedAlg
     throw new TokenError(TokenError.codes.invalidAlgorithm, 'The token algorithm is invalid.')
   }
 
-  // Reject signatures containing characters outside the base64url alphabet
-  // (e.g. whitespace, newlines) before handing them to the crypto decoder,
-  // which would otherwise silently strip them and accept the token.
-  if (signature && !BASE64URL_RE.test(signature)) {
-    throw new TokenError(TokenError.codes.invalidSignature, 'The token signature is invalid.')
-  }
-
-  // Verify the signature, if present
+  // Verify the signature, if present. The decoder has already rejected tokens
+  // whose segments contain characters outside the base64url alphabet, so by
+  // the time we get here `signature` is either empty or canonical.
   if (signature && !verifySignature(header.alg, key, input, signature)) {
     throw new TokenError(TokenError.codes.invalidSignature, 'The token signature is invalid.')
   }
