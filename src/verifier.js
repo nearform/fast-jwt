@@ -159,7 +159,9 @@ function validateAlgorithmAndSignature(input, header, signature, key, allowedAlg
     throw new TokenError(TokenError.codes.invalidAlgorithm, 'The token algorithm is invalid.')
   }
 
-  // Verify the signature, if present
+  // Verify the signature, if present. The decoder has already rejected tokens
+  // whose segments contain characters outside the base64url alphabet, so by
+  // the time we get here `signature` is either empty or canonical.
   if (signature && !verifySignature(header.alg, key, input, signature)) {
     throw new TokenError(TokenError.codes.invalidSignature, 'The token signature is invalid.')
   }

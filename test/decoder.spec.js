@@ -104,3 +104,54 @@ test('payload must be a JSON object', t => {
     }
   )
 })
+
+// https://datatracker.ietf.org/doc/html/rfc4648#section-3.3 - strict base64url
+// alphabet for every segment of a JWT. These tests cover the per-segment
+// rejection path in decode() so callers of decode() (not just verify()) see
+// canonical-segment tokens.
+test('rejects header segment with non-base64url characters', t => {
+  const base = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9'
+  const [header, rest] = [base, 'eyJhIjoxfQ.57TF7smP9XDhIexBqPC-F1toZReYZLWb_YRU5tv0sxM']
+
+  for (const bad of [' ' + header, header + ' ', header + '\n', header + '=']) {
+    t.assert.throws(
+      () => defaultDecoder(`${bad}.${rest}`),
+      { message: 'The token header is not a valid base64url serialized JSON.' },
+      `expected rejection for header: ${JSON.stringify(bad)}`
+    )
+  }
+})
+
+test('rejects payload segment with non-base64url characters', t => {
+  const header = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9'
+  const payload = 'eyJhIjoxfQ'
+  const sig = '57TF7smP9XDhIexBqPC-F1toZReYZLWb_YRU5tv0sxM'
+
+  for (const bad of [payload + ' ', ' ' + payload, payload + '\n', payload + '=']) {
+    t.assert.throws(
+      () => defaultDecoder(`${header}.${bad}.${sig}`),
+      { message: 'The token payload is not a valid base64url serialized JSON.' },
+      `expected rejection for payload: ${JSON.stringify(bad)}`
+    )
+  }
+})
+
+test('rejects signature segment with non-base64url characters', t => {
+  const base = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxfQ'
+  const sig = '57TF7smP9XDhIexBqPC-F1toZReYZLWb_YRU5tv0sxM'
+
+  for (const bad of [
+    sig + ' ',
+    sig + '\n',
+    sig + '\r\n',
+    sig + '\t',
+    sig + '=',
+    sig.slice(0, -10) + ' ' + sig.slice(-10)
+  ]) {
+    t.assert.throws(
+      () => defaultDecoder(`${base}.${bad}`),
+      { message: 'The token signature is invalid.' },
+      `expected rejection for signature: ${JSON.stringify(bad)}`
+    )
+  }
+})

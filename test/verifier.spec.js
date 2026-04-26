@@ -207,6 +207,35 @@ test('it rejects invalid tokens', async t => {
   )
 })
 
+test('it rejects tokens with non-base64url characters in the signature segment', t => {
+  // Canonical HS256 token signed with key 'secret' over payload {"a":1}
+  const base = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxfQ.57TF7smP9XDhIexBqPC-F1toZReYZLWb_YRU5tv0sxM'
+
+  // RFC 4648 §3.3 requires implementations to reject data outside the base
+  // alphabet. Each of these embeds whitespace, newlines, or padding in the
+  // signature segment.
+  const nonCanonical = [
+    base + ' ',
+    base + '\t',
+    base + '\n',
+    base + '\r\n',
+    base.slice(0, -10) + ' ' + base.slice(-10),
+    base.slice(0, -10) + '\t' + base.slice(-10),
+    base + '='
+  ]
+
+  for (const token of nonCanonical) {
+    t.assert.throws(
+      () => verify(token, {}),
+      { message: 'The token signature is invalid.' },
+      `expected rejection for token with non-base64url chars: ${JSON.stringify(token)}`
+    )
+  }
+
+  // Canonical token is still accepted for comparison
+  t.assert.deepStrictEqual(verify(base, {}), { a: 1 })
+})
+
 test('it requires a signature or a key', async t => {
   t.assert.throws(() => verify('eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxfQ.', {}), {
     message: 'The token signature is missing.'
