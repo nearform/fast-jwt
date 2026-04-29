@@ -1,9 +1,9 @@
 'use strict'
 
-const { createHash } = require('node:crypto')
+const { createHash, createHmac } = require('node:crypto')
 const { readFileSync } = require('node:fs')
 const { resolve } = require('node:path')
-const { test } = require('node:test')
+const { describe, test } = require('node:test')
 
 const { createSigner, createVerifier, TokenError } = require('../src')
 const { hashToken } = require('../src/utils')
@@ -2139,5 +2139,224 @@ test('crit: throws on invalid allowedCritHeaders option (empty string)', t => {
   t.assert.throws(() => createVerifier({ key: 'secret', allowedCritHeaders: [''] }), {
     code: 'FAST_JWT_INVALID_OPTION',
     message: 'The allowedCritHeaders option must be an array of strings.'
+  })
+})
+
+describe('GHSA-gmvf-9v4p-v8jc: Empty HMAC secret rejection', () => {
+  function forgeEmptyKeyToken(header = { alg: 'HS256', typ: 'JWT', kid: 'unknown-kid' }) {
+    function encodeSegment(value) {
+      return Buffer.from(JSON.stringify(value)).toString('base64url')
+    }
+
+    const now = Math.floor(Date.now() / 1000)
+    const payload = { sub: 'attacker', admin: true, iat: now, exp: now + 60 }
+
+    const encodedHeader = encodeSegment(header)
+    const encodedPayload = encodeSegment(payload)
+    const signingInput = `${encodedHeader}.${encodedPayload}`
+
+    const hashAlgorithm = `sha${header.alg.slice(2)}`
+    const signature = createHmac(hashAlgorithm, '').update(signingInput).digest('base64url')
+
+    return `${signingInput}.${signature}`
+  }
+
+  test('forgery case 1: async key resolver returns empty string with HS256', async t => {
+    const forgedToken = forgeEmptyKeyToken({ alg: 'HS256', typ: 'JWT', kid: 'unknown-kid' })
+    const verifier = createVerifier({
+      key: async () => ''
+    })
+
+    await t.assert.rejects(
+      verifier(forgedToken),
+      {
+        code: 'FAST_JWT_INVALID_KEY',
+        message: 'The key cannot be an empty string or buffer.'
+      }
+    )
+  })
+
+  test('forgery case 2: async key resolver returns empty string with HS384', async t => {
+    const forgedToken = forgeEmptyKeyToken({ alg: 'HS384', typ: 'JWT', kid: 'unknown-kid' })
+    const verifier = createVerifier({
+      key: async () => ''
+    })
+
+    await t.assert.rejects(
+      verifier(forgedToken),
+      {
+        code: 'FAST_JWT_INVALID_KEY',
+        message: 'The key cannot be an empty string or buffer.'
+      }
+    )
+  })
+
+  test('forgery case 3: async key resolver returns empty string with HS512', async t => {
+    const forgedToken = forgeEmptyKeyToken({ alg: 'HS512', typ: 'JWT', kid: 'unknown-kid' })
+    const verifier = createVerifier({
+      key: async () => ''
+    })
+
+    await t.assert.rejects(
+      verifier(forgedToken),
+      {
+        code: 'FAST_JWT_INVALID_KEY',
+        message: 'The key cannot be an empty string or buffer.'
+      }
+    )
+  })
+
+  test('forgery case 4: async key resolver returns empty buffer with HS256', async t => {
+    const forgedToken = forgeEmptyKeyToken({ alg: 'HS256', typ: 'JWT', kid: 'unknown-kid' })
+    const verifier = createVerifier({
+      key: async () => Buffer.alloc(0)
+    })
+
+    await t.assert.rejects(
+      verifier(forgedToken),
+      {
+        code: 'FAST_JWT_INVALID_KEY',
+        message: 'The key cannot be an empty string or buffer.'
+      }
+    )
+  })
+
+  test('forgery case 5: callback-style resolver returns empty string', async t => {
+    const forgedToken = forgeEmptyKeyToken({ alg: 'HS256', typ: 'JWT', kid: 'unknown-kid' })
+    const verifier = createVerifier({
+      key: (decoded, callback) => callback(null, '')
+    })
+
+    await t.assert.rejects(
+      verifier(forgedToken),
+      {
+        code: 'FAST_JWT_INVALID_KEY',
+        message: 'The key cannot be an empty string or buffer.'
+      }
+    )
+  })
+
+  test('forgery case 6: JWKS-fallback idiom returns empty string for missing kid', async t => {
+    const forgedToken = forgeEmptyKeyToken({ alg: 'HS256', typ: 'JWT', kid: 'unknown-kid' })
+    const verifier = createVerifier({
+      key: async decoded => {
+        const jwksCache = { 'real-kid': 'real-secret-key' }
+        return jwksCache[decoded.header.kid] || ''
+      }
+    })
+
+    await t.assert.rejects(
+      verifier(forgedToken),
+      {
+        code: 'FAST_JWT_INVALID_KEY',
+        message: 'The key cannot be an empty string or buffer.'
+      }
+    )
+  })
+
+  test('forgery case 7: explicit HS256/HS384/HS512 algorithms with empty key', async t => {
+    const forgedToken = forgeEmptyKeyToken({ alg: 'HS256', typ: 'JWT', kid: 'unknown-kid' })
+    const verifier = createVerifier({
+      key: async () => '',
+      algorithms: ['HS256', 'HS384', 'HS512']
+    })
+
+    await t.assert.rejects(
+      verifier(forgedToken),
+      {
+        code: 'FAST_JWT_INVALID_KEY',
+        message: 'The key cannot be an empty string or buffer.'
+      }
+    )
+  })
+
+  test('forgery case 8: mixed algorithms HS256/RS256 with empty key', async t => {
+    const forgedToken = forgeEmptyKeyToken({ alg: 'HS256', typ: 'JWT', kid: 'unknown-kid' })
+    const verifier = createVerifier({
+      key: async () => '',
+      algorithms: ['HS256', 'RS256']
+    })
+
+    await t.assert.rejects(
+      verifier(forgedToken),
+      {
+        code: 'FAST_JWT_INVALID_KEY',
+        message: 'The key cannot be an empty string or buffer.'
+      }
+    )
+  })
+
+  test('regression case 9: valid async HMAC secret verifies token normally', async t => {
+    const validSecret = 'my-valid-secret-key'
+    const signer = createSigner({
+      key: validSecret,
+      algorithm: 'HS256',
+      noTimestamp: true
+    })
+    const token = signer({ sub: 'user', admin: false })
+
+    const verifier = createVerifier({
+      key: async () => validSecret,
+      noTimestamp: true
+    })
+
+    const payload = await verifier(token)
+    t.assert.strictEqual(payload.sub, 'user')
+    t.assert.strictEqual(payload.admin, false)
+  })
+
+  test('regression case 10: async resolver returning null/undefined still rejects with key fetching error', async t => {
+    const forgedToken = forgeEmptyKeyToken({ alg: 'HS256', typ: 'JWT', kid: 'unknown-kid' })
+    const verifier = createVerifier({
+      key: async () => null
+    })
+
+    await t.assert.rejects(
+      verifier(forgedToken),
+      {
+        code: 'FAST_JWT_KEY_FETCHING_ERROR',
+        message: 'The key returned from the callback must be a string or a buffer containing a secret or a public key.'
+      }
+    )
+  })
+
+  test('regression case 11: synchronous empty key throws MISSING_KEY at verify time', t => {
+    const signer = createSigner({
+      key: 'valid-secret',
+      algorithm: 'HS256',
+      noTimestamp: true
+    })
+    const validToken = signer({ sub: 'user' })
+
+    const verifier = createVerifier({
+      key: '',
+      noTimestamp: true
+    })
+
+    t.assert.throws(() => verifier(validToken), {
+      code: 'FAST_JWT_MISSING_KEY',
+      message: 'The key option is missing.'
+    })
+  })
+
+  test('regression case 12: async resolver with valid RS256 public key verifies normally', async t => {
+    const rsPublicKey = publicKeys.RS
+    const rsPrivateKey = privateKeys.RS
+
+    const signer = createSigner({
+      key: rsPrivateKey,
+      algorithm: 'RS512',
+      noTimestamp: true
+    })
+    const token = signer({ sub: 'asymmetric-user' })
+
+    const verifier = createVerifier({
+      key: async () => rsPublicKey,
+      noTimestamp: true,
+      algorithms: ['RS512']
+    })
+
+    const payload = await verifier(token)
+    t.assert.strictEqual(payload.sub, 'asymmetric-user')
   })
 })

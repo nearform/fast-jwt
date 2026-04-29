@@ -35,6 +35,10 @@ function prepareKeyOrSecret(key, isSecret) {
     key = Buffer.from(key, 'utf-8')
   }
 
+  if (isSecret && key.length === 0) {
+    throw new TokenError(TokenError.codes.invalidKey, 'The key cannot be an empty string or buffer.')
+  }
+
   return isSecret ? createSecretKey(key) : createPublicKey(key)
 }
 
