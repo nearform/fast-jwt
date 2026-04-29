@@ -2167,13 +2167,10 @@ describe('GHSA-gmvf-9v4p-v8jc: Empty HMAC secret rejection', () => {
       key: async () => ''
     })
 
-    await t.assert.rejects(
-      verifier(forgedToken),
-      {
-        code: 'FAST_JWT_INVALID_KEY',
-        message: 'The key cannot be an empty string or buffer.'
-      }
-    )
+    await t.assert.rejects(verifier(forgedToken), {
+      code: 'FAST_JWT_INVALID_KEY',
+      message: 'The key cannot be an empty string or buffer.'
+    })
   })
 
   test('forgery case 2: async key resolver returns empty string with HS384', async t => {
@@ -2182,13 +2179,10 @@ describe('GHSA-gmvf-9v4p-v8jc: Empty HMAC secret rejection', () => {
       key: async () => ''
     })
 
-    await t.assert.rejects(
-      verifier(forgedToken),
-      {
-        code: 'FAST_JWT_INVALID_KEY',
-        message: 'The key cannot be an empty string or buffer.'
-      }
-    )
+    await t.assert.rejects(verifier(forgedToken), {
+      code: 'FAST_JWT_INVALID_KEY',
+      message: 'The key cannot be an empty string or buffer.'
+    })
   })
 
   test('forgery case 3: async key resolver returns empty string with HS512', async t => {
@@ -2197,13 +2191,10 @@ describe('GHSA-gmvf-9v4p-v8jc: Empty HMAC secret rejection', () => {
       key: async () => ''
     })
 
-    await t.assert.rejects(
-      verifier(forgedToken),
-      {
-        code: 'FAST_JWT_INVALID_KEY',
-        message: 'The key cannot be an empty string or buffer.'
-      }
-    )
+    await t.assert.rejects(verifier(forgedToken), {
+      code: 'FAST_JWT_INVALID_KEY',
+      message: 'The key cannot be an empty string or buffer.'
+    })
   })
 
   test('forgery case 4: async key resolver returns empty buffer with HS256', async t => {
@@ -2212,13 +2203,10 @@ describe('GHSA-gmvf-9v4p-v8jc: Empty HMAC secret rejection', () => {
       key: async () => Buffer.alloc(0)
     })
 
-    await t.assert.rejects(
-      verifier(forgedToken),
-      {
-        code: 'FAST_JWT_INVALID_KEY',
-        message: 'The key cannot be an empty string or buffer.'
-      }
-    )
+    await t.assert.rejects(verifier(forgedToken), {
+      code: 'FAST_JWT_INVALID_KEY',
+      message: 'The key cannot be an empty string or buffer.'
+    })
   })
 
   test('forgery case 5: callback-style resolver returns empty string', async t => {
@@ -2227,13 +2215,10 @@ describe('GHSA-gmvf-9v4p-v8jc: Empty HMAC secret rejection', () => {
       key: (decoded, callback) => callback(null, '')
     })
 
-    await t.assert.rejects(
-      verifier(forgedToken),
-      {
-        code: 'FAST_JWT_INVALID_KEY',
-        message: 'The key cannot be an empty string or buffer.'
-      }
-    )
+    await t.assert.rejects(verifier(forgedToken), {
+      code: 'FAST_JWT_INVALID_KEY',
+      message: 'The key cannot be an empty string or buffer.'
+    })
   })
 
   test('forgery case 6: JWKS-fallback idiom returns empty string for missing kid', async t => {
@@ -2245,13 +2230,10 @@ describe('GHSA-gmvf-9v4p-v8jc: Empty HMAC secret rejection', () => {
       }
     })
 
-    await t.assert.rejects(
-      verifier(forgedToken),
-      {
-        code: 'FAST_JWT_INVALID_KEY',
-        message: 'The key cannot be an empty string or buffer.'
-      }
-    )
+    await t.assert.rejects(verifier(forgedToken), {
+      code: 'FAST_JWT_INVALID_KEY',
+      message: 'The key cannot be an empty string or buffer.'
+    })
   })
 
   test('forgery case 7: explicit HS256/HS384/HS512 algorithms with empty key', async t => {
@@ -2261,13 +2243,10 @@ describe('GHSA-gmvf-9v4p-v8jc: Empty HMAC secret rejection', () => {
       algorithms: ['HS256', 'HS384', 'HS512']
     })
 
-    await t.assert.rejects(
-      verifier(forgedToken),
-      {
-        code: 'FAST_JWT_INVALID_KEY',
-        message: 'The key cannot be an empty string or buffer.'
-      }
-    )
+    await t.assert.rejects(verifier(forgedToken), {
+      code: 'FAST_JWT_INVALID_KEY',
+      message: 'The key cannot be an empty string or buffer.'
+    })
   })
 
   test('forgery case 8: mixed algorithms HS256/RS256 with empty key', async t => {
@@ -2277,13 +2256,10 @@ describe('GHSA-gmvf-9v4p-v8jc: Empty HMAC secret rejection', () => {
       algorithms: ['HS256', 'RS256']
     })
 
-    await t.assert.rejects(
-      verifier(forgedToken),
-      {
-        code: 'FAST_JWT_INVALID_KEY',
-        message: 'The key cannot be an empty string or buffer.'
-      }
-    )
+    await t.assert.rejects(verifier(forgedToken), {
+      code: 'FAST_JWT_INVALID_KEY',
+      message: 'The key cannot be an empty string or buffer.'
+    })
   })
 
   test('regression case 9: valid async HMAC secret verifies token normally', async t => {
@@ -2311,13 +2287,10 @@ describe('GHSA-gmvf-9v4p-v8jc: Empty HMAC secret rejection', () => {
       key: async () => null
     })
 
-    await t.assert.rejects(
-      verifier(forgedToken),
-      {
-        code: 'FAST_JWT_KEY_FETCHING_ERROR',
-        message: 'The key returned from the callback must be a string or a buffer containing a secret or a public key.'
-      }
-    )
+    await t.assert.rejects(verifier(forgedToken), {
+      code: 'FAST_JWT_KEY_FETCHING_ERROR',
+      message: 'The key returned from the callback must be a string or a buffer containing a secret or a public key.'
+    })
   })
 
   test('regression case 11: synchronous empty key throws MISSING_KEY at verify time', t => {
