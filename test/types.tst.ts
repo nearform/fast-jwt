@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unused-expressions */
 /* eslint-disable @typescript-eslint/no-unused-vars */
 
-import { expectAssignable, expectNotAssignable, expectType } from 'tsd'
+import { expect } from 'tstyche'
 import {
   createDecoder,
   createSigner,
@@ -105,17 +105,17 @@ createVerifier<Record<string, number>>({
 
 // Errors
 const errorWithNoMsg = new TokenError(TokenError.codes.expired)
-expectType<TokenError>(errorWithNoMsg)
-expectType<string>(errorWithNoMsg.message)
+expect(errorWithNoMsg).type.toBe<TokenError>()
+expect(errorWithNoMsg.message).type.toBe<string>()
 
 const errorWithMsg = new TokenError(TokenError.codes.expired, 'MESSAGE')
-expectType<TokenError>(errorWithMsg)
-expectType<string>(errorWithMsg.message)
+expect(errorWithMsg).type.toBe<TokenError>()
+expect(errorWithMsg.message).type.toBe<string>()
 
 const errorWithAdditional = new TokenError(TokenError.codes.expired, 'MESSAGE', { additional: 'data' })
-expectType<TokenError>(errorWithAdditional)
-expectType<string>(errorWithAdditional.message)
-expectType<any>(errorWithAdditional.additional)
+expect(errorWithAdditional).type.toBe<TokenError>()
+expect(errorWithAdditional.message).type.toBe<string>()
+expect(errorWithAdditional.additional).type.toBe<any>()
 
 const wrapped = TokenError.wrap(new Error('ORIGINAL'), 'FAST_JWT_INVALID_TYPE', 'MESSAGE')
 wrapped.code === 'FAST_JWT_INVALID_TYPE'
@@ -137,7 +137,7 @@ const signerOptions = {
     x5c: ''
   }
 }
-expectAssignable<JwtHeader>(signerOptions.header)
+expect(signerOptions.header).type.toBeAssignableTo<JwtHeader>()
 
 const signerOptionsCustomHeaders = {
   header: {
@@ -155,7 +155,7 @@ const signerOptionsCustomHeaders = {
     customClaim2: 'my-custom-claim2'
   }
 }
-expectAssignable<JwtHeader>(signerOptionsCustomHeaders.header)
+expect(signerOptionsCustomHeaders.header).type.toBeAssignableTo<JwtHeader>()
 
 const signerOptionsNoAlg = {
   header: {
@@ -170,19 +170,19 @@ const signerOptionsNoAlg = {
     x5c: ''
   }
 }
-expectNotAssignable<JwtHeader>(signerOptionsNoAlg.header)
+expect(signerOptionsNoAlg.header).type.not.toBeAssignableTo<JwtHeader>()
 
 // Check object and class static matches their own type
-expectType<typeof TOKEN_ERROR_CODES>(TOKEN_ERROR_CODES)
-expectType<typeof TOKEN_ERROR_CODES>(TokenError.codes)
+expect(TOKEN_ERROR_CODES).type.toBe<typeof TOKEN_ERROR_CODES>()
+expect(TokenError.codes).type.toBe<typeof TOKEN_ERROR_CODES>()
 
 // Check all enum values are assignable to TokenValidationErrorCode union
-expectType<TokenValidationErrorCode[]>(Object.values(TOKEN_ERROR_CODES))
-expectType<TokenValidationErrorCode[]>(Object.values(TokenError.codes))
+expect(Object.values(TOKEN_ERROR_CODES)).type.toBe<TokenValidationErrorCode[]>()
+expect(Object.values(TokenError.codes)).type.toBe<TokenValidationErrorCode[]>()
 
 // Check enums resolve to correct string literals
 const code: TokenValidationErrorCode = TOKEN_ERROR_CODES.expired
-expectType<"FAST_JWT_EXPIRED">(code)
+expect(code).type.toBe<"FAST_JWT_EXPIRED">()
 
 const decodedJwt: DecodedJwt = {
   header: { alg: 'RS256', typ: 'JWT' },
@@ -191,8 +191,8 @@ const decodedJwt: DecodedJwt = {
   input: 'input'
 }
 
-expectType<DecodedJwt>(decodedJwt)
-expectType<Record<string, any>>(decodedJwt.header)
-expectType<any>(decodedJwt.payload)
-expectType<string>(decodedJwt.signature)
-expectType<string>(decodedJwt.input)
+expect(decodedJwt).type.toBe<DecodedJwt>()
+expect(decodedJwt.header).type.toBe<Record<string, any>>()
+expect(decodedJwt.payload).type.toBe<any>()
+expect(decodedJwt.signature).type.toBe<string>()
+expect(decodedJwt.input).type.toBe<string>()
