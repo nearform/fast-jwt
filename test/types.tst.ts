@@ -1,5 +1,4 @@
-/* eslint-disable @typescript-eslint/no-unused-expressions */
-/* eslint-disable @typescript-eslint/no-unused-vars */
+/// <reference types="node" />
 
 import { expect } from 'tstyche'
 import {
