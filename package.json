@@ -40,7 +40,7 @@
   "scripts": {
     "postpublish": "git push origin && git push origin -f --tags",
     "lint": "eslint .",
-    "test": "node --test --experimental-test-coverage test/**.spec.js && tsd",
+    "test": "node --test --experimental-test-coverage test/**.spec.js && tstyche",
     "test:ci": "npm run lint && npm run test",
     "test:watch": "node --test --watch --experimental-test-coverage",
     "test:generate-keys": "node benchmarks/keys/generate-keys.js",
@@ -72,14 +72,11 @@
     "jsonwebtoken": "^9.0.2",
     "mitata": "^1.0.34",
     "prettier": "^3.4.2",
-    "tsd": "^0.33.0",
+    "tstyche": "^7.1.0",
     "typescript": "^6.0.3",
     "typescript-eslint": "^8.18.0"
   },
   "engines": {
     "node": ">=20"
-  },
-  "tsd": {
-    "directory": "test"
   }
 }
