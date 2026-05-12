@@ -40,9 +40,8 @@
   "scripts": {
     "postpublish": "git push origin && git push origin -f --tags",
     "lint": "eslint .",
-    "test": "node --test --experimental-test-coverage test/**/*.spec.js",
-    "test:typescript": "tstyche",
-    "test:ci": "npm run lint && npm run test && npm run test:typescript",
+    "test": "node --test --experimental-test-coverage test/**/*.spec.js && tstyche",
+    "test:ci": "npm run lint && npm run test",
     "test:watch": "node --test --watch --experimental-test-coverage",
     "test:generate-keys": "node benchmarks/keys/generate-keys.js",
     "test:generate-tokens": "node benchmarks/keys/generate-tokens.js",
