@@ -273,7 +273,7 @@ test('it uses the clockTimestamp option, if one is set', async t => {
   )
 })
 
-test('it respects payload exp claim (if supplied), overriding the default expiresIn timeout', async t => {
+test('it adds exp from expiresIn, overriding an existing payload exp claim', async t => {
   t.assert.equal(
     sign({ a: 1, iat: 100 }, { expiresIn: 1000 }),
     'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxLCJpYXQiOjEwMCwiZXhwIjoxMDF9.ULKqTsvUYm7iNOKA6bP5NXsa1A8vofgPIGiC182Vf_Q'
@@ -281,7 +281,7 @@ test('it respects payload exp claim (if supplied), overriding the default expire
 
   t.assert.equal(
     sign({ a: 1, iat: 100, exp: 200 }, { expiresIn: 1000 }),
-    'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxLCJpYXQiOjEwMCwiZXhwIjoyMDB9.RJbB3-VIjLIQr-VmZ1Kl42MrHr2pAU-CQuXK8jHMKR0'
+    'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxLCJpYXQiOjEwMCwiZXhwIjoxMDF9.ULKqTsvUYm7iNOKA6bP5NXsa1A8vofgPIGiC182Vf_Q'
   )
 })
 
@@ -328,17 +328,15 @@ test('it ignores invalid exp claim', async t => {
   )
 })
 
-test('it adds a nbf claim, overriding the payload one, only if the payload is a object', async t => {
+test('it adds nbf from notBefore, overriding an existing payload nbf claim', async t => {
   t.assert.equal(
     sign({ a: 1, iat: 100 }, { notBefore: 1000 }),
-    // jwt that contains nbf claim to be 1000
     'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxLCJpYXQiOjEwMCwibmJmIjoxMDF9.WhZeNowse7q1s5FSlcMcs_4KcxXpSdQ4yqv0xrGB3sU'
   )
 
   t.assert.equal(
     sign({ a: 1, iat: 100, nbf: 200 }, { notBefore: 1000 }),
-    // jwt that contains nbf claim to be 200
-    'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxLCJpYXQiOjEwMCwibmJmIjoyMDB9.HmHmbH-pOTlpj5FsVN61aT2PFhd6EN-tnQdExv_HUs4'
+    'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxLCJpYXQiOjEwMCwibmJmIjoxMDF9.WhZeNowse7q1s5FSlcMcs_4KcxXpSdQ4yqv0xrGB3sU'
   )
 })
 
@@ -435,6 +433,17 @@ test('it adds additional arbitrary fields to the header', async t => {
 
 test('it mutates the payload if asked to', async t => {
   const payload = { a: 1, iat: 100 }
+
+  t.assert.equal(
+    sign(payload, { mutatePayload: true, expiresIn: 1000 }),
+    'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxLCJpYXQiOjEwMCwiZXhwIjoxMDF9.ULKqTsvUYm7iNOKA6bP5NXsa1A8vofgPIGiC182Vf_Q'
+  )
+
+  t.assert.equal(payload.exp, 101)
+})
+
+test('it mutates the payload with the computed exp when expiresIn overrides an existing payload exp claim', async t => {
+  const payload = { a: 1, iat: 100, exp: 200 }
 
   t.assert.equal(
     sign(payload, { mutatePayload: true, expiresIn: 1000 }),
