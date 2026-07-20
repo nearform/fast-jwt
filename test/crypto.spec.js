@@ -145,6 +145,12 @@ test('detectPrivateKeyAlgorithm - public keys should be rejected', t => {
   })
 })
 
+test('detectPrivateKeyAlgorithm - public keys should be accepted if HS256, HS384, HS512 is used', t => {
+  ;['HS256', 'HS384', 'HS512'].forEach(algorithm => {
+    t.assert.equal(detectPrivateKeyAlgorithm(`-----BEGIN PUBLIC KEY-----\nUSED IN ${algorithm}`, algorithm), algorithm)
+  })
+})
+
 test('detectPrivateKeyAlgorithm - unrecognized PKCS8 OIDs should be rejected', t => {
   t.assert.throws(() => detectPrivateKeyAlgorithm(invalidPrivatePKCS8), {
     message: 'Unsupported PEM PCKS8 private key with OID 1.2.840.10040.4.1.'
@@ -219,6 +225,15 @@ test('detectPublicKeyAlgorithms - private keys should be rejected', t => {
   })
 })
 
+test('detectPublicKeyAlgorithms - public key-like strings should be accepted if all provided algorithms are HS', t => {
+  ;['HS256', 'HS384', 'HS512'].forEach(algorithm => {
+    t.assert.deepStrictEqual(
+      detectPublicKeyAlgorithms(`-----BEGIN PUBLIC KEY-----\nUSED IN ${algorithm}`, [algorithm]),
+      [algorithm]
+    )
+  })
+})
+
 test('detectPublicKeyAlgorithms - unrecognized PKCS8 OIDs should be rejected', t => {
   t.assert.throws(() => detectPublicKeyAlgorithms(invalidPublicPKCS8), {
     message: 'Unsupported PEM PCKS8 public key with OID 1.2.840.10040.4.1.'
@@ -286,12 +301,12 @@ test('detectPrivateKeyAlgorithm - EC private key with leading whitespace must st
 
 for (const bits of [256, 384, 512]) {
   const hsAlgorithm = `HS${bits}`
+  const key = privateKeys.HS
 
-  // HS256, HS512, HS512
+  // HS256, HS384, HS512
   test(`${hsAlgorithm} based tokens round trip with string keys`, t => {
-    const token = createSigner({ algorithm: hsAlgorithm, key: 'secretsecretsecret' })({ payload: 'PAYLOAD' })
-
-    const verified = createVerifier({ key: 'secretsecretsecret' })(token)
+    const token = createSigner({ algorithm: hsAlgorithm, key })({ payload: 'PAYLOAD' })
+    const verified = createVerifier({ key })(token)
 
     t.assert.equal(verified.payload, 'PAYLOAD')
     t.assert.ok(verified.iat >= start)
@@ -299,11 +314,8 @@ for (const bits of [256, 384, 512]) {
   })
 
   test(`${hsAlgorithm} based tokens round trip with buffer keys`, t => {
-    const token = createSigner({ algorithm: hsAlgorithm, key: Buffer.from('secretsecretsecret', 'utf-8') })({
-      payload: 'PAYLOAD'
-    })
-
-    const verified = createVerifier({ key: 'secretsecretsecret' })(token)
+    const token = createSigner({ algorithm: hsAlgorithm, key: Buffer.from(key, 'utf-8') })({ payload: 'PAYLOAD' })
+    const verified = createVerifier({ key })(token)
 
     t.assert.equal(verified.payload, 'PAYLOAD')
     t.assert.ok(verified.iat >= start)
@@ -314,6 +326,16 @@ for (const bits of [256, 384, 512]) {
     await t.assert.rejects(createSigner({ algorithm: hsAlgorithm, key: async () => 123 })({ payload: 'PAYLOAD' }), {
       message: 'The key returned from the callback must be a string or a buffer containing a secret or a private key.'
     })
+  })
+
+  const pemLikeSecret = `-----BEGIN PUBLIC KEY-----\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAu1SU1LfVLPHCozMxH2Mo\n4lgOEePzNm0tRgeLezV6ffAt0gunVTLw7onLRnrq0/IzW7yWR7QkrmBL7jTKEn5u\n-----END PUBLIC KEY-----`
+  test(`${hsAlgorithm} based tokens round trip with PEM-like secret keys`, t => {
+    const token = createSigner({ algorithm: hsAlgorithm, key: pemLikeSecret })({ payload: 'PAYLOAD' })
+    const verified = createVerifier({ algorithms: [hsAlgorithm], key: pemLikeSecret })(token)
+
+    t.assert.equal(verified.payload, 'PAYLOAD')
+    t.assert.ok(verified.iat >= start)
+    t.assert.ok(verified.iat <= Date.now() / 1000)
   })
 }
 

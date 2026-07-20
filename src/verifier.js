@@ -513,7 +513,7 @@ module.exports = function createVerifier(options) {
 
   if (key && keyType !== 'function') {
     // Detect the private key - If the algorithms were known, just verify they match, otherwise assign them
-    const availableAlgorithms = detectPublicKeyAlgorithms(key)
+    const availableAlgorithms = detectPublicKeyAlgorithms(key, allowedAlgorithms)
 
     if (allowedAlgorithms.length) {
       checkAreCompatibleAlgorithms(allowedAlgorithms, availableAlgorithms)
@@ -521,7 +521,7 @@ module.exports = function createVerifier(options) {
       allowedAlgorithms = availableAlgorithms
     }
 
-    key = prepareKeyOrSecret(key, availableAlgorithms[0] === hsAlgorithms[0])
+    key = prepareKeyOrSecret(key, hsAlgorithms.includes(availableAlgorithms[0]))
   }
 
   if (clockTimestamp && (typeof clockTimestamp !== 'number' || clockTimestamp < 0)) {

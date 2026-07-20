@@ -71,8 +71,14 @@ function cacheSet(cache, key, value, error) {
   return value || error
 }
 
-function performDetectPrivateKeyAlgorithm(key) {
+function performDetectPrivateKeyAlgorithm(key, providedAlgorithm) {
   const trimmedKey = key.trim()
+
+  if (hsAlgorithms.includes(providedAlgorithm)) {
+    // the key string might look like a public/private key, but it should be used as a raw string
+    return providedAlgorithm
+  }
+
   if (trimmedKey.match(publicKeyPemMatcher) || trimmedKey.includes(publicKeyX509CertMatcher)) {
     throw new TokenError(TokenError.codes.invalidKey, 'Public keys are not supported for signing.')
   }
@@ -188,7 +194,7 @@ function detectPrivateKeyAlgorithm(key, providedAlgorithm) {
 
   // Try detecting
   try {
-    const detectedAlgorithm = performDetectPrivateKeyAlgorithm(key)
+    const detectedAlgorithm = performDetectPrivateKeyAlgorithm(key, providedAlgorithm)
 
     if (detectedAlgorithm === 'ENCRYPTED') {
       return cacheSet(privateKeysCache, key, providedAlgorithm)
@@ -204,10 +210,17 @@ function detectPrivateKeyAlgorithm(key, providedAlgorithm) {
   }
 }
 
-function detectPublicKeyAlgorithms(key) {
+function detectPublicKeyAlgorithms(key, providedAlgorithms) {
   if (!key) {
     return 'none'
   }
+
+  // If all provided algorithms are HS, skip detection and caching entirely
+  // since the key might look like a PEM but should be used as a raw HMAC secret
+  if (providedAlgorithms && providedAlgorithms.length && providedAlgorithms.every(a => hsAlgorithms.includes(a))) {
+    return providedAlgorithms
+  }
+
   // Check cache first
   const [cached, error] = publicKeysCache.get(key) || []
 
