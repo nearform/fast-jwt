@@ -8,6 +8,51 @@ const { describe, test } = require('node:test')
 const { createSigner, createVerifier, TokenError } = require('../src')
 const { hashToken } = require('../src/utils')
 
+async function expectWarnings(code, count, fn) {
+  const collected = []
+  let resolve
+  const done = new Promise(r => (resolve = r))
+  const onWarning = w => {
+    if (w.code === code) {
+      collected.push(w)
+      if (collected.length === count) resolve()
+    }
+  }
+  process.on('warning', onWarning)
+  fn()
+  const timeout = new Promise((_, reject) =>
+    setTimeout(
+      () => reject(new Error(`Timed out waiting for ${count} ${code} warnings (got ${collected.length})`)),
+      500
+    )
+  )
+  try {
+    await Promise.race([done, timeout])
+    return collected
+  } finally {
+    process.off('warning', onWarning)
+  }
+}
+
+async function expectWarning(code, fn) {
+  let onWarning
+  const warningPromise = new Promise(resolve => {
+    onWarning = w => {
+      if (w.code === code) resolve(w)
+    }
+    process.on('warning', onWarning)
+  })
+  fn()
+  const timeout = new Promise((_, reject) =>
+    setTimeout(() => reject(new Error(`Timed out waiting for ${code} warning`)), 500)
+  )
+  try {
+    return await Promise.race([warningPromise, timeout])
+  } finally {
+    process.off('warning', onWarning)
+  }
+}
+
 const privateKeys = {
   HS: 'secretsecretsecret',
   ES256: readFileSync(resolve(__dirname, '../benchmarks/keys/es-256-private.key')),
@@ -39,2297 +84,2288 @@ function verify(token, options, callback) {
   return verifier(token, callback)
 }
 
-test('it gets the correct decoded jwt token as argument on the key callback', async t => {
-  t.plan(1)
-  verify('eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxfQ.57TF7smP9XDhIexBqPC-F1toZReYZLWb_YRU5tv0sxM', {
-    key: async decoded => {
-      t.assert.deepStrictEqual(decoded, {
+describe('createVerifier', () => {
+  test('gets the correct decoded jwt token as argument on the key callback', async t => {
+    t.plan(1)
+    verify('eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxfQ.57TF7smP9XDhIexBqPC-F1toZReYZLWb_YRU5tv0sxM', {
+      key: async decoded => {
+        t.assert.deepStrictEqual(decoded, {
+          header: { typ: 'JWT', alg: 'HS256' },
+          payload: { a: 1 },
+          signature: '57TF7smP9XDhIexBqPC-F1toZReYZLWb_YRU5tv0sxM'
+        })
+
+        return Buffer.from('secret', 'utf-8')
+      },
+      noTimestamp: true,
+      complete: true
+    })
+  })
+
+  test('correctly verifies a token - sync', t => {
+    t.assert.deepStrictEqual(
+      verify('eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxfQ.57TF7smP9XDhIexBqPC-F1toZReYZLWb_YRU5tv0sxM', {
+        noTimestamp: true
+      }),
+      { a: 1 }
+    )
+
+    t.assert.deepStrictEqual(
+      verify(
+        'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxLCJpYXQiOjIwMDAwMDAwMDAsImV4cCI6MjEwMDAwMDAwMH0.vrIO0e4YNXgzqdj7RcTqmP8AlCuvfYoxJCkma78eILA',
+        { clockTimestamp: 2010000000 }
+      ),
+      { a: 1, iat: 2000000000, exp: 2100000000 }
+    )
+
+    t.assert.deepStrictEqual(
+      verify('eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxfQ.57TF7smP9XDhIexBqPC-F1toZReYZLWb_YRU5tv0sxM', {
+        checkTyp: 'jwt',
+        noTimestamp: true
+      }),
+      { a: 1 }
+    )
+
+    t.assert.deepStrictEqual(
+      verify(
+        'eyJhbGciOiJIUzI1NiIsInR5cCI6ImFwcGxpY2F0aW9uL2p3dCJ9.eyJhIjoxfQ.1ptuaNj5R0owE-5663LpMknK3eRgZVDHkMkOKkxlteM',
+        {
+          checkTyp: 'jwt'
+        }
+      ),
+      { a: 1 }
+    )
+
+    t.assert.throws(
+      () => verify('eyJhbGciOiJIUzI1NiJ9.eyJhIjoxfQ.LrlPmSL4FxrzAHJSYbKzsA997COXdYCeFKlt3zt5DIY', { checkTyp: 'test' }),
+      {
+        message: 'Invalid typ.'
+      }
+    )
+
+    t.assert.throws(
+      () =>
+        verify('eyJhbGciOiJIUzI1NiIsInR5cCI6MX0.eyJhIjoxfQ.V6I7eoKYlMG7ipqpsWoZcNZaGOVGPom0rnztq1q2tS4', {
+          checkTyp: 'JWT'
+        }),
+      {
+        message: 'Invalid typ.'
+      }
+    )
+
+    t.assert.deepStrictEqual(
+      verify('eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxfQ.57TF7smP9XDhIexBqPC-F1toZReYZLWb_YRU5tv0sxM', {
+        noTimestamp: true,
+        complete: true
+      }),
+      {
         header: { typ: 'JWT', alg: 'HS256' },
         payload: { a: 1 },
-        signature: '57TF7smP9XDhIexBqPC-F1toZReYZLWb_YRU5tv0sxM'
-      })
-
-      return Buffer.from('secret', 'utf-8')
-    },
-    noTimestamp: true,
-    complete: true
-  })
-})
-
-test('it correctly verifies a token - sync', t => {
-  t.assert.deepStrictEqual(
-    verify('eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxfQ.57TF7smP9XDhIexBqPC-F1toZReYZLWb_YRU5tv0sxM', {
-      noTimestamp: true
-    }),
-    { a: 1 }
-  )
-
-  t.assert.deepStrictEqual(
-    verify(
-      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxLCJpYXQiOjIwMDAwMDAwMDAsImV4cCI6MjEwMDAwMDAwMH0.vrIO0e4YNXgzqdj7RcTqmP8AlCuvfYoxJCkma78eILA',
-      { clockTimestamp: 2010000000 }
-    ),
-    { a: 1, iat: 2000000000, exp: 2100000000 }
-  )
-
-  t.assert.deepStrictEqual(
-    verify('eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxfQ.57TF7smP9XDhIexBqPC-F1toZReYZLWb_YRU5tv0sxM', {
-      checkTyp: 'jwt',
-      noTimestamp: true
-    }),
-    { a: 1 }
-  )
-
-  t.assert.deepStrictEqual(
-    verify(
-      'eyJhbGciOiJIUzI1NiIsInR5cCI6ImFwcGxpY2F0aW9uL2p3dCJ9.eyJhIjoxfQ.1ptuaNj5R0owE-5663LpMknK3eRgZVDHkMkOKkxlteM',
-      {
-        checkTyp: 'jwt'
+        signature: '57TF7smP9XDhIexBqPC-F1toZReYZLWb_YRU5tv0sxM',
+        input: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxfQ'
       }
-    ),
-    { a: 1 }
-  )
-
-  t.assert.throws(
-    () => verify('eyJhbGciOiJIUzI1NiJ9.eyJhIjoxfQ.LrlPmSL4FxrzAHJSYbKzsA997COXdYCeFKlt3zt5DIY', { checkTyp: 'test' }),
-    {
-      message: 'Invalid typ.'
-    }
-  )
-
-  t.assert.throws(
-    () =>
-      verify('eyJhbGciOiJIUzI1NiIsInR5cCI6MX0.eyJhIjoxfQ.V6I7eoKYlMG7ipqpsWoZcNZaGOVGPom0rnztq1q2tS4', {
-        checkTyp: 'JWT'
-      }),
-    {
-      message: 'Invalid typ.'
-    }
-  )
-
-  t.assert.deepStrictEqual(
-    verify('eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxfQ.57TF7smP9XDhIexBqPC-F1toZReYZLWb_YRU5tv0sxM', {
-      noTimestamp: true,
-      complete: true
-    }),
-    {
-      header: { typ: 'JWT', alg: 'HS256' },
-      payload: { a: 1 },
-      signature: '57TF7smP9XDhIexBqPC-F1toZReYZLWb_YRU5tv0sxM',
-      input: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxfQ'
-    }
-  )
-
-  t.assert.deepStrictEqual(
-    verify(
-      'eyJhbGciOiJFZERTQSIsInR5cCI6IkpXVCIsImt0eSI6Ik9LUCIsImNydiI6IkVkMjU1MTkifQ.eyJhIjoxfQ.n4isU7JqaKRVOyx2ni7b_iaAzB75pAUCW6CetcoClhtJ5yDM7YkNMbKqmDUhTKMpupAcztIjX8m4mZwpA33HAA',
-      { key: publicKeys.Ed25519 }
-    ),
-    { a: 1 }
-  )
-})
-
-test('it correctly verifies a token - async - key with callback', async t => {
-  t.assert.deepStrictEqual(
-    await verify('eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxfQ.57TF7smP9XDhIexBqPC-F1toZReYZLWb_YRU5tv0sxM', {
-      key: (_decodedJwt, callback) => setTimeout(() => callback(null, 'secret'), 10),
-      noTimestamp: true
-    }),
-    { a: 1 }
-  )
-
-  t.assert.deepStrictEqual(
-    await verify('eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxfQ.57TF7smP9XDhIexBqPC-F1toZReYZLWb_YRU5tv0sxM', {
-      algorithms: ['HS256'],
-      key: (_decodedJwt, callback) => setTimeout(() => callback(null, 'secret'), 10),
-      noTimestamp: true,
-      complete: true
-    }),
-    {
-      header: { typ: 'JWT', alg: 'HS256' },
-      payload: { a: 1 },
-      signature: '57TF7smP9XDhIexBqPC-F1toZReYZLWb_YRU5tv0sxM',
-      input: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxfQ.57TF7smP9XDhIexBqPC-F1toZReYZLWb_YRU5tv0sxM'
-    }
-  )
-})
-
-test('it correctly verifies a token - async - key as promise', async t => {
-  t.assert.deepStrictEqual(
-    await verify('eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxfQ.57TF7smP9XDhIexBqPC-F1toZReYZLWb_YRU5tv0sxM', {
-      key: async () => Buffer.from('secret', 'utf-8'),
-      noTimestamp: true
-    }),
-    { a: 1 }
-  )
-})
-
-test('it correctly verifies a token - async - static key', async t => {
-  t.assert.deepStrictEqual(
-    await verify('eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxfQ.57TF7smP9XDhIexBqPC-F1toZReYZLWb_YRU5tv0sxM', {
-      noTimestamp: true
-    }),
-    { a: 1 }
-  )
-})
-
-test('it correctly verifies a token - callback - key as promise', t => {
-  verify(
-    'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxfQ.57TF7smP9XDhIexBqPC-F1toZReYZLWb_YRU5tv0sxM',
-    { key: async () => Buffer.from('secret', 'utf-8'), noTimestamp: true },
-    (error, payload) => {
-      t.assert.ok(error == null)
-      t.assert.deepStrictEqual(payload, { a: 1 })
-    }
-  )
-})
-
-test('it correctly verifies a token - token signed with encrypted private key', async t => {
-  const payload = verify(
-    'eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxLCJpYXQiOjE2MzU0MjY2OTl9.c5VeTRDL43sMxEk4pV7AV6nGJeRbJYw6tdKGfzq6bvjT-ai29gQc7baTAmoo16EuboUwBHoz_OEOtwsePetoc0wKtDoXY7t6dBWznV2Z4_7YSrnt2U62FZrlVDoLPYJRRHhB6sR2YyidoUWzfs821_SpeTeT4Ls-tlqWjIGkpUDktZiPKYIt9LkLFgZDaCBeQr39BMCagD3p0yGYIWZJNsIQKNvvUHjtF4Io9buPwKKA6FAfYgM5c1aTAkhhnRjZSjW0vu-Osxlbu-XO0-IF-0c4eGgf2LAh_jGM4bF1nQmExKI9Q0IpvbPD8pSzcIPndiHdgGxrJy7X9GktN6Vi2DQazcIXtjBIaBNO4VKew5GNIbSb-lHyeO7WBENE3WrVImS_9_i3z81M-F0w1C6MqmnKZ3qKLna3OG1pYU4mVQ2rvBNdHuVOrtJyE0IiCDQS-RKaKM0lOprHy_B6_TNRp_Y9oBCVOY1Kr8fczigfArwSlPai051AncK-zfHZwvP7_uBKitncmNDjr19xiLa79Fbm6mkSA8tZindDvBml1ZF9apNF51CCdO-ce9yqj3Aem2n1VXHLuq9sdIk_mlSZn9aLDOPUI22DcdhcSsySdKdWSf9F7dj5c1J9ppwxTxK3LHjIeiaCJWCmKvfu73j_rpKzbFzzwotQ3bsRave8gdY',
-    { key: publicKeys.PPRS }
-  )
-  t.assert.deepStrictEqual(payload.a, 1)
-})
-
-test('it rejects invalid tokens', async t => {
-  t.assert.throws(() => verify('eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxfQ.57TF7smP9XDhIexBqPC-aaa', {}), {
-    message: 'The token signature is invalid.'
-  })
-
-  await t.assert.rejects(
-    async () => {
-      return verify('eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxfQ.57TF7smP9XDhIexBqPC-aaa', {
-        key: async () => 'secret'
-      })
-    },
-    { message: 'The token signature is invalid.' }
-  )
-})
-
-test('it rejects tokens with non-base64url characters in the signature segment', t => {
-  // Canonical HS256 token signed with key 'secret' over payload {"a":1}
-  const base = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxfQ.57TF7smP9XDhIexBqPC-F1toZReYZLWb_YRU5tv0sxM'
-
-  // RFC 4648 §3.3 requires implementations to reject data outside the base
-  // alphabet. Each of these embeds whitespace, newlines, or padding in the
-  // signature segment.
-  const nonCanonical = [
-    base + ' ',
-    base + '\t',
-    base + '\n',
-    base + '\r\n',
-    base.slice(0, -10) + ' ' + base.slice(-10),
-    base.slice(0, -10) + '\t' + base.slice(-10),
-    base + '='
-  ]
-
-  for (const token of nonCanonical) {
-    t.assert.throws(
-      () => verify(token, {}),
-      { message: 'The token signature is invalid.' },
-      `expected rejection for token with non-base64url chars: ${JSON.stringify(token)}`
     )
-  }
 
-  // Canonical token is still accepted for comparison
-  t.assert.deepStrictEqual(verify(base, {}), { a: 1 })
-})
-
-test('it requires a signature or a key', async t => {
-  t.assert.throws(() => verify('eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxfQ.', {}), {
-    message: 'The token signature is missing.'
+    t.assert.deepStrictEqual(
+      verify(
+        'eyJhbGciOiJFZERTQSIsInR5cCI6IkpXVCIsImt0eSI6Ik9LUCIsImNydiI6IkVkMjU1MTkifQ.eyJhIjoxfQ.n4isU7JqaKRVOyx2ni7b_iaAzB75pAUCW6CetcoClhtJ5yDM7YkNMbKqmDUhTKMpupAcztIjX8m4mZwpA33HAA',
+        { key: publicKeys.Ed25519 }
+      ),
+      { a: 1 }
+    )
   })
 
-  t.assert.throws(
-    () =>
-      verify('eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxfQ.57TF7smP9XDhIexBqPC-F1toZReYZLWb_YRU5tv0sxM', {
-        key: ''
+  test('correctly verifies a token - async - key with callback', async t => {
+    t.assert.deepStrictEqual(
+      await verify('eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxfQ.57TF7smP9XDhIexBqPC-F1toZReYZLWb_YRU5tv0sxM', {
+        key: (_decodedJwt, callback) => setTimeout(() => callback(null, 'secret'), 10),
+        noTimestamp: true
       }),
-    { message: 'The key option is missing.' }
-  )
-})
+      { a: 1 }
+    )
 
-test('it correctly handle errors - async callback', async t => {
-  await t.assert.rejects(
-    verify('eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxfQ.57TF7smP9XDhIexBqPC-F1toZReYZLWb_YRU5tv0sxM', {
-      key: async () => {
-        throw new Error('FAILED')
-      }
-    }),
-    { message: 'Cannot fetch key.' }
-  )
-
-  await t.assert.rejects(
-    verify('eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxfQ.57TF7smP9XDhIexBqPC-F1toZReYZLWb_YRU5tv0sxM', {
-      key: async () => {
-        throw new TokenError(null, 'FAILED')
-      }
-    }),
-    { message: 'FAILED' }
-  )
-})
-
-test('it correctly handle errors - callback', t => {
-  verify(
-    'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxfQ.57TF7smP9XDhIexBqPC-F1toZReYZLWb_YRU5tv0sxM',
-    {
-      key: (_decodedJwt, callback) => {
-        callback(new Error('FAILED'))
-      }
-    },
-    error => {
-      t.assert.ok(error instanceof TokenError)
-      t.assert.equal(error.message, 'Cannot fetch key.')
-    }
-  )
-})
-
-test('it correctly handle errors - evented callback', t => {
-  verify(
-    'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxfQ.57TF7smP9XDhIexBqPC-F1toZReYZLWb_YRU5tv0sxM',
-    {
-      key: (_decodedJwt, callback) => {
-        process.nextTick(() => callback(null, 'FAILED'))
-      }
-    },
-    error => {
-      t.assert.ok(error instanceof TokenError)
-      t.assert.equal(error.message, 'The token signature is invalid.')
-    }
-  )
-})
-
-test('it handles decoding errors', async t => {
-  t.assert.throws(() => verify('TOKEN', { algorithms: ['HS256'], key: 'secret' }), {
-    message: 'The token is malformed.'
-  })
-
-  await t.assert.rejects(async () => verify('TOKEN', { algorithms: ['HS256'], key: () => 'secret' }), {
-    message: 'The token is malformed.'
-  })
-})
-
-test('it validates if the token is not using an allowed algorithm - sync ', t => {
-  t.assert.throws(
-    () => {
-      return verify(
-        'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxLCJpYXQiOjAsIm5iZiI6MjAwMDAwMDAwMH0.PlCCCgSnL38HaOY1-bkWnz-LX9WW2b772Zs3oxQJIv4',
-        { algorithms: ['RS256', 'PS256'], key: publicKeys.RS }
-      )
-    },
-    { message: 'The token algorithm is invalid.' }
-  )
-})
-
-test('it validates if the token is using one of the allowed algorithm - sync ', t => {
-  t.assert.deepStrictEqual(
-    verify('eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxfQ.57TF7smP9XDhIexBqPC-F1toZReYZLWb_YRU5tv0sxM', {
-      noTimestamp: true
-    }),
-    { a: 1 }
-  )
-
-  t.assert.deepStrictEqual(
-    verify('eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxfQ.57TF7smP9XDhIexBqPC-F1toZReYZLWb_YRU5tv0sxM', {
-      noTimestamp: true,
-      algorithms: ['HS256']
-    }),
-    { a: 1 }
-  )
-
-  t.assert.deepStrictEqual(
-    verify('eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxfQ.57TF7smP9XDhIexBqPC-F1toZReYZLWb_YRU5tv0sxM', {
-      noTimestamp: true,
-      algorithms: ['RS256', 'HS256']
-    }),
-    { a: 1 }
-  )
-
-  t.assert.deepStrictEqual(
-    verify('eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxfQ.57TF7smP9XDhIexBqPC-F1toZReYZLWb_YRU5tv0sxM', {
-      noTimestamp: true,
-      algorithms: ['RS256', 'HS256'],
-      key: 'secret'
-    }),
-    { a: 1 }
-  )
-
-  t.assert.deepStrictEqual(
-    verify('eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxfQ.57TF7smP9XDhIexBqPC-F1toZReYZLWb_YRU5tv0sxM', {
-      noTimestamp: true,
-      algorithms: [
-        'RS256',
-        'RS384',
-        'RS512',
-        'HS256',
-        'HS384',
-        'HS512',
-        'ES256',
-        'ES384',
-        'ES512',
-        'PS256',
-        'PS384',
-        'PS512',
-        'EdDSA'
-      ]
-    }),
-    { a: 1 }
-  )
-})
-
-test('it validates if the token can be verified with X509 public key certificate ', t => {
-  t.assert.deepStrictEqual(
-    verify(
-      'eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxfQ.daq6gJpUPB2daOBWB3SdhMZsXiFfeCflJ36uztKVAzQu0apv-RRewfCFL2-M8iAu1ndAc-a57pG4TkRZjYw4UXD28hFZYjc4fBteoXyFWySkuqlFVCOph8gKkiFszLutE5sAJEoiGD_wnPw38pYj3d0sqsnDUezzNvEDK5Oa2_PYTnsQJi0JGupy2oE1RX7CuVVLBRnI8HOruMagn25FLShjjiiGw90yKq5AYk_Jlv8XFt4rypZj_O1JaGHVp3MTzrJ-Ku95BPDuhH4awBy8MSpPBtCoRPAUuP6jTetpCsRhmWlqf0OrmEMF81ZXlmS4LcbborwSTZ8cZvgc4OwIVU2I19fYLwDRqgL3GQy5GS8WGPTNbvwouvyTFr-omZtSeHUbguLTib5WYZlI1Sq9IPIG5dUDAlfWflPgOInZaE2n4kgGj2iKmUKWiGfuABSdsPgw2a1vTwQ5HZsljV0gHaz7WeCGJ8MZOMa7nvb3pDWfPjTBdcTZWvpzQWagRqVxCMK0gvSOaFLuvk89NFS-jr3eFkLVSAu07YWpPc80_QDcCMCqWU9JcW-FSUV3XHB5U6Yl8zDO6QKT4V-nWxLt8q1He3xHf27-7UoczzDC0-H-uIRjx-dPV_1B-b5axibEcQeNTEjOQv6KTrUOXVwyimLGUkoNUl9bKWyCfZ0QF8Q',
-      {
+    t.assert.deepStrictEqual(
+      await verify('eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxfQ.57TF7smP9XDhIexBqPC-F1toZReYZLWb_YRU5tv0sxM', {
+        algorithms: ['HS256'],
+        key: (_decodedJwt, callback) => setTimeout(() => callback(null, 'secret'), 10),
         noTimestamp: true,
-        key: publicKeys.RSX509
-      }
-    ),
-    { a: 1 }
-  )
-})
-
-test('it validates if the public key is consistent with the allowed algorithms - sync ', t => {
-  t.assert.throws(
-    () => {
-      return verify(
-        'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxLCJpYXQiOjAsIm5iZiI6MjAwMDAwMDAwMH0.PlCCCgSnL38HaOY1-bkWnz-LX9WW2b772Zs3oxQJIv4',
-        { algorithms: ['ES256'], key: publicKeys.RS }
-      )
-    },
-    { message: 'Invalid public key provided for algorithms ES256.' }
-  )
-})
-
-test('it validates if the token is active unless explicitily disabled', t => {
-  t.assert.throws(
-    () => {
-      return verify(
-        'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxLCJpYXQiOjAsIm5iZiI6MjAwMDAwMDAwMH0.PlCCCgSnL38HaOY1-bkWnz-LX9WW2b772Zs3oxQJIv4',
-        {}
-      )
-    },
-    { message: 'The token will be active at 2033-05-18T03:33:20.000Z.' }
-  )
-
-  t.assert.deepStrictEqual(
-    verify(
-      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxLCJpYXQiOjAsIm5iZiI6MjAwMDAwMDAwMH0.PlCCCgSnL38HaOY1-bkWnz-LX9WW2b772Zs3oxQJIv4',
+        complete: true
+      }),
       {
-        ignoreNotBefore: true
+        header: { typ: 'JWT', alg: 'HS256' },
+        payload: { a: 1 },
+        signature: '57TF7smP9XDhIexBqPC-F1toZReYZLWb_YRU5tv0sxM',
+        input: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxfQ.57TF7smP9XDhIexBqPC-F1toZReYZLWb_YRU5tv0sxM'
       }
-    ),
-    { a: 1, iat: 0, nbf: 2000000000 }
-  )
-})
+    )
+  })
 
-test('it validates if the token is active including the clock tolerance', t => {
-  const clockTimestamp = Date.now()
-  const notBefore = 1000
-  const token = createSigner({ key: 'secret', clockTimestamp, notBefore })({ a: 1 })
+  test('correctly verifies a token - async - key as promise', async t => {
+    t.assert.deepStrictEqual(
+      await verify('eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxfQ.57TF7smP9XDhIexBqPC-F1toZReYZLWb_YRU5tv0sxM', {
+        key: async () => Buffer.from('secret', 'utf-8'),
+        noTimestamp: true
+      }),
+      { a: 1 }
+    )
+  })
 
-  t.assert.deepStrictEqual(
-    verify(token, {
-      clockTolerance: 5000
-    }),
-    {
-      a: 1,
-      iat: Math.floor(clockTimestamp / 1000),
-      nbf: Math.floor((clockTimestamp + notBefore) / 1000)
-    }
-  )
-})
+  test('correctly verifies a token - async - static key', async t => {
+    t.assert.deepStrictEqual(
+      await verify('eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxfQ.57TF7smP9XDhIexBqPC-F1toZReYZLWb_YRU5tv0sxM', {
+        noTimestamp: true
+      }),
+      { a: 1 }
+    )
+  })
 
-test('it validates if the token has not expired (via exp) unless explicitily disabled', t => {
-  t.assert.throws(
-    () => {
-      return verify(
-        'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxLCJpYXQiOjEwMCwiZXhwIjoxMDF9.ULKqTsvUYm7iNOKA6bP5NXsa1A8vofgPIGiC182Vf_Q',
-        {}
-      )
-    },
-    { message: 'The token has expired at 1970-01-01T00:01:41.000Z.' }
-  )
-
-  t.assert.deepStrictEqual(
+  test('correctly verifies a token - callback - key as promise', t => {
     verify(
-      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxLCJpYXQiOjEwMCwiZXhwIjoxMDF9.ULKqTsvUYm7iNOKA6bP5NXsa1A8vofgPIGiC182Vf_Q',
-      {
-        ignoreExpiration: true
+      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxfQ.57TF7smP9XDhIexBqPC-F1toZReYZLWb_YRU5tv0sxM',
+      { key: async () => Buffer.from('secret', 'utf-8'), noTimestamp: true },
+      (error, payload) => {
+        t.assert.ok(error == null)
+        t.assert.deepStrictEqual(payload, { a: 1 })
       }
-    ),
-    { a: 1, iat: 100, exp: 101 }
-  )
-})
+    )
+  })
 
-test('it validates if the token has not expired (via maxAge) only if explicitily enabled', t => {
-  t.assert.throws(
-    () => {
-      return verify(
-        'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxLCJpYXQiOjEwMH0.5V5yFNSqmn0w6yDR1vUbykF36WwdQmADMTLJwiJtx8w',
-        { maxAge: 200000 }
+  test('correctly verifies a token - token signed with encrypted private key', async t => {
+    const payload = verify(
+      'eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxLCJpYXQiOjE2MzU0MjY2OTl9.c5VeTRDL43sMxEk4pV7AV6nGJeRbJYw6tdKGfzq6bvjT-ai29gQc7baTAmoo16EuboUwBHoz_OEOtwsePetoc0wKtDoXY7t6dBWznV2Z4_7YSrnt2U62FZrlVDoLPYJRRHhB6sR2YyidoUWzfs821_SpeTeT4Ls-tlqWjIGkpUDktZiPKYIt9LkLFgZDaCBeQr39BMCagD3p0yGYIWZJNsIQKNvvUHjtF4Io9buPwKKA6FAfYgM5c1aTAkhhnRjZSjW0vu-Osxlbu-XO0-IF-0c4eGgf2LAh_jGM4bF1nQmExKI9Q0IpvbPD8pSzcIPndiHdgGxrJy7X9GktN6Vi2DQazcIXtjBIaBNO4VKew5GNIbSb-lHyeO7WBENE3WrVImS_9_i3z81M-F0w1C6MqmnKZ3qKLna3OG1pYU4mVQ2rvBNdHuVOrtJyE0IiCDQS-RKaKM0lOprHy_B6_TNRp_Y9oBCVOY1Kr8fczigfArwSlPai051AncK-zfHZwvP7_uBKitncmNDjr19xiLa79Fbm6mkSA8tZindDvBml1ZF9apNF51CCdO-ce9yqj3Aem2n1VXHLuq9sdIk_mlSZn9aLDOPUI22DcdhcSsySdKdWSf9F7dj5c1J9ppwxTxK3LHjIeiaCJWCmKvfu73j_rpKzbFzzwotQ3bsRave8gdY',
+      { key: publicKeys.PPRS }
+    )
+    t.assert.deepStrictEqual(payload.a, 1)
+  })
+
+  test('rejects invalid tokens', async t => {
+    t.assert.throws(() => verify('eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxfQ.57TF7smP9XDhIexBqPC-aaa', {}), {
+      message: 'The token signature is invalid.'
+    })
+
+    await t.assert.rejects(
+      async () => {
+        return verify('eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxfQ.57TF7smP9XDhIexBqPC-aaa', {
+          key: async () => 'secret'
+        })
+      },
+      { message: 'The token signature is invalid.' }
+    )
+  })
+
+  test('rejects tokens with non-base64url characters in the signature segment', t => {
+    // Canonical HS256 token signed with key 'secret' over payload {"a":1}
+    const base = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxfQ.57TF7smP9XDhIexBqPC-F1toZReYZLWb_YRU5tv0sxM'
+
+    // RFC 4648 §3.3 requires implementations to reject data outside the base
+    // alphabet. Each of these embeds whitespace, newlines, or padding in the
+    // signature segment.
+    const nonCanonical = [
+      base + ' ',
+      base + '\t',
+      base + '\n',
+      base + '\r\n',
+      base.slice(0, -10) + ' ' + base.slice(-10),
+      base.slice(0, -10) + '\t' + base.slice(-10),
+      base + '='
+    ]
+
+    for (const token of nonCanonical) {
+      t.assert.throws(
+        () => verify(token, {}),
+        { message: 'The token signature is invalid.' },
+        `expected rejection for token with non-base64url chars: ${JSON.stringify(token)}`
       )
-    },
-    { message: 'The token has expired at 1970-01-01T00:05:00.000Z.' }
-  )
-
-  t.assert.deepStrictEqual(
-    verify('eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxLCJpYXQiOjEwMH0.5V5yFNSqmn0w6yDR1vUbykF36WwdQmADMTLJwiJtx8w'),
-    { a: 1, iat: 100 }
-  )
-})
-
-test('it validates if the token has not expired including the clock tolerance', t => {
-  const clockTimestamp = Date.now() - 5000
-  const expiresIn = 1000
-  const token = createSigner({ key: 'secret', clockTimestamp, expiresIn })({ a: 1 })
-
-  t.assert.deepStrictEqual(
-    verify(token, {
-      clockTolerance: 5000
-    }),
-    {
-      a: 1,
-      iat: Math.floor(clockTimestamp / 1000),
-      exp: Math.floor((clockTimestamp + expiresIn) / 1000)
     }
-  )
-})
 
-test('rejects token with negative exp', t => {
-  t.mock.timers.enable({ now: 0 })
-  const token = createSigner({ key: 'secret', expiresIn: -120000 })({ a: 1 })
-
-  t.assert.throws(() => verify(token), { message: 'The token has expired at 1969-12-31T23:58:00.000Z.' })
-})
-
-test('it validates the jti claim only if explicitily enabled', t => {
-  t.mock.timers.enable({ now: 100000 })
-  const sign = createSigner({ key: 'secret' })
-
-  let token = sign({
-    a: 1,
-    jti: 1,
-    aud: 2,
-    iss: 3,
-    sub: 4,
-    nonce: 5
-  })
-  t.assert.throws(() => verify(token, { allowedJti: 'JTI1' }), { message: 'The jti claim must be a string.' })
-
-  token = sign({
-    a: 1,
-    jti: ['JTI', 'JTI1'],
-    aud: ['AUD1'],
-    iss: 'ISS',
-    sub: 'SUB',
-    nonce: 'NONCE'
-  })
-  t.assert.throws(() => verify(token, { allowedJti: ['JTI'] }), { message: 'The jti claim must be a string.' })
-
-  token = sign({
-    a: 1,
-    jti: 'JTI',
-    aud: ['AUD1', 'DUA2'],
-    iss: 'ISS',
-    sub: 'SUB',
-    nonce: 'NONCE'
-  })
-  t.assert.throws(() => verify(token, { allowedJti: 'JTI1' }), { message: 'The jti claim value is not allowed.' })
-
-  token = sign({
-    a: 1,
-    jti: 'JTI',
-    aud: ['AUD1', 'DUA2'],
-    iss: 'ISS',
-    sub: 'SUB',
-    nonce: 'NONCE'
-  })
-  t.assert.throws(() => verify(token, { allowedJti: [/abc/, 'cde'] }), {
-    message: 'The jti claim value is not allowed.'
+    // Canonical token is still accepted for comparison
+    t.assert.deepStrictEqual(verify(base, {}), { a: 1 })
   })
 
-  token = sign({
-    a: 1,
-    jti: 'JTI',
-    aud: ['AUD1', 'DUA2'],
-    iss: 'ISS',
-    sub: 'SUB',
-    nonce: 'NONCE'
-  })
-  t.assert.deepStrictEqual(verify(token, { allowedJti: 'JTI' }), {
-    a: 1,
-    iat: 100,
-    jti: 'JTI',
-    aud: ['AUD1', 'DUA2'],
-    iss: 'ISS',
-    sub: 'SUB',
-    nonce: 'NONCE'
+  test('requires a signature or a key', async t => {
+    t.assert.throws(() => verify('eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxfQ.', {}), {
+      message: 'The token signature is missing.'
+    })
+
+    t.assert.throws(
+      () =>
+        verify('eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxfQ.57TF7smP9XDhIexBqPC-F1toZReYZLWb_YRU5tv0sxM', {
+          key: ''
+        }),
+      { message: 'The key option is missing.' }
+    )
   })
 
-  token = sign({
-    a: 1,
-    jti: 'JTI',
-    aud: ['AUD1', 'DUA2'],
-    iss: 'ISS',
-    sub: 'SUB',
-    nonce: 'NONCE'
-  })
-  t.assert.deepStrictEqual(verify(token, { allowedJti: ['ABX', 'JTI'] }), {
-    a: 1,
-    iat: 100,
-    jti: 'JTI',
-    aud: ['AUD1', 'DUA2'],
-    iss: 'ISS',
-    sub: 'SUB',
-    nonce: 'NONCE'
-  })
-
-  token = sign({
-    a: 1,
-    jti: 'JTI',
-    aud: ['AUD1', 'DUA2'],
-    iss: 'ISS',
-    sub: 'SUB',
-    nonce: 'NONCE'
-  })
-  t.assert.deepStrictEqual(verify(token, { allowedJti: ['ABX', /^J/] }), {
-    a: 1,
-    iat: 100,
-    jti: 'JTI',
-    aud: ['AUD1', 'DUA2'],
-    iss: 'ISS',
-    sub: 'SUB',
-    nonce: 'NONCE'
-  })
-})
-
-test('it validates the aud claim only if explicitily enabled', t => {
-  t.mock.timers.enable({ now: 100000 })
-  const sign = createSigner({ key: 'secret' })
-
-  let token = sign({
-    a: 1,
-    jti: 1,
-    aud: 2,
-    iss: 3,
-    sub: 4,
-    nonce: 5
-  })
-  t.assert.throws(() => verify(token, { allowedAud: 'AUD2' }), {
-    message: 'The aud claim must be a string or an array of strings.'
-  })
-
-  token = sign({
-    a: 1,
-    jti: 1,
-    aud: [2.1, 2.2],
-    iss: 3,
-    sub: 4,
-    nonce: 5
-  })
-  t.assert.throws(() => verify(token, { allowedAud: 'AUD2' }), {
-    message: 'The aud claim must be a string or an array of strings.'
-  })
-
-  token = sign({
-    a: 1,
-    jti: 1,
-    aud: ['AUD', 2.2],
-    iss: 3,
-    sub: 4,
-    nonce: 5
-  })
-  t.assert.throws(() => verify(token, { allowedAud: 'AUD2' }), {
-    message: 'The aud claim must be a string or an array of strings.'
-  })
-
-  token = sign({
-    a: 1,
-    jti: 'JTI',
-    aud: ['AUD1', 'DUA2'],
-    iss: 'ISS',
-    sub: 'SUB',
-    nonce: 'NONCE'
-  })
-  t.assert.throws(() => verify(token, { allowedAud: 'AUD2' }), { message: 'None of aud claim values are allowed.' })
-
-  token = sign({
-    a: 1,
-    jti: 'JTI',
-    aud: ['AUD1', 'DUA2'],
-    iss: 'ISS',
-    sub: 'SUB',
-    nonce: 'NONCE'
-  })
-  t.assert.throws(() => verify(token, { allowedAud: [/abc/, 'cde'] }), {
-    message: 'None of aud claim values are allowed.'
-  })
-
-  token = sign({
-    a: 1,
-    jti: 'JTI',
-    aud: ['AUD', 'DUA2'],
-    iss: 'ISS',
-    sub: 'SUB',
-    nonce: 'NONCE'
-  })
-  t.assert.deepStrictEqual(verify(token, { allowedAud: 'AUD' }), {
-    a: 1,
-    iat: 100,
-    jti: 'JTI',
-    aud: ['AUD', 'DUA2'],
-    iss: 'ISS',
-    sub: 'SUB',
-    nonce: 'NONCE'
-  })
-
-  token = sign({
-    a: 1,
-    jti: 'JTI',
-    aud: 'AUD',
-    iss: 'ISS',
-    sub: 'SUB',
-    nonce: 'NONCE'
-  })
-  t.assert.deepStrictEqual(verify(token, { allowedAud: 'AUD' }), {
-    a: 1,
-    iat: 100,
-    jti: 'JTI',
-    aud: 'AUD',
-    iss: 'ISS',
-    sub: 'SUB',
-    nonce: 'NONCE'
-  })
-
-  token = sign({
-    a: 1,
-    jti: 'JTI',
-    aud: ['AUD1', 'DUA2'],
-    iss: 'ISS',
-    sub: 'SUB',
-    nonce: 'NONCE'
-  })
-  t.assert.deepStrictEqual(verify(token, { allowedAud: ['ABX', 'AUD1'] }), {
-    a: 1,
-    iat: 100,
-    jti: 'JTI',
-    aud: ['AUD1', 'DUA2'],
-    iss: 'ISS',
-    sub: 'SUB',
-    nonce: 'NONCE'
-  })
-
-  token = sign({
-    a: 1,
-    jti: 'JTI',
-    aud: ['AUD1', 'DUA2'],
-    iss: 'ISS',
-    sub: 'SUB',
-    nonce: 'NONCE'
-  })
-  t.assert.deepStrictEqual(verify(token, { allowedAud: ['ABX', /^D/] }), {
-    a: 1,
-    iat: 100,
-    jti: 'JTI',
-    aud: ['AUD1', 'DUA2'],
-    iss: 'ISS',
-    sub: 'SUB',
-    nonce: 'NONCE'
-  })
-
-  token = sign({
-    a: 1,
-    jti: 'JTI',
-    aud: 'DUA2',
-    iss: 'ISS',
-    sub: 'SUB',
-    nonce: 'NONCE'
-  })
-  t.assert.deepStrictEqual(verify(token, { allowedAud: ['ABX', /^D/] }), {
-    a: 1,
-    iat: 100,
-    jti: 'JTI',
-    aud: 'DUA2',
-    iss: 'ISS',
-    sub: 'SUB',
-    nonce: 'NONCE'
-  })
-})
-
-test('it validates the iss claim only if explicitily enabled', t => {
-  t.mock.timers.enable({ now: 100000 })
-  const sign = createSigner({ key: 'secret' })
-
-  let token = sign({
-    a: 1,
-    jti: 1,
-    aud: 2,
-    iss: 3,
-    sub: 4,
-    nonce: 5
-  })
-  t.assert.throws(() => verify(token, { allowedIss: 'ISS1' }), { message: 'The iss claim must be a string.' })
-
-  token = sign({
-    a: 1,
-    jti: 'JTI',
-    aud: ['AUD1'],
-    iss: ['ISS', 'ISS1'],
-    sub: 'SUB',
-    nonce: 'NONCE'
-  })
-  t.assert.throws(() => verify(token, { allowedIss: ['ISS'] }), { message: 'The iss claim must be a string.' })
-
-  token = sign({
-    a: 1,
-    jti: 'JTI',
-    aud: ['AUD1', 'DUA2'],
-    iss: 'ISS',
-    sub: 'SUB',
-    nonce: 'NONCE'
-  })
-  t.assert.throws(() => verify(token, { allowedIss: 'ISS1' }), { message: 'The iss claim value is not allowed.' })
-
-  token = sign({
-    a: 1,
-    jti: 'JTI',
-    aud: ['AUD1', 'DUA2'],
-    iss: 'ISS',
-    sub: 'SUB',
-    nonce: 'NONCE'
-  })
-  t.assert.throws(() => verify(token, { allowedIss: [/abc/, 'cde'] }), {
-    message: 'The iss claim value is not allowed.'
-  })
-
-  token = sign({
-    a: 1,
-    jti: 'JTI',
-    aud: ['AUD1', 'DUA2'],
-    iss: 'ISS',
-    sub: 'SUB',
-    nonce: 'NONCE'
-  })
-  t.assert.deepStrictEqual(verify(token, { allowedIss: 'ISS' }), {
-    a: 1,
-    iat: 100,
-    jti: 'JTI',
-    aud: ['AUD1', 'DUA2'],
-    iss: 'ISS',
-    sub: 'SUB',
-    nonce: 'NONCE'
-  })
-
-  token = sign({
-    a: 1,
-    jti: 'JTI',
-    aud: ['AUD1', 'DUA2'],
-    iss: 'ISS',
-    sub: 'SUB',
-    nonce: 'NONCE'
-  })
-  t.assert.deepStrictEqual(verify(token, { allowedIss: ['ABX', 'ISS'] }), {
-    a: 1,
-    iat: 100,
-    jti: 'JTI',
-    aud: ['AUD1', 'DUA2'],
-    iss: 'ISS',
-    sub: 'SUB',
-    nonce: 'NONCE'
-  })
-
-  token = sign({
-    a: 1,
-    jti: 'JTI',
-    aud: ['AUD1', 'DUA2'],
-    iss: 'ISS',
-    sub: 'SUB',
-    nonce: 'NONCE'
-  })
-  t.assert.deepStrictEqual(verify(token, { allowedIss: ['ABX', /^I/] }), {
-    a: 1,
-    iat: 100,
-    jti: 'JTI',
-    aud: ['AUD1', 'DUA2'],
-    iss: 'ISS',
-    sub: 'SUB',
-    nonce: 'NONCE'
-  })
-})
-
-test('it validates the sub claim only if explicitily enabled', t => {
-  t.mock.timers.enable({ now: 100000 })
-  const sign = createSigner({ key: 'secret' })
-
-  let token = sign({
-    a: 1,
-    jti: 1,
-    aud: 2,
-    iss: 3,
-    sub: 4,
-    nonce: 5
-  })
-  t.assert.throws(() => verify(token, { allowedSub: 'SUB1' }), { message: 'The sub claim must be a string.' })
-
-  token = sign({
-    a: 1,
-    jti: 'JTI',
-    aud: ['AUD1', 'DUA2'],
-    iss: 'ISS',
-    sub: 'SUB',
-    nonce: 'NONCE'
-  })
-  t.assert.throws(() => verify(token, { allowedSub: 'SUB1' }), { message: 'The sub claim value is not allowed.' })
-
-  token = sign({
-    a: 1,
-    jti: 'JTI',
-    aud: ['AUD1', 'DUA2'],
-    iss: 'ISS',
-    sub: 'SUB',
-    nonce: 'NONCE'
-  })
-  t.assert.throws(() => verify(token, { allowedSub: [/abc/, 'cde'] }), {
-    message: 'The sub claim value is not allowed.'
-  })
-
-  token = sign({
-    a: 1,
-    jti: 'JTI',
-    aud: ['AUD1'],
-    iss: 'ISS',
-    sub: ['SUB1', 'SUB2'],
-    nonce: 'NONCE'
-  })
-  t.assert.throws(() => verify(token, { allowedSub: ['SUB1'] }), { message: 'The sub claim must be a string.' })
-
-  token = sign({
-    a: 1,
-    jti: 'JTI',
-    aud: ['AUD1', 'DUA2'],
-    iss: 'ISS',
-    sub: 'SUB',
-    nonce: 'NONCE'
-  })
-  t.assert.deepStrictEqual(verify(token, { allowedSub: 'SUB' }), {
-    a: 1,
-    iat: 100,
-    jti: 'JTI',
-    aud: ['AUD1', 'DUA2'],
-    iss: 'ISS',
-    sub: 'SUB',
-    nonce: 'NONCE'
-  })
-
-  token = sign({
-    a: 1,
-    jti: 'JTI',
-    aud: ['AUD1', 'DUA2'],
-    iss: 'ISS',
-    sub: 'SUB',
-    nonce: 'NONCE'
-  })
-  t.assert.deepStrictEqual(verify(token, { allowedSub: ['ABX', 'SUB'] }), {
-    a: 1,
-    iat: 100,
-    jti: 'JTI',
-    aud: ['AUD1', 'DUA2'],
-    iss: 'ISS',
-    sub: 'SUB',
-    nonce: 'NONCE'
-  })
-
-  token = sign({
-    a: 1,
-    jti: 'JTI',
-    aud: ['AUD1', 'DUA2'],
-    iss: 'ISS',
-    sub: 'SUB',
-    nonce: 'NONCE'
-  })
-  t.assert.deepStrictEqual(verify(token, { allowedSub: ['ABX', /^S/] }), {
-    a: 1,
-    iat: 100,
-    jti: 'JTI',
-    aud: ['AUD1', 'DUA2'],
-    iss: 'ISS',
-    sub: 'SUB',
-    nonce: 'NONCE'
-  })
-})
-
-test('it validates the nonce claim only if explicitily enabled', t => {
-  t.mock.timers.enable({ now: 100000 })
-  const sign = createSigner({ key: 'secret' })
-
-  let token = sign({
-    a: 1,
-    jti: 1,
-    aud: 2,
-    iss: 3,
-    sub: 4,
-    nonce: 5
-  })
-  t.assert.throws(() => verify(token, { allowedNonce: 'NONCE1' }), { message: 'The nonce claim must be a string.' })
-
-  token = sign({
-    a: 1,
-    jti: 'JTI',
-    aud: ['AUD1'],
-    iss: 'ISS',
-    sub: 'SUB',
-    nonce: ['NONCE', 'NONCE1']
-  })
-  t.assert.throws(() => verify(token, { allowedNonce: ['NONCE'] }), { message: 'The nonce claim must be a string.' })
-
-  token = sign({
-    a: 1,
-    jti: 'JTI',
-    aud: ['AUD1', 'DUA2'],
-    iss: 'ISS',
-    sub: 'SUB',
-    nonce: 'NONCE'
-  })
-  t.assert.throws(() => verify(token, { allowedNonce: 'NONCE1' }), { message: 'The nonce claim value is not allowed.' })
-
-  token = sign({
-    a: 1,
-    jti: 'JTI',
-    aud: ['AUD1', 'DUA2'],
-    iss: 'ISS',
-    sub: 'SUB',
-    nonce: 'NONCE'
-  })
-  t.assert.throws(() => verify(token, { allowedNonce: [/abc/, 'cde'] }), {
-    message: 'The nonce claim value is not allowed.'
-  })
-
-  token = sign({
-    a: 1,
-    jti: 'JTI',
-    aud: ['AUD1', 'DUA2'],
-    iss: 'ISS',
-    sub: 'SUB',
-    nonce: 'NONCE'
-  })
-  t.assert.deepStrictEqual(verify(token, { allowedNonce: 'NONCE' }), {
-    a: 1,
-    iat: 100,
-    jti: 'JTI',
-    aud: ['AUD1', 'DUA2'],
-    iss: 'ISS',
-    sub: 'SUB',
-    nonce: 'NONCE'
-  })
-
-  token = sign({
-    a: 1,
-    jti: 'JTI',
-    aud: ['AUD1', 'DUA2'],
-    iss: 'ISS',
-    sub: 'SUB',
-    nonce: 'NONCE'
-  })
-  t.assert.deepStrictEqual(verify(token, { allowedNonce: ['ABX', 'NONCE'] }), {
-    a: 1,
-    iat: 100,
-    jti: 'JTI',
-    aud: ['AUD1', 'DUA2'],
-    iss: 'ISS',
-    sub: 'SUB',
-    nonce: 'NONCE'
-  })
-
-  token = sign({
-    a: 1,
-    jti: 'JTI',
-    aud: ['AUD1', 'DUA2'],
-    iss: 'ISS',
-    sub: 'SUB',
-    nonce: 'NONCE'
-  })
-  t.assert.deepStrictEqual(verify(token, { allowedNonce: ['ABX', /^N/] }), {
-    a: 1,
-    iat: 100,
-    jti: 'JTI',
-    aud: ['AUD1', 'DUA2'],
-    iss: 'ISS',
-    sub: 'SUB',
-    nonce: 'NONCE'
-  })
-})
-
-test('it validates allowed claims values using equality when appropriate', t => {
-  // The iss claim in the token starts with ISS
-  t.assert.throws(
-    () => {
-      return verify(
-        'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxLCJpc3MiOiJJU1NfUFJFRklYIn0.yAVrfuzH-1H_dzd8YhDV2ukWAGHB4DY4Wiv1cqz1JaY',
-        { allowedIss: 'ISS' }
+  describe('error handling', () => {
+    test('correctly handle errors - async callback', async t => {
+      await t.assert.rejects(
+        verify('eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxfQ.57TF7smP9XDhIexBqPC-F1toZReYZLWb_YRU5tv0sxM', {
+          key: async () => {
+            throw new Error('FAILED')
+          }
+        }),
+        { message: 'Cannot fetch key.' }
       )
-    },
-    { message: 'The iss claim value is not allowed.' }
-  )
 
-  // The iss claim in the token ends with ISS
-  t.assert.throws(
-    () => {
-      return verify(
-        'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxLCJpc3MiOiJTVUZGSVhfSVNTIn0.YNfIVGQCnIk0sQzsvOnLl_ueRs64m2M2BgiKyczzsAk',
-        { allowedIss: 'ISS' }
+      await t.assert.rejects(
+        verify('eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxfQ.57TF7smP9XDhIexBqPC-F1toZReYZLWb_YRU5tv0sxM', {
+          key: async () => {
+            throw new TokenError(null, 'FAILED')
+          }
+        }),
+        { message: 'FAILED' }
       )
-    },
-    { message: 'The iss claim value is not allowed.' }
-  )
-})
+    })
 
-test('it validates whether a required claim is present in the payload or not', t => {
-  // Token payload: { "iss": "ISS"}
-  const token = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJJU1MifQ.FKjJd2A-T8ufN7Y0LpjMR23P7CwEQ3Y-LBIYd2Vh_Rs'
+    test('correctly handle errors - callback', t => {
+      verify(
+        'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxfQ.57TF7smP9XDhIexBqPC-F1toZReYZLWb_YRU5tv0sxM',
+        {
+          key: (_decodedJwt, callback) => {
+            callback(new Error('FAILED'))
+          }
+        },
+        error => {
+          t.assert.ok(error instanceof TokenError)
+          t.assert.equal(error.message, 'Cannot fetch key.')
+        }
+      )
+    })
 
-  t.assert.deepStrictEqual(verify(token, { allowedIss: 'ISS', requiredClaims: ['iss'] }), { iss: 'ISS' })
+    test('correctly handle errors - evented callback', t => {
+      verify(
+        'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxfQ.57TF7smP9XDhIexBqPC-F1toZReYZLWb_YRU5tv0sxM',
+        {
+          key: (_decodedJwt, callback) => {
+            process.nextTick(() => callback(null, 'FAILED'))
+          }
+        },
+        error => {
+          t.assert.ok(error instanceof TokenError)
+          t.assert.equal(error.message, 'The token signature is invalid.')
+        }
+      )
+    })
 
-  t.assert.throws(
-    () => {
-      return verify(token, { allowedSub: 'SUB', requiredClaims: ['sub'] })
-    },
-    { message: 'The sub claim is required.' }
-  )
-})
+    test('handles decoding errors', async t => {
+      t.assert.throws(() => verify('TOKEN', { algorithms: ['HS256'], key: 'secret' }), {
+        message: 'The token is malformed.'
+      })
 
-test('it validates whether a required custom claim is present in the payload or not', t => {
-  // Token payload: {"iss": "ISS", "custom": "custom", "iat": 1708023956}
-  const token =
-    'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJJU1MiLCJjdXN0b20iOiJjdXN0b20iLCJpYXQiOjE3MDgwMjQxMTh9.rD9GaHxuSB7mPkVQ2shj4yqPsvEuXWByMDNhMoch0xY'
-
-  t.assert.deepStrictEqual(verify(token, { requiredClaims: ['iss', 'custom'] }), {
-    iss: 'ISS',
-    custom: 'custom',
-    iat: 1708024118
+      await t.assert.rejects(async () => verify('TOKEN', { algorithms: ['HS256'], key: () => 'secret' }), {
+        message: 'The token is malformed.'
+      })
+    })
   })
 
-  // Standard claim not covered by other validators
-  t.assert.throws(
-    () => {
-      return verify(token, { requiredClaims: ['kid'] })
-    },
-    { message: 'The kid claim is required.' }
-  )
+  describe('algorithms and keys validation', () => {
+    test('validates if the token is not using an allowed algorithm - sync ', t => {
+      t.assert.throws(
+        () => {
+          return verify(
+            'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxLCJpYXQiOjAsIm5iZiI6MjAwMDAwMDAwMH0.PlCCCgSnL38HaOY1-bkWnz-LX9WW2b772Zs3oxQJIv4',
+            { algorithms: ['RS256', 'PS256'], key: publicKeys.RS }
+          )
+        },
+        { message: 'The token algorithm is invalid.' }
+      )
+    })
 
-  // Custom claim
-  t.assert.throws(
-    () => {
-      return verify(token, { requiredClaims: ['customTwo'] })
-    },
-    { message: 'The customTwo claim is required.' }
-  )
-})
+    test('validates if the token is using one of the allowed algorithm - sync ', t => {
+      t.assert.deepStrictEqual(
+        verify('eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxfQ.57TF7smP9XDhIexBqPC-F1toZReYZLWb_YRU5tv0sxM', {
+          noTimestamp: true
+        }),
+        { a: 1 }
+      )
 
-test("it skips validation when an allowed claim isn't present in the payload", t => {
-  // Token payload: { "iss": "ISS"}
-  const token = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJJU1MifQ.FKjJd2A-T8ufN7Y0LpjMR23P7CwEQ3Y-LBIYd2Vh_Rs'
+      t.assert.deepStrictEqual(
+        verify('eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxfQ.57TF7smP9XDhIexBqPC-F1toZReYZLWb_YRU5tv0sxM', {
+          noTimestamp: true,
+          algorithms: ['HS256']
+        }),
+        { a: 1 }
+      )
 
-  t.assert.deepStrictEqual(verify(token, { allowedIss: 'ISS', allowedAud: 'AUD' }), { iss: 'ISS' })
-})
+      t.assert.deepStrictEqual(
+        verify('eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxfQ.57TF7smP9XDhIexBqPC-F1toZReYZLWb_YRU5tv0sxM', {
+          noTimestamp: true,
+          algorithms: ['RS256', 'HS256']
+        }),
+        { a: 1 }
+      )
 
-test('token type validation', t => {
-  t.assert.throws(() => createVerifier({ key: 'secret' })(123), {
-    message: 'The token must be a string or a buffer.'
+      t.assert.deepStrictEqual(
+        verify('eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxfQ.57TF7smP9XDhIexBqPC-F1toZReYZLWb_YRU5tv0sxM', {
+          noTimestamp: true,
+          algorithms: ['RS256', 'HS256'],
+          key: 'secret'
+        }),
+        { a: 1 }
+      )
+
+      t.assert.deepStrictEqual(
+        verify('eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxfQ.57TF7smP9XDhIexBqPC-F1toZReYZLWb_YRU5tv0sxM', {
+          noTimestamp: true,
+          algorithms: [
+            'RS256',
+            'RS384',
+            'RS512',
+            'HS256',
+            'HS384',
+            'HS512',
+            'ES256',
+            'ES384',
+            'ES512',
+            'PS256',
+            'PS384',
+            'PS512',
+            'EdDSA'
+          ]
+        }),
+        { a: 1 }
+      )
+    })
+
+    test('validates if the token can be verified with X509 public key certificate ', t => {
+      t.assert.deepStrictEqual(
+        verify(
+          'eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxfQ.daq6gJpUPB2daOBWB3SdhMZsXiFfeCflJ36uztKVAzQu0apv-RRewfCFL2-M8iAu1ndAc-a57pG4TkRZjYw4UXD28hFZYjc4fBteoXyFWySkuqlFVCOph8gKkiFszLutE5sAJEoiGD_wnPw38pYj3d0sqsnDUezzNvEDK5Oa2_PYTnsQJi0JGupy2oE1RX7CuVVLBRnI8HOruMagn25FLShjjiiGw90yKq5AYk_Jlv8XFt4rypZj_O1JaGHVp3MTzrJ-Ku95BPDuhH4awBy8MSpPBtCoRPAUuP6jTetpCsRhmWlqf0OrmEMF81ZXlmS4LcbborwSTZ8cZvgc4OwIVU2I19fYLwDRqgL3GQy5GS8WGPTNbvwouvyTFr-omZtSeHUbguLTib5WYZlI1Sq9IPIG5dUDAlfWflPgOInZaE2n4kgGj2iKmUKWiGfuABSdsPgw2a1vTwQ5HZsljV0gHaz7WeCGJ8MZOMa7nvb3pDWfPjTBdcTZWvpzQWagRqVxCMK0gvSOaFLuvk89NFS-jr3eFkLVSAu07YWpPc80_QDcCMCqWU9JcW-FSUV3XHB5U6Yl8zDO6QKT4V-nWxLt8q1He3xHf27-7UoczzDC0-H-uIRjx-dPV_1B-b5axibEcQeNTEjOQv6KTrUOXVwyimLGUkoNUl9bKWyCfZ0QF8Q',
+          {
+            noTimestamp: true,
+            key: publicKeys.RSX509
+          }
+        ),
+        { a: 1 }
+      )
+    })
+
+    test('validates if the public key is consistent with the allowed algorithms - sync ', t => {
+      t.assert.throws(
+        () => {
+          return verify(
+            'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxLCJpYXQiOjAsIm5iZiI6MjAwMDAwMDAwMH0.PlCCCgSnL38HaOY1-bkWnz-LX9WW2b772Zs3oxQJIv4',
+            { algorithms: ['ES256'], key: publicKeys.RS }
+          )
+        },
+        { message: 'Invalid public key provided for algorithms ES256.' }
+      )
+    })
   })
 
-  t.assert.throws(() => createVerifier({ key: 'secret', cache: true })(null), {
-    message: 'The token must be a string or a buffer.'
+  describe('timestamps validation', () => {
+    test('validates if the token is active unless explicitly disabled', t => {
+      t.assert.throws(
+        () => {
+          return verify(
+            'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxLCJpYXQiOjAsIm5iZiI6MjAwMDAwMDAwMH0.PlCCCgSnL38HaOY1-bkWnz-LX9WW2b772Zs3oxQJIv4',
+            {}
+          )
+        },
+        { message: 'The token will be active at 2033-05-18T03:33:20.000Z.' }
+      )
+
+      t.assert.deepStrictEqual(
+        verify(
+          'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxLCJpYXQiOjAsIm5iZiI6MjAwMDAwMDAwMH0.PlCCCgSnL38HaOY1-bkWnz-LX9WW2b772Zs3oxQJIv4',
+          {
+            ignoreNotBefore: true
+          }
+        ),
+        { a: 1, iat: 0, nbf: 2000000000 }
+      )
+    })
+
+    test('validates if the token is active including the clock tolerance', t => {
+      const clockTimestamp = Date.now()
+      const notBefore = 1000
+      const token = createSigner({ key: 'secret', clockTimestamp, notBefore })({ a: 1 })
+
+      t.assert.deepStrictEqual(
+        verify(token, {
+          clockTolerance: 5000
+        }),
+        {
+          a: 1,
+          iat: Math.floor(clockTimestamp / 1000),
+          nbf: Math.floor((clockTimestamp + notBefore) / 1000)
+        }
+      )
+    })
+
+    test('validates if the token has not expired (via exp) unless explicitly disabled', t => {
+      t.assert.throws(
+        () => {
+          return verify(
+            'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxLCJpYXQiOjEwMCwiZXhwIjoxMDF9.ULKqTsvUYm7iNOKA6bP5NXsa1A8vofgPIGiC182Vf_Q',
+            {}
+          )
+        },
+        { message: 'The token has expired at 1970-01-01T00:01:41.000Z.' }
+      )
+
+      t.assert.deepStrictEqual(
+        verify(
+          'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxLCJpYXQiOjEwMCwiZXhwIjoxMDF9.ULKqTsvUYm7iNOKA6bP5NXsa1A8vofgPIGiC182Vf_Q',
+          {
+            ignoreExpiration: true
+          }
+        ),
+        { a: 1, iat: 100, exp: 101 }
+      )
+    })
+
+    test('validates if the token has not expired (via maxAge) only if explicitly enabled', t => {
+      t.assert.throws(
+        () => {
+          return verify(
+            'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxLCJpYXQiOjEwMH0.5V5yFNSqmn0w6yDR1vUbykF36WwdQmADMTLJwiJtx8w',
+            { maxAge: 200000 }
+          )
+        },
+        { message: 'The token has expired at 1970-01-01T00:05:00.000Z.' }
+      )
+
+      t.assert.deepStrictEqual(
+        verify(
+          'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxLCJpYXQiOjEwMH0.5V5yFNSqmn0w6yDR1vUbykF36WwdQmADMTLJwiJtx8w'
+        ),
+        { a: 1, iat: 100 }
+      )
+    })
+
+    test('validates if the token has not expired including the clock tolerance', t => {
+      const clockTimestamp = Date.now() - 5000
+      const expiresIn = 1000
+      const token = createSigner({ key: 'secret', clockTimestamp, expiresIn })({ a: 1 })
+
+      t.assert.deepStrictEqual(
+        verify(token, {
+          clockTolerance: 5000
+        }),
+        {
+          a: 1,
+          iat: Math.floor(clockTimestamp / 1000),
+          exp: Math.floor((clockTimestamp + expiresIn) / 1000)
+        }
+      )
+    })
+
+    test('rejects token with negative exp', t => {
+      t.mock.timers.enable({ now: 0 })
+      const token = createSigner({ key: 'secret', expiresIn: -120000 })({ a: 1 })
+
+      t.assert.throws(() => verify(token), { message: 'The token has expired at 1969-12-31T23:58:00.000Z.' })
+    })
   })
-})
 
-test('token type validation - async', async t => {
-  await t.assert.rejects(async () => createVerifier({ key: async () => 'secret', cache: true })(null), {
-    message: 'The token must be a string or a buffer.'
+  describe('claims validation', () => {
+    test('validates the jti claim only if explicitly enabled', t => {
+      t.mock.timers.enable({ now: 100000 })
+      const sign = createSigner({ key: 'secret' })
+
+      let token = sign({
+        a: 1,
+        jti: 1,
+        aud: 2,
+        iss: 3,
+        sub: 4,
+        nonce: 5
+      })
+      t.assert.throws(() => verify(token, { allowedJti: 'JTI1' }), { message: 'The jti claim must be a string.' })
+
+      token = sign({
+        a: 1,
+        jti: ['JTI', 'JTI1'],
+        aud: ['AUD1'],
+        iss: 'ISS',
+        sub: 'SUB',
+        nonce: 'NONCE'
+      })
+      t.assert.throws(() => verify(token, { allowedJti: ['JTI'] }), { message: 'The jti claim must be a string.' })
+
+      token = sign({
+        a: 1,
+        jti: 'JTI',
+        aud: ['AUD1', 'DUA2'],
+        iss: 'ISS',
+        sub: 'SUB',
+        nonce: 'NONCE'
+      })
+      t.assert.throws(() => verify(token, { allowedJti: 'JTI1' }), { message: 'The jti claim value is not allowed.' })
+
+      token = sign({
+        a: 1,
+        jti: 'JTI',
+        aud: ['AUD1', 'DUA2'],
+        iss: 'ISS',
+        sub: 'SUB',
+        nonce: 'NONCE'
+      })
+      t.assert.throws(() => verify(token, { allowedJti: [/abc/, 'cde'] }), {
+        message: 'The jti claim value is not allowed.'
+      })
+
+      token = sign({
+        a: 1,
+        jti: 'JTI',
+        aud: ['AUD1', 'DUA2'],
+        iss: 'ISS',
+        sub: 'SUB',
+        nonce: 'NONCE'
+      })
+      t.assert.deepStrictEqual(verify(token, { allowedJti: 'JTI' }), {
+        a: 1,
+        iat: 100,
+        jti: 'JTI',
+        aud: ['AUD1', 'DUA2'],
+        iss: 'ISS',
+        sub: 'SUB',
+        nonce: 'NONCE'
+      })
+
+      token = sign({
+        a: 1,
+        jti: 'JTI',
+        aud: ['AUD1', 'DUA2'],
+        iss: 'ISS',
+        sub: 'SUB',
+        nonce: 'NONCE'
+      })
+      t.assert.deepStrictEqual(verify(token, { allowedJti: ['ABX', 'JTI'] }), {
+        a: 1,
+        iat: 100,
+        jti: 'JTI',
+        aud: ['AUD1', 'DUA2'],
+        iss: 'ISS',
+        sub: 'SUB',
+        nonce: 'NONCE'
+      })
+
+      token = sign({
+        a: 1,
+        jti: 'JTI',
+        aud: ['AUD1', 'DUA2'],
+        iss: 'ISS',
+        sub: 'SUB',
+        nonce: 'NONCE'
+      })
+      t.assert.deepStrictEqual(verify(token, { allowedJti: ['ABX', /^J/] }), {
+        a: 1,
+        iat: 100,
+        jti: 'JTI',
+        aud: ['AUD1', 'DUA2'],
+        iss: 'ISS',
+        sub: 'SUB',
+        nonce: 'NONCE'
+      })
+    })
+
+    test('validates the aud claim only if explicitly enabled', t => {
+      t.mock.timers.enable({ now: 100000 })
+      const sign = createSigner({ key: 'secret' })
+
+      let token = sign({
+        a: 1,
+        jti: 1,
+        aud: 2,
+        iss: 3,
+        sub: 4,
+        nonce: 5
+      })
+      t.assert.throws(() => verify(token, { allowedAud: 'AUD2' }), {
+        message: 'The aud claim must be a string or an array of strings.'
+      })
+
+      token = sign({
+        a: 1,
+        jti: 1,
+        aud: [2.1, 2.2],
+        iss: 3,
+        sub: 4,
+        nonce: 5
+      })
+      t.assert.throws(() => verify(token, { allowedAud: 'AUD2' }), {
+        message: 'The aud claim must be a string or an array of strings.'
+      })
+
+      token = sign({
+        a: 1,
+        jti: 1,
+        aud: ['AUD', 2.2],
+        iss: 3,
+        sub: 4,
+        nonce: 5
+      })
+      t.assert.throws(() => verify(token, { allowedAud: 'AUD2' }), {
+        message: 'The aud claim must be a string or an array of strings.'
+      })
+
+      token = sign({
+        a: 1,
+        jti: 'JTI',
+        aud: ['AUD1', 'DUA2'],
+        iss: 'ISS',
+        sub: 'SUB',
+        nonce: 'NONCE'
+      })
+      t.assert.throws(() => verify(token, { allowedAud: 'AUD2' }), { message: 'None of aud claim values are allowed.' })
+
+      token = sign({
+        a: 1,
+        jti: 'JTI',
+        aud: ['AUD1', 'DUA2'],
+        iss: 'ISS',
+        sub: 'SUB',
+        nonce: 'NONCE'
+      })
+      t.assert.throws(() => verify(token, { allowedAud: [/abc/, 'cde'] }), {
+        message: 'None of aud claim values are allowed.'
+      })
+
+      token = sign({
+        a: 1,
+        jti: 'JTI',
+        aud: ['AUD', 'DUA2'],
+        iss: 'ISS',
+        sub: 'SUB',
+        nonce: 'NONCE'
+      })
+      t.assert.deepStrictEqual(verify(token, { allowedAud: 'AUD' }), {
+        a: 1,
+        iat: 100,
+        jti: 'JTI',
+        aud: ['AUD', 'DUA2'],
+        iss: 'ISS',
+        sub: 'SUB',
+        nonce: 'NONCE'
+      })
+
+      token = sign({
+        a: 1,
+        jti: 'JTI',
+        aud: 'AUD',
+        iss: 'ISS',
+        sub: 'SUB',
+        nonce: 'NONCE'
+      })
+      t.assert.deepStrictEqual(verify(token, { allowedAud: 'AUD' }), {
+        a: 1,
+        iat: 100,
+        jti: 'JTI',
+        aud: 'AUD',
+        iss: 'ISS',
+        sub: 'SUB',
+        nonce: 'NONCE'
+      })
+
+      token = sign({
+        a: 1,
+        jti: 'JTI',
+        aud: ['AUD1', 'DUA2'],
+        iss: 'ISS',
+        sub: 'SUB',
+        nonce: 'NONCE'
+      })
+      t.assert.deepStrictEqual(verify(token, { allowedAud: ['ABX', 'AUD1'] }), {
+        a: 1,
+        iat: 100,
+        jti: 'JTI',
+        aud: ['AUD1', 'DUA2'],
+        iss: 'ISS',
+        sub: 'SUB',
+        nonce: 'NONCE'
+      })
+
+      token = sign({
+        a: 1,
+        jti: 'JTI',
+        aud: ['AUD1', 'DUA2'],
+        iss: 'ISS',
+        sub: 'SUB',
+        nonce: 'NONCE'
+      })
+      t.assert.deepStrictEqual(verify(token, { allowedAud: ['ABX', /^D/] }), {
+        a: 1,
+        iat: 100,
+        jti: 'JTI',
+        aud: ['AUD1', 'DUA2'],
+        iss: 'ISS',
+        sub: 'SUB',
+        nonce: 'NONCE'
+      })
+
+      token = sign({
+        a: 1,
+        jti: 'JTI',
+        aud: 'DUA2',
+        iss: 'ISS',
+        sub: 'SUB',
+        nonce: 'NONCE'
+      })
+      t.assert.deepStrictEqual(verify(token, { allowedAud: ['ABX', /^D/] }), {
+        a: 1,
+        iat: 100,
+        jti: 'JTI',
+        aud: 'DUA2',
+        iss: 'ISS',
+        sub: 'SUB',
+        nonce: 'NONCE'
+      })
+    })
+
+    test('validates the iss claim only if explicitly enabled', t => {
+      t.mock.timers.enable({ now: 100000 })
+      const sign = createSigner({ key: 'secret' })
+
+      let token = sign({
+        a: 1,
+        jti: 1,
+        aud: 2,
+        iss: 3,
+        sub: 4,
+        nonce: 5
+      })
+      t.assert.throws(() => verify(token, { allowedIss: 'ISS1' }), { message: 'The iss claim must be a string.' })
+
+      token = sign({
+        a: 1,
+        jti: 'JTI',
+        aud: ['AUD1'],
+        iss: ['ISS', 'ISS1'],
+        sub: 'SUB',
+        nonce: 'NONCE'
+      })
+      t.assert.throws(() => verify(token, { allowedIss: ['ISS'] }), { message: 'The iss claim must be a string.' })
+
+      token = sign({
+        a: 1,
+        jti: 'JTI',
+        aud: ['AUD1', 'DUA2'],
+        iss: 'ISS',
+        sub: 'SUB',
+        nonce: 'NONCE'
+      })
+      t.assert.throws(() => verify(token, { allowedIss: 'ISS1' }), { message: 'The iss claim value is not allowed.' })
+
+      token = sign({
+        a: 1,
+        jti: 'JTI',
+        aud: ['AUD1', 'DUA2'],
+        iss: 'ISS',
+        sub: 'SUB',
+        nonce: 'NONCE'
+      })
+      t.assert.throws(() => verify(token, { allowedIss: [/abc/, 'cde'] }), {
+        message: 'The iss claim value is not allowed.'
+      })
+
+      token = sign({
+        a: 1,
+        jti: 'JTI',
+        aud: ['AUD1', 'DUA2'],
+        iss: 'ISS',
+        sub: 'SUB',
+        nonce: 'NONCE'
+      })
+      t.assert.deepStrictEqual(verify(token, { allowedIss: 'ISS' }), {
+        a: 1,
+        iat: 100,
+        jti: 'JTI',
+        aud: ['AUD1', 'DUA2'],
+        iss: 'ISS',
+        sub: 'SUB',
+        nonce: 'NONCE'
+      })
+
+      token = sign({
+        a: 1,
+        jti: 'JTI',
+        aud: ['AUD1', 'DUA2'],
+        iss: 'ISS',
+        sub: 'SUB',
+        nonce: 'NONCE'
+      })
+      t.assert.deepStrictEqual(verify(token, { allowedIss: ['ABX', 'ISS'] }), {
+        a: 1,
+        iat: 100,
+        jti: 'JTI',
+        aud: ['AUD1', 'DUA2'],
+        iss: 'ISS',
+        sub: 'SUB',
+        nonce: 'NONCE'
+      })
+
+      token = sign({
+        a: 1,
+        jti: 'JTI',
+        aud: ['AUD1', 'DUA2'],
+        iss: 'ISS',
+        sub: 'SUB',
+        nonce: 'NONCE'
+      })
+      t.assert.deepStrictEqual(verify(token, { allowedIss: ['ABX', /^I/] }), {
+        a: 1,
+        iat: 100,
+        jti: 'JTI',
+        aud: ['AUD1', 'DUA2'],
+        iss: 'ISS',
+        sub: 'SUB',
+        nonce: 'NONCE'
+      })
+    })
+
+    test('validates the sub claim only if explicitly enabled', t => {
+      t.mock.timers.enable({ now: 100000 })
+      const sign = createSigner({ key: 'secret' })
+
+      let token = sign({
+        a: 1,
+        jti: 1,
+        aud: 2,
+        iss: 3,
+        sub: 4,
+        nonce: 5
+      })
+      t.assert.throws(() => verify(token, { allowedSub: 'SUB1' }), { message: 'The sub claim must be a string.' })
+
+      token = sign({
+        a: 1,
+        jti: 'JTI',
+        aud: ['AUD1', 'DUA2'],
+        iss: 'ISS',
+        sub: 'SUB',
+        nonce: 'NONCE'
+      })
+      t.assert.throws(() => verify(token, { allowedSub: 'SUB1' }), { message: 'The sub claim value is not allowed.' })
+
+      token = sign({
+        a: 1,
+        jti: 'JTI',
+        aud: ['AUD1', 'DUA2'],
+        iss: 'ISS',
+        sub: 'SUB',
+        nonce: 'NONCE'
+      })
+      t.assert.throws(() => verify(token, { allowedSub: [/abc/, 'cde'] }), {
+        message: 'The sub claim value is not allowed.'
+      })
+
+      token = sign({
+        a: 1,
+        jti: 'JTI',
+        aud: ['AUD1'],
+        iss: 'ISS',
+        sub: ['SUB1', 'SUB2'],
+        nonce: 'NONCE'
+      })
+      t.assert.throws(() => verify(token, { allowedSub: ['SUB1'] }), { message: 'The sub claim must be a string.' })
+
+      token = sign({
+        a: 1,
+        jti: 'JTI',
+        aud: ['AUD1', 'DUA2'],
+        iss: 'ISS',
+        sub: 'SUB',
+        nonce: 'NONCE'
+      })
+      t.assert.deepStrictEqual(verify(token, { allowedSub: 'SUB' }), {
+        a: 1,
+        iat: 100,
+        jti: 'JTI',
+        aud: ['AUD1', 'DUA2'],
+        iss: 'ISS',
+        sub: 'SUB',
+        nonce: 'NONCE'
+      })
+
+      token = sign({
+        a: 1,
+        jti: 'JTI',
+        aud: ['AUD1', 'DUA2'],
+        iss: 'ISS',
+        sub: 'SUB',
+        nonce: 'NONCE'
+      })
+      t.assert.deepStrictEqual(verify(token, { allowedSub: ['ABX', 'SUB'] }), {
+        a: 1,
+        iat: 100,
+        jti: 'JTI',
+        aud: ['AUD1', 'DUA2'],
+        iss: 'ISS',
+        sub: 'SUB',
+        nonce: 'NONCE'
+      })
+
+      token = sign({
+        a: 1,
+        jti: 'JTI',
+        aud: ['AUD1', 'DUA2'],
+        iss: 'ISS',
+        sub: 'SUB',
+        nonce: 'NONCE'
+      })
+      t.assert.deepStrictEqual(verify(token, { allowedSub: ['ABX', /^S/] }), {
+        a: 1,
+        iat: 100,
+        jti: 'JTI',
+        aud: ['AUD1', 'DUA2'],
+        iss: 'ISS',
+        sub: 'SUB',
+        nonce: 'NONCE'
+      })
+    })
+
+    test('validates the nonce claim only if explicitly enabled', t => {
+      t.mock.timers.enable({ now: 100000 })
+      const sign = createSigner({ key: 'secret' })
+
+      let token = sign({
+        a: 1,
+        jti: 1,
+        aud: 2,
+        iss: 3,
+        sub: 4,
+        nonce: 5
+      })
+      t.assert.throws(() => verify(token, { allowedNonce: 'NONCE1' }), { message: 'The nonce claim must be a string.' })
+
+      token = sign({
+        a: 1,
+        jti: 'JTI',
+        aud: ['AUD1'],
+        iss: 'ISS',
+        sub: 'SUB',
+        nonce: ['NONCE', 'NONCE1']
+      })
+      t.assert.throws(() => verify(token, { allowedNonce: ['NONCE'] }), {
+        message: 'The nonce claim must be a string.'
+      })
+
+      token = sign({
+        a: 1,
+        jti: 'JTI',
+        aud: ['AUD1', 'DUA2'],
+        iss: 'ISS',
+        sub: 'SUB',
+        nonce: 'NONCE'
+      })
+      t.assert.throws(() => verify(token, { allowedNonce: 'NONCE1' }), {
+        message: 'The nonce claim value is not allowed.'
+      })
+
+      token = sign({
+        a: 1,
+        jti: 'JTI',
+        aud: ['AUD1', 'DUA2'],
+        iss: 'ISS',
+        sub: 'SUB',
+        nonce: 'NONCE'
+      })
+      t.assert.throws(() => verify(token, { allowedNonce: [/abc/, 'cde'] }), {
+        message: 'The nonce claim value is not allowed.'
+      })
+
+      token = sign({
+        a: 1,
+        jti: 'JTI',
+        aud: ['AUD1', 'DUA2'],
+        iss: 'ISS',
+        sub: 'SUB',
+        nonce: 'NONCE'
+      })
+      t.assert.deepStrictEqual(verify(token, { allowedNonce: 'NONCE' }), {
+        a: 1,
+        iat: 100,
+        jti: 'JTI',
+        aud: ['AUD1', 'DUA2'],
+        iss: 'ISS',
+        sub: 'SUB',
+        nonce: 'NONCE'
+      })
+
+      token = sign({
+        a: 1,
+        jti: 'JTI',
+        aud: ['AUD1', 'DUA2'],
+        iss: 'ISS',
+        sub: 'SUB',
+        nonce: 'NONCE'
+      })
+      t.assert.deepStrictEqual(verify(token, { allowedNonce: ['ABX', 'NONCE'] }), {
+        a: 1,
+        iat: 100,
+        jti: 'JTI',
+        aud: ['AUD1', 'DUA2'],
+        iss: 'ISS',
+        sub: 'SUB',
+        nonce: 'NONCE'
+      })
+
+      token = sign({
+        a: 1,
+        jti: 'JTI',
+        aud: ['AUD1', 'DUA2'],
+        iss: 'ISS',
+        sub: 'SUB',
+        nonce: 'NONCE'
+      })
+      t.assert.deepStrictEqual(verify(token, { allowedNonce: ['ABX', /^N/] }), {
+        a: 1,
+        iat: 100,
+        jti: 'JTI',
+        aud: ['AUD1', 'DUA2'],
+        iss: 'ISS',
+        sub: 'SUB',
+        nonce: 'NONCE'
+      })
+    })
+
+    test('validates allowed claims values using equality when appropriate', t => {
+      // The iss claim in the token starts with ISS
+      t.assert.throws(
+        () => {
+          return verify(
+            'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxLCJpc3MiOiJJU1NfUFJFRklYIn0.yAVrfuzH-1H_dzd8YhDV2ukWAGHB4DY4Wiv1cqz1JaY',
+            { allowedIss: 'ISS' }
+          )
+        },
+        { message: 'The iss claim value is not allowed.' }
+      )
+
+      // The iss claim in the token ends with ISS
+      t.assert.throws(
+        () => {
+          return verify(
+            'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxLCJpc3MiOiJTVUZGSVhfSVNTIn0.YNfIVGQCnIk0sQzsvOnLl_ueRs64m2M2BgiKyczzsAk',
+            { allowedIss: 'ISS' }
+          )
+        },
+        { message: 'The iss claim value is not allowed.' }
+      )
+    })
+
+    test('validates whether a required claim is present in the payload or not', t => {
+      // Token payload: { "iss": "ISS"}
+      const token =
+        'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJJU1MifQ.FKjJd2A-T8ufN7Y0LpjMR23P7CwEQ3Y-LBIYd2Vh_Rs'
+
+      t.assert.deepStrictEqual(verify(token, { allowedIss: 'ISS', requiredClaims: ['iss'] }), { iss: 'ISS' })
+
+      t.assert.throws(
+        () => {
+          return verify(token, { allowedSub: 'SUB', requiredClaims: ['sub'] })
+        },
+        { message: 'The sub claim is required.' }
+      )
+    })
+
+    test('validates whether a required custom claim is present in the payload or not', t => {
+      // Token payload: {"iss": "ISS", "custom": "custom", "iat": 1708023956}
+      const token =
+        'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJJU1MiLCJjdXN0b20iOiJjdXN0b20iLCJpYXQiOjE3MDgwMjQxMTh9.rD9GaHxuSB7mPkVQ2shj4yqPsvEuXWByMDNhMoch0xY'
+
+      t.assert.deepStrictEqual(verify(token, { requiredClaims: ['iss', 'custom'] }), {
+        iss: 'ISS',
+        custom: 'custom',
+        iat: 1708024118
+      })
+
+      // Standard claim not covered by other validators
+      t.assert.throws(
+        () => {
+          return verify(token, { requiredClaims: ['kid'] })
+        },
+        { message: 'The kid claim is required.' }
+      )
+
+      // Custom claim
+      t.assert.throws(
+        () => {
+          return verify(token, { requiredClaims: ['customTwo'] })
+        },
+        { message: 'The customTwo claim is required.' }
+      )
+    })
+
+    test("skips validation when an allowed claim isn't present in the payload", t => {
+      // Token payload: { "iss": "ISS"}
+      const token =
+        'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJJU1MifQ.FKjJd2A-T8ufN7Y0LpjMR23P7CwEQ3Y-LBIYd2Vh_Rs'
+
+      t.assert.deepStrictEqual(verify(token, { allowedIss: 'ISS', allowedAud: 'AUD' }), { iss: 'ISS' })
+    })
   })
-})
 
-test('null header token', t => {
-  const nullHeaderToken = `${Buffer.from('null').toString('base64url')}.${Buffer.from('{"sub":"test"}').toString('base64url')}.x`
-  t.assert.throws(() => createVerifier({ key: 'secret' })(nullHeaderToken), {
-    message: 'The token header is not a valid JSON object.'
-  })
-})
+  describe('token type validation', () => {
+    test('sync', t => {
+      t.assert.throws(() => createVerifier({ key: 'secret' })(123), {
+        message: 'The token must be a string or a buffer.'
+      })
 
-test('options validation - key', t => {
-  t.assert.throws(() => createVerifier({ key: 123 }), {
-    message: 'The key option must be a string, a buffer or a function returning the algorithm secret or public key.'
-  })
-})
+      t.assert.throws(() => createVerifier({ key: 'secret', cache: true })(null), {
+        message: 'The token must be a string or a buffer.'
+      })
+    })
 
-test('options validation - clockTimestamp', t => {
-  t.assert.throws(() => createVerifier({ key: 'secret', clockTimestamp: '123' }), {
-    message: 'The clockTimestamp option must be a positive number.'
-  })
+    test('async', async t => {
+      await t.assert.rejects(async () => createVerifier({ key: async () => 'secret', cache: true })(null), {
+        message: 'The token must be a string or a buffer.'
+      })
+    })
 
-  t.assert.throws(() => createVerifier({ key: 'secret', clockTimestamp: -1 }), {
-    message: 'The clockTimestamp option must be a positive number.'
-  })
-})
-
-test('options validation - clockTolerance', t => {
-  t.assert.throws(() => createVerifier({ key: 'secret', clockTolerance: '123' }), {
-    message: 'The clockTolerance option must be a positive number.'
+    test('null header token', t => {
+      const nullHeaderToken = `${Buffer.from('null').toString('base64url')}.${Buffer.from('{"sub":"test"}').toString('base64url')}.x`
+      t.assert.throws(() => createVerifier({ key: 'secret' })(nullHeaderToken), {
+        message: 'The token header is not a valid JSON object.'
+      })
+    })
   })
 
-  t.assert.throws(() => createVerifier({ key: 'secret', clockTolerance: -1 }), {
-    message: 'The clockTolerance option must be a positive number.'
+  describe('options validation', () => {
+    test('key', t => {
+      t.assert.throws(() => createVerifier({ key: 123 }), {
+        message: 'The key option must be a string, a buffer or a function returning the algorithm secret or public key.'
+      })
+    })
+
+    test('clockTimestamp', t => {
+      t.assert.throws(() => createVerifier({ key: 'secret', clockTimestamp: '123' }), {
+        message: 'The clockTimestamp option must be a positive number.'
+      })
+
+      t.assert.throws(() => createVerifier({ key: 'secret', clockTimestamp: -1 }), {
+        message: 'The clockTimestamp option must be a positive number.'
+      })
+    })
+
+    test('clockTolerance', t => {
+      t.assert.throws(() => createVerifier({ key: 'secret', clockTolerance: '123' }), {
+        message: 'The clockTolerance option must be a positive number.'
+      })
+
+      t.assert.throws(() => createVerifier({ key: 'secret', clockTolerance: -1 }), {
+        message: 'The clockTolerance option must be a positive number.'
+      })
+    })
+
+    test('cacheTTL', t => {
+      t.assert.throws(() => createVerifier({ key: 'secret', cacheTTL: '123' }), {
+        message: 'The cacheTTL option must be a positive number.'
+      })
+
+      t.assert.throws(() => createVerifier({ key: 'secret', cacheTTL: -1 }), {
+        message: 'The cacheTTL option must be a positive number.'
+      })
+    })
+
+    test('requiredClaims', t => {
+      t.assert.throws(() => createVerifier({ key: 'secret', requiredClaims: 'ISS' }), {
+        message: 'The requiredClaims option must be an array.'
+      })
+    })
+
+    test('errorCacheTTL', t => {
+      t.assert.throws(() => createVerifier({ key: 'secret', errorCacheTTL: '123' }), {
+        message: 'The errorCacheTTL option must be a number greater than -1 or a function.'
+      })
+
+      t.assert.throws(() => createVerifier({ key: 'secret', errorCacheTTL: -2 }), {
+        message: 'The errorCacheTTL option must be a number greater than -1 or a function.'
+      })
+    })
   })
-})
 
-test('options validation - cacheTTL', t => {
-  t.assert.throws(() => createVerifier({ key: 'secret', cacheTTL: '123' }), {
-    message: 'The cacheTTL option must be a positive number.'
-  })
+  describe('cache option', () => {
+    test('sync', t => {
+      const token = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxfQ.57TF7smP9XDhIexBqPC-F1toZReYZLWb_YRU5tv0sxM'
+      const invalidToken = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxfQ.aaa'
 
-  t.assert.throws(() => createVerifier({ key: 'secret', cacheTTL: -1 }), {
-    message: 'The cacheTTL option must be a positive number.'
-  })
-})
+      const verifier = createVerifier({ key: 'secret', cache: true })
 
-test('options validation - requiredClaims', t => {
-  t.assert.throws(() => createVerifier({ key: 'secret', requiredClaims: 'ISS' }), {
-    message: 'The requiredClaims option must be an array.'
-  })
-})
+      t.assert.equal(verifier.cache.size, 0)
+      t.assert.deepStrictEqual(verifier(token), { a: 1 })
+      t.assert.equal(verifier.cache.size, 1)
+      t.assert.deepStrictEqual(verifier(token), { a: 1 })
+      t.assert.equal(verifier.cache.size, 1)
 
-test('caching - sync', t => {
-  const token = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxfQ.57TF7smP9XDhIexBqPC-F1toZReYZLWb_YRU5tv0sxM'
-  const invalidToken = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxfQ.aaa'
+      t.assert.throws(() => verifier(invalidToken), { message: 'The token signature is invalid.' })
+      t.assert.equal(verifier.cache.size, 2)
+      t.assert.throws(() => verifier(invalidToken), { message: 'The token signature is invalid.' })
+      t.assert.equal(verifier.cache.size, 2)
 
-  const verifier = createVerifier({ key: 'secret', cache: true })
+      t.assert.deepStrictEqual(verifier.cache.get(hashToken(token))[0], { a: 1 })
+      t.assert.ok(verifier.cache.get(hashToken(invalidToken))[0] instanceof TokenError)
+    })
 
-  t.assert.equal(verifier.cache.size, 0)
-  t.assert.deepStrictEqual(verifier(token), { a: 1 })
-  t.assert.equal(verifier.cache.size, 1)
-  t.assert.deepStrictEqual(verifier(token), { a: 1 })
-  t.assert.equal(verifier.cache.size, 1)
+    test('sync - custom cacheKeyBuilder', t => {
+      const token = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxfQ.57TF7smP9XDhIexBqPC-F1toZReYZLWb_YRU5tv0sxM'
+      const invalidToken = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxfQ.aaa'
 
-  t.assert.throws(() => verifier(invalidToken), { message: 'The token signature is invalid.' })
-  t.assert.equal(verifier.cache.size, 2)
-  t.assert.throws(() => verifier(invalidToken), { message: 'The token signature is invalid.' })
-  t.assert.equal(verifier.cache.size, 2)
+      const verifier = createVerifier({ key: 'secret', cache: true, cacheKeyBuilder: id => id })
 
-  t.assert.deepStrictEqual(verifier.cache.get(hashToken(token))[0], { a: 1 })
-  t.assert.ok(verifier.cache.get(hashToken(invalidToken))[0] instanceof TokenError)
-})
+      t.assert.equal(verifier.cache.size, 0)
+      t.assert.deepStrictEqual(verifier(token), { a: 1 })
+      t.assert.equal(verifier.cache.size, 1)
+      t.assert.deepStrictEqual(verifier(token), { a: 1 })
+      t.assert.equal(verifier.cache.size, 1)
 
-test('caching - sync - custom cacheKeyBuilder', t => {
-  const token = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxfQ.57TF7smP9XDhIexBqPC-F1toZReYZLWb_YRU5tv0sxM'
-  const invalidToken = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxfQ.aaa'
+      t.assert.throws(() => verifier(invalidToken), { message: 'The token signature is invalid.' })
+      t.assert.equal(verifier.cache.size, 2)
+      t.assert.throws(() => verifier(invalidToken), { message: 'The token signature is invalid.' })
+      t.assert.equal(verifier.cache.size, 2)
 
-  const verifier = createVerifier({ key: 'secret', cache: true, cacheKeyBuilder: id => id })
+      t.assert.deepStrictEqual(verifier.cache.get(token)[0], { a: 1 })
+      t.assert.ok(verifier.cache.get(invalidToken)[0] instanceof TokenError)
+    })
 
-  t.assert.equal(verifier.cache.size, 0)
-  t.assert.deepStrictEqual(verifier(token), { a: 1 })
-  t.assert.equal(verifier.cache.size, 1)
-  t.assert.deepStrictEqual(verifier(token), { a: 1 })
-  t.assert.equal(verifier.cache.size, 1)
+    test('sync - custom cacheKeyBuilder emits security warning', async t => {
+      let onWarning
+      const warningPromise = new Promise(resolve => {
+        onWarning = w => {
+          if (w.code === 'FAST_JWT_CACHE_KEY_BUILDER_SECURITY_RISK') {
+            resolve(w)
+          }
+        }
+        process.on('warning', onWarning)
+      })
 
-  t.assert.throws(() => verifier(invalidToken), { message: 'The token signature is invalid.' })
-  t.assert.equal(verifier.cache.size, 2)
-  t.assert.throws(() => verifier(invalidToken), { message: 'The token signature is invalid.' })
-  t.assert.equal(verifier.cache.size, 2)
+      t.after(() => process.off('warning', onWarning))
 
-  t.assert.deepStrictEqual(verifier.cache.get(token)[0], { a: 1 })
-  t.assert.ok(verifier.cache.get(invalidToken)[0] instanceof TokenError)
-})
+      createVerifier({ key: 'secret', cache: true, cacheKeyBuilder: id => id })
 
-test('caching - sync - custom cacheKeyBuilder emits security warning', async t => {
-  let onWarning
-  const warningPromise = new Promise(resolve => {
-    onWarning = w => {
-      if (w.code === 'FAST_JWT_CACHE_KEY_BUILDER_SECURITY_RISK') {
-        resolve(w)
+      const timeout = new Promise((_, reject) =>
+        setTimeout(
+          () => reject(new Error('Timed out waiting for FAST_JWT_CACHE_KEY_BUILDER_SECURITY_RISK warning')),
+          1000
+        )
+      )
+
+      const warning = await Promise.race([warningPromise, timeout])
+      t.assert.equal(warning.code, 'FAST_JWT_CACHE_KEY_BUILDER_SECURITY_RISK')
+      t.assert.ok(warning.message.includes('cacheKeyBuilder'))
+    })
+
+    test('sync - default cacheKeyBuilder does not emit security warning', async t => {
+      let warningReceived = false
+      const onWarning = w => {
+        if (w.code === 'FAST_JWT_CACHE_KEY_BUILDER_SECURITY_RISK') {
+          warningReceived = true
+        }
+      }
+      process.on('warning', onWarning)
+      t.after(() => {
+        process.off('warning', onWarning)
+      })
+
+      createVerifier({ key: 'secret', cache: true })
+
+      // Wait a tick to allow any potential warning to be emitted
+      await new Promise(resolve => setImmediate(resolve))
+      t.assert.equal(warningReceived, false)
+    })
+
+    test('async', async t => {
+      const token = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxfQ.57TF7smP9XDhIexBqPC-F1toZReYZLWb_YRU5tv0sxM'
+      const invalidToken = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxfQ.aaa'
+
+      const verifier = createVerifier({ key: async () => 'secret', cache: true })
+
+      t.assert.equal(verifier.cache.size, 0)
+      t.assert.deepStrictEqual(await verifier(token), { a: 1 })
+      t.assert.equal(verifier.cache.size, 1)
+      t.assert.deepStrictEqual(await verifier(token), { a: 1 })
+      t.assert.equal(verifier.cache.size, 1)
+
+      await t.assert.rejects(async () => verifier(invalidToken), { message: 'The token signature is invalid.' })
+      t.assert.equal(verifier.cache.size, 2)
+      await t.assert.rejects(async () => verifier(invalidToken), { message: 'The token signature is invalid.' })
+      t.assert.equal(verifier.cache.size, 2)
+
+      t.assert.deepStrictEqual(verifier.cache.get(hashToken(token))[0], { a: 1 })
+      t.assert.ok(verifier.cache.get(hashToken(invalidToken))[0] instanceof TokenError)
+    })
+
+    for (const type of ['HS', 'ES', 'RS', 'PS']) {
+      for (const bits of ['256', '384', '512']) {
+        const algorithm = `${type}${bits}`
+        const privateKey = privateKeys[type === 'ES' ? algorithm : type]
+        const publicKey = publicKeys[type === 'ES' ? algorithm : type]
+
+        test(`should use the right hash method for storing values - ${algorithm}`, t => {
+          const signer = createSigner({ algorithm, key: privateKey, noTimestamp: 1 })
+          const verifier = createVerifier({ algorithm, key: publicKey, cache: true })
+          const token = signer({ a: 1 })
+
+          const hash = createHash(`sha${bits}`).update(token).digest('hex')
+
+          t.assert.deepStrictEqual(verifier(token), { a: 1 })
+          t.assert.equal(verifier.cache.size, 1)
+          t.assert.equal(Array.from(verifier.cache.keys())[0], hash)
+        })
       }
     }
-    process.on('warning', onWarning)
-  })
 
-  t.after(() => process.off('warning', onWarning))
-
-  createVerifier({ key: 'secret', cache: true, cacheKeyBuilder: id => id })
-
-  const timeout = new Promise((_, reject) =>
-    setTimeout(() => reject(new Error('Timed out waiting for FAST_JWT_CACHE_KEY_BUILDER_SECURITY_RISK warning')), 1000)
-  )
-
-  const warning = await Promise.race([warningPromise, timeout])
-  t.assert.equal(warning.code, 'FAST_JWT_CACHE_KEY_BUILDER_SECURITY_RISK')
-  t.assert.ok(warning.message.includes('cacheKeyBuilder'))
-})
-
-test('caching - sync - default cacheKeyBuilder does not emit security warning', async t => {
-  let warningReceived = false
-  const onWarning = w => {
-    if (w.code === 'FAST_JWT_CACHE_KEY_BUILDER_SECURITY_RISK') {
-      warningReceived = true
-    }
-  }
-  process.on('warning', onWarning)
-  t.after(() => {
-    process.off('warning', onWarning)
-  })
-
-  createVerifier({ key: 'secret', cache: true })
-
-  // Wait a tick to allow any potential warning to be emitted
-  await new Promise(resolve => setImmediate(resolve))
-  t.assert.equal(warningReceived, false)
-})
-
-test('caching - async', async t => {
-  const token = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxfQ.57TF7smP9XDhIexBqPC-F1toZReYZLWb_YRU5tv0sxM'
-  const invalidToken = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxfQ.aaa'
-
-  const verifier = createVerifier({ key: async () => 'secret', cache: true })
-
-  t.assert.equal(verifier.cache.size, 0)
-  t.assert.deepStrictEqual(await verifier(token), { a: 1 })
-  t.assert.equal(verifier.cache.size, 1)
-  t.assert.deepStrictEqual(await verifier(token), { a: 1 })
-  t.assert.equal(verifier.cache.size, 1)
-
-  await t.assert.rejects(async () => verifier(invalidToken), { message: 'The token signature is invalid.' })
-  t.assert.equal(verifier.cache.size, 2)
-  await t.assert.rejects(async () => verifier(invalidToken), { message: 'The token signature is invalid.' })
-  t.assert.equal(verifier.cache.size, 2)
-
-  t.assert.deepStrictEqual(verifier.cache.get(hashToken(token))[0], { a: 1 })
-  t.assert.ok(verifier.cache.get(hashToken(invalidToken))[0] instanceof TokenError)
-})
-
-for (const type of ['HS', 'ES', 'RS', 'PS']) {
-  for (const bits of ['256', '384', '512']) {
-    const algorithm = `${type}${bits}`
-    const privateKey = privateKeys[type === 'ES' ? algorithm : type]
-    const publicKey = publicKeys[type === 'ES' ? algorithm : type]
-
-    test(`caching - should use the right hash method for storing values - ${algorithm}`, t => {
-      const signer = createSigner({ algorithm, key: privateKey, noTimestamp: 1 })
-      const verifier = createVerifier({ algorithm, key: publicKey, cache: true })
+    test('should use the right hash method for storing values - EdDSA with Ed25519', t => {
+      const signer = createSigner({ algorithm: 'EdDSA', key: privateKeys.Ed25519, noTimestamp: 1 })
+      const verifier = createVerifier({ key: publicKeys.Ed25519, cache: true })
       const token = signer({ a: 1 })
-
-      const hash = createHash(`sha${bits}`).update(token).digest('hex')
+      const hash = createHash('sha512').update(token).digest('hex')
 
       t.assert.deepStrictEqual(verifier(token), { a: 1 })
       t.assert.equal(verifier.cache.size, 1)
       t.assert.equal(Array.from(verifier.cache.keys())[0], hash)
     })
-  }
-}
 
-test('caching - should use the right hash method for storing values - EdDSA with Ed25519', t => {
-  const signer = createSigner({ algorithm: 'EdDSA', key: privateKeys.Ed25519, noTimestamp: 1 })
-  const verifier = createVerifier({ key: publicKeys.Ed25519, cache: true })
-  const token = signer({ a: 1 })
-  const hash = createHash('sha512').update(token).digest('hex')
-
-  t.assert.deepStrictEqual(verifier(token), { a: 1 })
-  t.assert.equal(verifier.cache.size, 1)
-  t.assert.equal(Array.from(verifier.cache.keys())[0], hash)
-})
-
-test('caching - should use the right hash method for storing values - EdDSA with Ed448', t => {
-  const signer = createSigner({
-    algorithm: 'EdDSA',
-    key: privateKeys.Ed448,
-    noTimestamp: 1,
-    header: { crv: 'Ed448' }
-  })
-  const verifier = createVerifier({ key: publicKeys.Ed448, cache: true })
-  const token = signer({ a: 1 })
-  const hash = createHash('shake256', { outputLength: 114 }).update(token).digest('hex')
-
-  t.assert.deepStrictEqual(verifier(token), { a: 1 })
-  t.assert.equal(verifier.cache.size, 1)
-  t.assert.equal(Array.from(verifier.cache.keys())[0], hash)
-})
-
-test('caching - should be able to manipulate cache directly', t => {
-  t.mock.timers.enable({ now: 100000 })
-
-  const signer = createSigner({ key: 'secret', expiresIn: 100000 })
-  const verifier = createVerifier({ key: 'secret', cache: true })
-  const token = signer({ a: 1 })
-
-  t.assert.equal(verifier.cache.size, 0)
-  t.assert.deepStrictEqual(verifier(token), { a: 1, iat: 100, exp: 200 })
-  t.assert.equal(verifier.cache.size, 1)
-  t.assert.deepStrictEqual(verifier.cache.get(hashToken(token)), [{ a: 1, iat: 100, exp: 200 }, 0, 200000])
-  verifier.cache.clear()
-  t.assert.equal(verifier.cache.size, 0)
-  verifier.cache.set(token, 'WHATEVER')
-  t.assert.deepStrictEqual(verifier.cache.get(token), 'WHATEVER')
-  verifier.cache.set(token, null)
-  t.assert.deepStrictEqual(verifier.cache.get(token), null)
-
-  t.mock.timers.reset()
-})
-
-test('caching - should correctly expire cached token using the exp claim', t => {
-  t.mock.timers.enable({ now: 100000 })
-
-  const signer = createSigner({ key: 'secret', expiresIn: 100000 })
-  const verifier = createVerifier({ key: 'secret', cache: true })
-  const token = signer({ a: 1 })
-
-  // First of all, make a token and verify it's cached
-  t.assert.equal(verifier.cache.size, 0)
-  t.assert.deepStrictEqual(verifier(token), { a: 1, iat: 100, exp: 200 })
-  t.assert.equal(verifier.cache.size, 1)
-  t.assert.deepStrictEqual(verifier(token), { a: 1, iat: 100, exp: 200 })
-  t.assert.equal(verifier.cache.size, 1)
-  t.assert.deepStrictEqual(verifier.cache.get(hashToken(token)), [{ a: 1, iat: 100, exp: 200 }, 0, 200000])
-
-  // Now advance to expired time
-  t.mock.timers.tick(200000)
-
-  // The token should now be expired and the cache should have been updated to reflect it
-  t.assert.throws(() => verifier(token), { message: 'The token has expired at 1970-01-01T00:03:20.000Z.' })
-  t.assert.equal(verifier.cache.size, 1)
-  t.assert.ok(verifier.cache.get(hashToken(token))[0] instanceof TokenError)
-
-  t.assert.throws(() => verifier(token), { message: 'The token has expired at 1970-01-01T00:03:20.000Z.' })
-  t.assert.throws(() => verifier(token), { message: 'The token has expired at 1970-01-01T00:03:20.000Z.' })
-
-  t.mock.timers.reset()
-
-  // Now the real time is used, make cache considers the clockTimestamp algorithm
-  verifier.cache.clear()
-  t.assert.throws(() => verifier(token), { message: 'The token has expired at 1970-01-01T00:03:20.000Z.' })
-  t.assert.equal(verifier.cache.size, 1)
-  t.assert.ok(verifier.cache.get(hashToken(token))[0] instanceof TokenError)
-
-  const verifierWithTimestamp = createVerifier({ key: 'secret', cache: true, clockTimestamp: 100000 })
-  t.assert.deepStrictEqual(verifierWithTimestamp(token), { a: 1, iat: 100, exp: 200 })
-  t.assert.equal(verifierWithTimestamp.cache.size, 1)
-  t.assert.deepStrictEqual(verifierWithTimestamp.cache.get(hashToken(token)), [{ a: 1, iat: 100, exp: 200 }, 0, 200000])
-})
-
-test('caching - should correctly expire cached token using the maxAge claim', t => {
-  t.mock.timers.enable({ now: 100000 })
-
-  const signer = createSigner({ key: 'secret' })
-  const verifier = createVerifier({ key: 'secret', cache: true, maxAge: 100000 })
-  const token = signer({ a: 1 })
-
-  // First of all, make a token and verify it's cached
-  t.assert.equal(verifier.cache.size, 0)
-  t.assert.deepStrictEqual(verifier(token), { a: 1, iat: 100 })
-  t.assert.equal(verifier.cache.size, 1)
-  t.assert.deepStrictEqual(verifier(token), { a: 1, iat: 100 })
-  t.assert.equal(verifier.cache.size, 1)
-  t.assert.deepStrictEqual(verifier.cache.get(hashToken(token)), [{ a: 1, iat: 100 }, 0, 200000])
-
-  // Now advance to expired time
-  t.mock.timers.tick(200000)
-
-  // The token should now be expired and the cache should have been updated to reflect it
-  t.assert.throws(() => verifier(token), { message: 'The token has expired at 1970-01-01T00:03:20.000Z.' })
-  t.assert.equal(verifier.cache.size, 1)
-  t.assert.ok(verifier.cache.get(hashToken(token))[0] instanceof TokenError)
-  t.assert.throws(() => verifier(token), { message: 'The token has expired at 1970-01-01T00:03:20.000Z.' })
-  t.assert.throws(() => verifier(token), { message: 'The token has expired at 1970-01-01T00:03:20.000Z.' })
-
-  t.mock.timers.reset()
-})
-
-test('caching - should correctly expire not yet cached token using the nbf claim at exact notBefore time', t => {
-  t.mock.timers.enable({ now: 100000 })
-
-  const signer = createSigner({ key: 'secret', notBefore: 200000 })
-  const verifier = createVerifier({ key: 'secret', cache: true })
-  const token = signer({ a: 1 })
-
-  // First of all, make a token and verify it's cached and rejected
-  t.assert.equal(verifier.cache.size, 0)
-  t.assert.throws(() => verifier(token), { message: 'The token will be active at 1970-01-01T00:05:00.000Z.' })
-  t.assert.equal(verifier.cache.size, 1)
-  t.assert.throws(() => verifier(token), { message: 'The token will be active at 1970-01-01T00:05:00.000Z.' })
-  t.assert.ok(verifier.cache.get(hashToken(token))[0] instanceof TokenError)
-
-  // Now advance to expired time
-  t.mock.timers.tick(200000)
-
-  // The token should now be active and the cache should have been updated to reflect it
-  t.assert.deepStrictEqual(verifier(token), { a: 1, iat: 100, nbf: 300 })
-  t.assert.equal(verifier.cache.size, 1)
-  t.assert.deepStrictEqual(verifier(token), { a: 1, iat: 100, nbf: 300 })
-  t.assert.equal(verifier.cache.size, 1)
-  t.assert.deepStrictEqual(verifier.cache.get(hashToken(token)), [{ a: 1, iat: 100, nbf: 300 }, 300000, 900000])
-
-  t.mock.timers.reset()
-})
-
-test('caching - should correctly expire not yet cached token using the nbf claim while checking after expiry period', t => {
-  t.mock.timers.enable({ now: 100000 })
-
-  const signer = createSigner({ key: 'secret', notBefore: 200000 })
-  const verifier = createVerifier({ key: 'secret', cache: true })
-  const token = signer({ a: 1 })
-
-  // First of all, make a token and verify it's cached and rejected
-  t.assert.equal(verifier.cache.size, 0)
-  t.assert.throws(() => verifier(token), { message: 'The token will be active at 1970-01-01T00:05:00.000Z.' })
-  t.assert.equal(verifier.cache.size, 1)
-  t.assert.throws(() => verifier(token), { message: 'The token will be active at 1970-01-01T00:05:00.000Z.' })
-  t.assert.ok(verifier.cache.get(hashToken(token))[0] instanceof TokenError)
-
-  // Now advance after expired time
-  t.mock.timers.tick(200010)
-
-  // The token should now be active and the cache should have been updated to reflect it
-  t.assert.deepStrictEqual(verifier(token), { a: 1, iat: 100, nbf: 300 })
-  t.assert.equal(verifier.cache.size, 1)
-  t.assert.deepStrictEqual(verifier(token), { a: 1, iat: 100, nbf: 300 })
-  t.assert.equal(verifier.cache.size, 1)
-  t.assert.deepStrictEqual(verifier.cache.get(hashToken(token)), [{ a: 1, iat: 100, nbf: 300 }, 300000, 900010])
-
-  t.mock.timers.reset()
-})
-
-test('caching - should be able to consider both nbf and exp field at the same time', t => {
-  t.mock.timers.enable({ now: 100000 })
-
-  const signer = createSigner({ key: 'secret', expiresIn: 400000, notBefore: 200000 })
-  const verifier = createVerifier({ key: 'secret', cache: true })
-  const token = signer({ a: 1 })
-
-  // At the beginning, the token is not active yet
-  t.assert.equal(verifier.cache.size, 0)
-  t.assert.throws(() => verifier(token), { message: 'The token will be active at 1970-01-01T00:05:00.000Z.' })
-  t.assert.equal(verifier.cache.size, 1)
-  t.assert.throws(() => verifier(token), { message: 'The token will be active at 1970-01-01T00:05:00.000Z.' })
-  t.assert.ok(verifier.cache.get(hashToken(token))[0] instanceof TokenError)
-
-  // Now advance to activation time
-  t.mock.timers.tick(200000)
-
-  // The token should now be active and the cache should have been updated to reflect it
-  t.assert.deepStrictEqual(verifier(token), { a: 1, iat: 100, nbf: 300, exp: 500 })
-  t.assert.equal(verifier.cache.size, 1)
-  t.assert.deepStrictEqual(verifier(token), { a: 1, iat: 100, nbf: 300, exp: 500 })
-  t.assert.equal(verifier.cache.size, 1)
-  t.assert.deepStrictEqual(verifier.cache.get(hashToken(token)), [
-    { a: 1, iat: 100, nbf: 300, exp: 500 },
-    300000,
-    500000
-  ])
-
-  // Now advance again after the expiry time
-  t.mock.timers.tick(210000)
-
-  // The token should now be expired and the cache should have been updated to reflect it
-  t.assert.throws(() => verifier(token), { message: 'The token has expired at 1970-01-01T00:08:20.000Z.' })
-  t.assert.equal(verifier.cache.size, 1)
-  t.assert.ok(verifier.cache.get(hashToken(token))[0] instanceof TokenError)
-  t.assert.throws(() => verifier(token), { message: 'The token has expired at 1970-01-01T00:08:20.000Z.' })
-  t.assert.throws(() => verifier(token), { message: 'The token has expired at 1970-01-01T00:08:20.000Z.' })
-
-  t.mock.timers.reset()
-})
-
-test('caching - should be able to consider clockTolerance on both nbf and exp field', t => {
-  t.mock.timers.enable({ now: 100000 })
-
-  const signer = createSigner({ key: 'secret', expiresIn: 400000, notBefore: 200000 })
-  const verifier = createVerifier({ key: 'secret', cache: true, clockTolerance: 60000 })
-  const token = signer({ a: 1 })
-
-  // At the beginning, the token is not active yet
-  t.assert.equal(verifier.cache.size, 0)
-  t.assert.throws(() => verifier(token), { message: 'The token will be active at 1970-01-01T00:04:00.000Z.' })
-  t.assert.equal(verifier.cache.size, 1)
-  t.assert.throws(() => verifier(token), { message: 'The token will be active at 1970-01-01T00:04:00.000Z.' })
-  t.assert.ok(verifier.cache.get(hashToken(token))[0] instanceof TokenError)
-
-  // Now advance before the activation time, in clockTolerance range
-  t.mock.timers.tick(140000)
-
-  // The token should now be active and the cache should have been updated to reflect it
-  t.assert.deepStrictEqual(verifier(token), { a: 1, iat: 100, nbf: 300, exp: 500 })
-  t.assert.equal(verifier.cache.size, 1)
-  t.assert.deepStrictEqual(verifier(token), { a: 1, iat: 100, nbf: 300, exp: 500 })
-  t.assert.equal(verifier.cache.size, 1)
-  t.assert.deepStrictEqual(verifier.cache.get(hashToken(token)), [
-    { a: 1, iat: 100, nbf: 300, exp: 500 },
-    240000,
-    560000
-  ])
-
-  // Now advance to activation time
-  t.mock.timers.tick(150000)
-
-  // The token should now be active and the cache should have been updated to reflect it
-  t.assert.deepStrictEqual(verifier(token), { a: 1, iat: 100, nbf: 300, exp: 500 })
-  t.assert.equal(verifier.cache.size, 1)
-  t.assert.deepStrictEqual(verifier(token), { a: 1, iat: 100, nbf: 300, exp: 500 })
-  t.assert.equal(verifier.cache.size, 1)
-  t.assert.deepStrictEqual(verifier.cache.get(hashToken(token)), [
-    { a: 1, iat: 100, nbf: 300, exp: 500 },
-    240000,
-    560000
-  ])
-
-  // Now advance again after the expiry time, in clockTolerance range (current time going to be 540000 )
-  t.mock.timers.tick(150000)
-  t.assert.deepStrictEqual(verifier(token), { a: 1, iat: 100, nbf: 300, exp: 500 })
-  t.assert.equal(verifier.cache.size, 1)
-  t.assert.deepStrictEqual(verifier(token), { a: 1, iat: 100, nbf: 300, exp: 500 })
-  t.assert.equal(verifier.cache.size, 1)
-  t.assert.deepStrictEqual(verifier.cache.get(hashToken(token)), [
-    { a: 1, iat: 100, nbf: 300, exp: 500 },
-    240000,
-    560000
-  ])
-
-  t.mock.timers.tick(100000)
-  // The token should now be expired and the cache should have been updated to reflect it
-  t.assert.throws(() => verifier(token), { message: 'The token has expired at 1970-01-01T00:09:20.000Z.' })
-  t.assert.equal(verifier.cache.size, 1)
-  t.assert.ok(verifier.cache.get(hashToken(token))[0] instanceof TokenError)
-  t.assert.throws(() => verifier(token), { message: 'The token has expired at 1970-01-01T00:09:20.000Z.' })
-  t.assert.throws(() => verifier(token), { message: 'The token has expired at 1970-01-01T00:09:20.000Z.' })
-
-  t.mock.timers.reset()
-})
-
-test('caching - should ignore the nbf and exp when asked to', t => {
-  t.mock.timers.enable({ now: 100000 })
-
-  const signer = createSigner({ key: 'secret', expiresIn: 400000, notBefore: 200000 })
-  const verifier = createVerifier({ key: 'secret', cache: true })
-  const verifierNoNbf = createVerifier({ key: 'secret', cache: true, ignoreNotBefore: true })
-  const verifierNoExp = createVerifier({ key: 'secret', cache: true, ignoreExpiration: true })
-  const token = signer({ a: 1 })
-
-  // At the beginning, the token is not active yet
-  t.assert.equal(verifier.cache.size, 0)
-  t.assert.throws(() => verifier(token), { message: 'The token will be active at 1970-01-01T00:05:00.000Z.' })
-  t.assert.equal(verifier.cache.size, 1)
-  t.assert.throws(() => verifier(token), { message: 'The token will be active at 1970-01-01T00:05:00.000Z.' })
-  t.assert.ok(verifier.cache.get(hashToken(token))[0] instanceof TokenError)
-
-  // For the verifier which ignores notBefore, the token is already active
-  t.assert.deepStrictEqual(verifierNoNbf(token), { a: 1, iat: 100, nbf: 300, exp: 500 })
-  t.assert.equal(verifierNoNbf.cache.size, 1)
-  t.assert.deepStrictEqual(verifierNoNbf(token), { a: 1, iat: 100, nbf: 300, exp: 500 })
-  t.assert.equal(verifierNoNbf.cache.size, 1)
-  t.assert.deepStrictEqual(verifierNoNbf.cache.get(hashToken(token)), [
-    { a: 1, iat: 100, nbf: 300, exp: 500 },
-    0,
-    500000
-  ])
-
-  // Now advance to activation time
-  t.mock.timers.tick(200000)
-
-  // The token should now be active and the cache should have been updated to reflect it
-  t.assert.deepStrictEqual(verifier(token), { a: 1, iat: 100, nbf: 300, exp: 500 })
-  t.assert.equal(verifier.cache.size, 1)
-  t.assert.deepStrictEqual(verifier(token), { a: 1, iat: 100, nbf: 300, exp: 500 })
-  t.assert.equal(verifier.cache.size, 1)
-  t.assert.deepStrictEqual(verifier.cache.get(hashToken(token)), [
-    { a: 1, iat: 100, nbf: 300, exp: 500 },
-    300000,
-    500000
-  ])
-
-  // Now advance again after the expiry time
-  t.mock.timers.tick(210000)
-
-  // The token should now be expired and the cache should have been updated to reflect it
-  t.assert.throws(() => verifier(token), { message: 'The token has expired at 1970-01-01T00:08:20.000Z.' })
-  t.assert.equal(verifier.cache.size, 1)
-  t.assert.ok(verifier.cache.get(hashToken(token))[0] instanceof TokenError)
-  t.assert.throws(() => verifier(token), { message: 'The token has expired at 1970-01-01T00:08:20.000Z.' })
-  t.assert.throws(() => verifier(token), { message: 'The token has expired at 1970-01-01T00:08:20.000Z.' })
-
-  // For the verifier which ignores expiration, the token is still active
-  t.assert.deepStrictEqual(verifierNoExp(token), { a: 1, iat: 100, nbf: 300, exp: 500 })
-  t.assert.equal(verifierNoExp.cache.size, 1)
-  t.assert.deepStrictEqual(verifierNoExp(token), { a: 1, iat: 100, nbf: 300, exp: 500 })
-  t.assert.equal(verifierNoExp.cache.size, 1)
-  t.assert.deepStrictEqual(verifierNoExp.cache.get(hashToken(token)), [
-    { a: 1, iat: 100, nbf: 300, exp: 500 },
-    300000,
-    1110000
-  ])
-
-  t.mock.timers.reset()
-})
-
-test('options validation - errorCacheTTL', t => {
-  t.assert.throws(() => createVerifier({ key: 'secret', errorCacheTTL: '123' }), {
-    message: 'The errorCacheTTL option must be a number greater than -1 or a function.'
-  })
-
-  t.assert.throws(() => createVerifier({ key: 'secret', errorCacheTTL: -2 }), {
-    message: 'The errorCacheTTL option must be a number greater than -1 or a function.'
-  })
-})
-
-test('default errorCacheTTL should not cache errors', async t => {
-  t.mock.timers.enable({ now: 0 })
-  const token = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxfQ.57TF7smP9XDhIexBqPC-F1toZReYZLWb_YRU5tv0sxM'
-  const verifier = createVerifier({
-    key: async () => {
-      throw new Error('invalid')
-    },
-    cache: true,
-    clockTolerance: 0
-  })
-
-  t.assert.equal(verifier.cache.size, 0)
-  await t.assert.rejects(async () => verifier(token))
-  t.assert.equal(verifier.cache.size, 1)
-  t.assert.deepStrictEqual(verifier.cache.get(hashToken(token))[2], -1)
-  t.mock.timers.reset()
-})
-
-test('errors should have ttl equal to errorCacheTTL', async t => {
-  t.mock.timers.enable({ now: 0 })
-  const errorCacheTTL = 20000
-  const token = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxfQ.57TF7smP9XDhIexBqPC-F1toZReYZLWb_YRU5tv0sxM'
-  const verifier = createVerifier({
-    key: async () => {
-      throw new Error('invalid')
-    },
-    cache: true,
-    clockTolerance: 0,
-    errorCacheTTL
-  })
-
-  t.assert.equal(verifier.cache.size, 0)
-  await t.assert.rejects(async () => verifier(token))
-  t.assert.equal(verifier.cache.size, 1)
-  t.assert.deepStrictEqual(verifier.cache.get(hashToken(token))[2], errorCacheTTL)
-  t.mock.timers.reset()
-})
-
-test('errors should have ttl equal to errorCacheTTL', async t => {
-  t.mock.timers.enable({ now: 0 })
-  const errorCacheTTL = 20000
-  const token = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxfQ.57TF7smP9XDhIexBqPC-F1toZReYZLWb_YRU5tv0sxM'
-  const verifier = createVerifier({
-    key: async () => {
-      throw new Error('invalid')
-    },
-    cache: true,
-    clockTolerance: 0,
-    errorCacheTTL
-  })
-
-  t.assert.equal(verifier.cache.size, 0)
-  await t.assert.rejects(async () => verifier(token))
-  t.assert.equal(verifier.cache.size, 1)
-  t.assert.deepStrictEqual(verifier.cache.get(hashToken(token))[2], errorCacheTTL)
-
-  t.mock.timers.tick(1000)
-  // cache hit and ttl not changed
-  await t.assert.rejects(async () => verifier(token))
-  t.assert.deepStrictEqual(verifier.cache.get(hashToken(token))[2], errorCacheTTL)
-
-  t.mock.timers.tick(errorCacheTTL)
-  // cache expired, request performed, new ttl
-  await t.assert.rejects(async () => verifier(token))
-  t.assert.deepStrictEqual(verifier.cache.get(hashToken(token))[2], errorCacheTTL + 1000 + errorCacheTTL)
-
-  t.mock.timers.reset()
-})
-
-test('errors should have ttl equal to errorCacheTTL as function', async t => {
-  t.mock.timers.enable({ now: 0 })
-
-  const fetchKeyErrorTTL = 2000
-  const errorCacheTTL = tokenError => {
-    if (tokenError.code === 'FAST_JWT_KEY_FETCHING_ERROR') {
-      return fetchKeyErrorTTL
-    }
-    return 1000
-  }
-
-  const token = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxfQ.57TF7smP9XDhIexBqPC-F1toZReYZLWb_YRU5tv0sxM'
-  const verifier = createVerifier({
-    key: async () => {
-      throw new Error('error fetching key')
-    },
-    cache: true,
-    clockTolerance: 0,
-    errorCacheTTL
-  })
-
-  t.assert.equal(verifier.cache.size, 0)
-  await t.assert.rejects(async () => verifier(token))
-  t.assert.equal(verifier.cache.size, 1)
-  t.assert.deepStrictEqual(verifier.cache.get(hashToken(token))[2], fetchKeyErrorTTL)
-
-  t.mock.timers.reset()
-})
-
-test('invalid errorCacheTTL function should be handle ', async t => {
-  t.mock.timers.enable({ now: 0 })
-
-  const errorCacheTTL = () => {
-    throw new Error('invalid errorCacheTTL function')
-  }
-
-  const token = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxfQ.57TF7smP9XDhIexBqPC-F1toZReYZLWb_YRU5tv0sxM'
-  const verifier = createVerifier({
-    key: () => {
-      throw new Error('invalid')
-    },
-    cache: true,
-    clockTolerance: 0,
-    errorCacheTTL
-  })
-
-  t.assert.equal(verifier.cache.size, 0)
-  t.assert.throws(() => verifier(token))
-  t.assert.equal(verifier.cache.size, 0)
-
-  t.mock.timers.reset()
-})
-
-test('default errorCacheTTL should not cache errors when sub millisecond execution', async t => {
-  t.mock.timers.enable({ now: 0 })
-
-  const token = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxfQ.57TF7smP9XDhIexBqPC-F1toZReYZLWb_YRU5tv0sxM'
-  const verifier = createVerifier({
-    key: async () => {
-      throw new Error('invalid')
-    },
-    cache: true
-  })
-  const checkToken = 'check'
-  t.assert.equal(verifier.cache.size, 0)
-  await t.assert.rejects(async () => verifier(token))
-  t.assert.equal(verifier.cache.size, 1)
-
-  // change cache to check if hits
-  verifier.cache.set(hashToken(token), [checkToken, 0, -1])
-
-  await t.assert.rejects(async () => verifier(token))
-
-  t.assert.notDeepStrictEqual(verifier.cache.get(hashToken(token))[0], checkToken)
-
-  t.mock.timers.reset()
-})
-
-async function captureWarnings(code, count, fn) {
-  const collected = []
-  let resolve
-  const done = new Promise(r => (resolve = r))
-  const onWarning = w => {
-    if (w.code === code) {
-      collected.push(w)
-      if (collected.length === count) resolve()
-    }
-  }
-  process.on('warning', onWarning)
-  fn()
-  const timeout = new Promise((_, reject) =>
-    setTimeout(
-      () => reject(new Error(`Timed out waiting for ${count} ${code} warnings (got ${collected.length})`)),
-      500
-    )
-  )
-  try {
-    await Promise.race([done, timeout])
-    return collected
-  } finally {
-    process.off('warning', onWarning)
-  }
-}
-
-async function captureWarning(code, fn) {
-  let onWarning
-  const warningPromise = new Promise(resolve => {
-    onWarning = w => {
-      if (w.code === code) resolve(w)
-    }
-    process.on('warning', onWarning)
-  })
-  fn()
-  const timeout = new Promise((_, reject) =>
-    setTimeout(() => reject(new Error(`Timed out waiting for ${code} warning`)), 500)
-  )
-  try {
-    return await Promise.race([warningPromise, timeout])
-  } finally {
-    process.off('warning', onWarning)
-  }
-}
-
-test('createVerifier emits FAST_JWT_UNSAFE_REGEXP warning for unsafe RegExp in allowedAud', async t => {
-  const w = await captureWarning('FAST_JWT_UNSAFE_REGEXP', () =>
-    createVerifier({ key: 'secret', allowedAud: /^(a+)+X$/ })
-  )
-  t.assert.equal(w.code, 'FAST_JWT_UNSAFE_REGEXP')
-  t.assert.ok(w.message.includes('allowedAud'))
-  t.assert.ok(w.message.includes('/^(a+)+X$/'), 'warning should include the offending regex')
-  t.assert.ok(w.message.includes('https://'), 'warning should include an advisory link')
-})
-
-test('createVerifier emits FAST_JWT_UNSAFE_REGEXP warning for unsafe RegExp in allowedIss', async t => {
-  const w = await captureWarning('FAST_JWT_UNSAFE_REGEXP', () =>
-    createVerifier({ key: 'secret', allowedIss: /^(a+)+X$/ })
-  )
-  t.assert.equal(w.code, 'FAST_JWT_UNSAFE_REGEXP')
-  t.assert.ok(w.message.includes('allowedIss'))
-  t.assert.ok(w.message.includes('/^(a+)+X$/'), 'warning should include the offending regex')
-})
-
-test('createVerifier emits FAST_JWT_UNSAFE_REGEXP warning for unsafe RegExp in allowedSub', async t => {
-  const w = await captureWarning('FAST_JWT_UNSAFE_REGEXP', () =>
-    createVerifier({ key: 'secret', allowedSub: /^(a+)+X$/ })
-  )
-  t.assert.equal(w.code, 'FAST_JWT_UNSAFE_REGEXP')
-  t.assert.ok(w.message.includes('allowedSub'))
-  t.assert.ok(w.message.includes('/^(a+)+X$/'), 'warning should include the offending regex')
-})
-
-test('createVerifier emits FAST_JWT_UNSAFE_REGEXP warning for unsafe RegExp in allowedJti', async t => {
-  const w = await captureWarning('FAST_JWT_UNSAFE_REGEXP', () =>
-    createVerifier({ key: 'secret', allowedJti: /^(a+)+X$/ })
-  )
-  t.assert.equal(w.code, 'FAST_JWT_UNSAFE_REGEXP')
-  t.assert.ok(w.message.includes('allowedJti'))
-  t.assert.ok(w.message.includes('/^(a+)+X$/'), 'warning should include the offending regex')
-})
-
-test('createVerifier emits FAST_JWT_UNSAFE_REGEXP warning for unsafe RegExp in allowedNonce', async t => {
-  const w = await captureWarning('FAST_JWT_UNSAFE_REGEXP', () =>
-    createVerifier({ key: 'secret', allowedNonce: /^(a+)+X$/ })
-  )
-  t.assert.equal(w.code, 'FAST_JWT_UNSAFE_REGEXP')
-  t.assert.ok(w.message.includes('allowedNonce'))
-  t.assert.ok(w.message.includes('/^(a+)+X$/'), 'warning should include the offending regex')
-})
-
-test('createVerifier emits warning for various nested quantifier patterns that may cause ReDoS', async t => {
-  const unsafePatterns = [/^(a+)+X$/, /(a*)+b/, /(\w+)+@/, /(a+)*b/, /(( a+))+X/, /(a{2,})+X/]
-  for (const pattern of unsafePatterns) {
-    const w = await captureWarning('FAST_JWT_UNSAFE_REGEXP', () =>
-      createVerifier({ key: 'secret', allowedAud: pattern })
-    )
-    t.assert.equal(w.code, 'FAST_JWT_UNSAFE_REGEXP', `expected warning for pattern ${pattern}`)
-  }
-})
-
-test('createVerifier emits warning when an unsafe RegExp is among an array of allowed values', async t => {
-  const w = await captureWarning('FAST_JWT_UNSAFE_REGEXP', () =>
-    createVerifier({ key: 'secret', allowedAud: ['safe-audience', /^(a+)+X$/] })
-  )
-  t.assert.equal(w.code, 'FAST_JWT_UNSAFE_REGEXP')
-  t.assert.ok(w.message.includes('allowedAud'))
-  t.assert.ok(w.message.includes('/^(a+)+X$/'), 'warning should identify the specific offending regex')
-})
-
-test('createVerifier emits one warning per unsafe RegExp when multiple are passed in the same option', async t => {
-  const unsafePatterns = [/^(a+)+X$/, /(a*)+b/, /(\w+)+@/]
-  const warnings = await captureWarnings('FAST_JWT_UNSAFE_REGEXP', 3, () =>
-    createVerifier({ key: 'secret', allowedAud: unsafePatterns })
-  )
-  t.assert.equal(warnings.length, 3, 'should emit one warning per unsafe pattern')
-  for (const [i, w] of warnings.entries()) {
-    t.assert.equal(w.code, 'FAST_JWT_UNSAFE_REGEXP')
-    t.assert.ok(w.message.includes(String(unsafePatterns[i])), `warning ${i} should name the offending regex`)
-  }
-})
-
-test('createVerifier does not emit warning for safe RegExp patterns in allowed options', async t => {
-  let warningReceived = false
-  const onWarning = w => {
-    if (w.code === 'FAST_JWT_UNSAFE_REGEXP') warningReceived = true
-  }
-  process.on('warning', onWarning)
-  t.after(() => process.off('warning', onWarning))
-
-  createVerifier({ key: 'secret', allowedAud: /^api\.company\.com$/ })
-  createVerifier({ key: 'secret', allowedAud: /^[a-z]+$/ })
-  createVerifier({ key: 'secret', allowedAud: /^admin$/ })
-  createVerifier({ key: 'secret', allowedIss: /^https:\/\/auth\.example\.com$/ })
-  createVerifier({ key: 'secret', allowedSub: /^user-\d+$/ })
-
-  await new Promise(resolve => setImmediate(resolve))
-  t.assert.equal(warningReceived, false)
-})
-
-test('tokens are still verified correctly with a safe RegExp in allowedAud', t => {
-  t.mock.timers.enable({ now: 100000 })
-  const sign = createSigner({ key: 'secret' })
-  const token = sign({ aud: 'api.company.com' })
-  const verifier = createVerifier({ key: 'secret', allowedAud: /^api\.company\.com$/ })
-  t.assert.doesNotThrow(() => verifier(token))
-})
-test('stateful RegExp /g flag must not cause non-deterministic claim validation - allowedAud', t => {
-  t.mock.timers.enable({ now: 100000 })
-  const sign = createSigner({ key: 'secret' })
-  const token = sign({ aud: 'admin', iss: 'issuer', sub: 'subject', jti: 'id-123', nonce: 'nonce-xyz' })
-  const verifier = createVerifier({ key: 'secret', allowedAud: /^admin$/g })
-
-  // All 8 successive calls with the same valid token must succeed
-  for (let i = 0; i < 8; i++) {
-    t.assert.doesNotThrow(() => verifier(token), `call ${i} should pass with /g flag on allowedAud`)
-  }
-})
-
-test('stateful RegExp /y flag must not cause non-deterministic claim validation - allowedAud', t => {
-  t.mock.timers.enable({ now: 100000 })
-  const sign = createSigner({ key: 'secret' })
-  const token = sign({ aud: 'admin', iss: 'issuer', sub: 'subject', jti: 'id-123', nonce: 'nonce-xyz' })
-  const verifier = createVerifier({ key: 'secret', allowedAud: /^admin$/y })
-
-  for (let i = 0; i < 8; i++) {
-    t.assert.doesNotThrow(() => verifier(token), `call ${i} should pass with /y flag on allowedAud`)
-  }
-})
-
-test('stateful RegExp /g flag must not cause non-deterministic claim validation - allowedIss', t => {
-  t.mock.timers.enable({ now: 100000 })
-  const sign = createSigner({ key: 'secret' })
-  const token = sign({ aud: 'admin', iss: 'issuer', sub: 'subject', jti: 'id-123', nonce: 'nonce-xyz' })
-  const verifier = createVerifier({ key: 'secret', allowedIss: /^issuer$/g })
-
-  for (let i = 0; i < 8; i++) {
-    t.assert.doesNotThrow(() => verifier(token), `call ${i} should pass with /g flag on allowedIss`)
-  }
-})
-
-test('stateful RegExp /g flag must not cause non-deterministic claim validation - allowedSub', t => {
-  t.mock.timers.enable({ now: 100000 })
-  const sign = createSigner({ key: 'secret' })
-  const token = sign({ aud: 'admin', iss: 'issuer', sub: 'subject', jti: 'id-123', nonce: 'nonce-xyz' })
-  const verifier = createVerifier({ key: 'secret', allowedSub: /^subject$/g })
-
-  for (let i = 0; i < 8; i++) {
-    t.assert.doesNotThrow(() => verifier(token), `call ${i} should pass with /g flag on allowedSub`)
-  }
-})
-
-test('stateful RegExp /g flag must not cause non-deterministic claim validation - allowedJti', t => {
-  t.mock.timers.enable({ now: 100000 })
-  const sign = createSigner({ key: 'secret' })
-  const token = sign({ aud: 'admin', iss: 'issuer', sub: 'subject', jti: 'id-123', nonce: 'nonce-xyz' })
-  const verifier = createVerifier({ key: 'secret', allowedJti: /^id-123$/g })
-
-  for (let i = 0; i < 8; i++) {
-    t.assert.doesNotThrow(() => verifier(token), `call ${i} should pass with /g flag on allowedJti`)
-  }
-})
-
-test('stateful RegExp /g flag must not cause non-deterministic claim validation - allowedNonce', t => {
-  t.mock.timers.enable({ now: 100000 })
-  const sign = createSigner({ key: 'secret' })
-  const token = sign({ aud: 'admin', iss: 'issuer', sub: 'subject', jti: 'id-123', nonce: 'nonce-xyz' })
-  const verifier = createVerifier({ key: 'secret', allowedNonce: /^nonce-xyz$/g })
-
-  for (let i = 0; i < 8; i++) {
-    t.assert.doesNotThrow(() => verifier(token), `call ${i} should pass with /g flag on allowedNonce`)
-  }
-})
-
-// --- crit header validation (RFC 7515 §4.1.11) ---
-
-test('crit: rejects token with unknown critical extension (secure-by-default, no allowedCritHeaders)', t => {
-  const signer = createSigner({
-    key: 'secret',
-    algorithm: 'HS256',
-    header: { crit: ['x-custom-policy'], 'x-custom-policy': 'require-mfa' }
-  })
-  const token = signer({ sub: 'user' })
-  const verifier = createVerifier({ key: 'secret' })
-  t.assert.throws(() => verifier(token), {
-    code: 'FAST_JWT_INVALID_CRIT_HEADER',
-    message: 'Critical extension "x-custom-policy" is not supported.'
-  })
-})
-
-test('crit: accepts token when extension is in allowedCritHeaders and present in header', t => {
-  const signer = createSigner({
-    key: 'secret',
-    algorithm: 'HS256',
-    header: { crit: ['x-custom-policy'], 'x-custom-policy': 'require-mfa' }
-  })
-  const token = signer({ sub: 'user' })
-  const verifier = createVerifier({ key: 'secret', allowedCritHeaders: ['x-custom-policy'] })
-  const payload = verifier(token)
-  t.assert.equal(payload.sub, 'user')
-})
-
-test('crit: rejects token when allowed extension is listed in crit but missing from header', t => {
-  // Manually craft a token where crit lists an extension not actually present in the header
-  const signer = createSigner({ key: 'secret', algorithm: 'HS256', header: { crit: ['x-missing'] } })
-  const token = signer({ sub: 'user' })
-  const verifier = createVerifier({ key: 'secret', allowedCritHeaders: ['x-missing'] })
-  t.assert.throws(() => verifier(token), {
-    code: 'FAST_JWT_INVALID_CRIT_HEADER',
-    message: 'Critical extension "x-missing" is listed in crit but is not present in the header.'
-  })
-})
-
-test('crit: rejects token with empty crit array', t => {
-  // Build token manually since the signer would spread an empty array
-  const header = Buffer.from(JSON.stringify({ alg: 'HS256', typ: 'JWT', crit: [] })).toString('base64url')
-  const payload = Buffer.from(JSON.stringify({ sub: 'user' })).toString('base64url')
-  const { createHmac } = require('node:crypto')
-  const sig = createHmac('sha256', 'secret').update(`${header}.${payload}`).digest('base64url')
-  const token = `${header}.${payload}.${sig}`
-  const verifier = createVerifier({ key: 'secret' })
-  t.assert.throws(() => verifier(token), {
-    code: 'FAST_JWT_INVALID_CRIT_HEADER',
-    message: 'The crit header must be a non-empty array.'
-  })
-})
-
-test('crit: rejects token with a standard JWS header name in crit (e.g. "alg")', t => {
-  // Craft token manually — signer won't let you set crit: ['alg'] easily
-  const header = Buffer.from(JSON.stringify({ alg: 'HS256', typ: 'JWT', crit: ['alg'] })).toString('base64url')
-  const payload = Buffer.from(JSON.stringify({ sub: 'user' })).toString('base64url')
-  const { createHmac } = require('node:crypto')
-  const sig = createHmac('sha256', 'secret').update(`${header}.${payload}`).digest('base64url')
-  const token = `${header}.${payload}.${sig}`
-  const verifier = createVerifier({ key: 'secret', allowedCritHeaders: ['alg'] })
-  t.assert.throws(() => verifier(token), {
-    code: 'FAST_JWT_INVALID_CRIT_HEADER',
-    message: 'The crit header must not contain the standard header parameter name "alg".'
-  })
-})
-
-test('crit: rejects token with duplicate entries in crit', t => {
-  const header = Buffer.from(
-    JSON.stringify({ alg: 'HS256', typ: 'JWT', crit: ['x-ext', 'x-ext'], 'x-ext': '1' })
-  ).toString('base64url')
-  const payload = Buffer.from(JSON.stringify({ sub: 'user' })).toString('base64url')
-  const { createHmac } = require('node:crypto')
-  const sig = createHmac('sha256', 'secret').update(`${header}.${payload}`).digest('base64url')
-  const token = `${header}.${payload}.${sig}`
-  const verifier = createVerifier({ key: 'secret', allowedCritHeaders: ['x-ext'] })
-  t.assert.throws(() => verifier(token), {
-    code: 'FAST_JWT_INVALID_CRIT_HEADER',
-    message: 'Duplicate entry "x-ext" in crit header.'
-  })
-})
-
-test('crit: token without crit header is accepted normally', t => {
-  const signer = createSigner({ key: 'secret', algorithm: 'HS256' })
-  const token = signer({ sub: 'user' })
-  const verifier = createVerifier({ key: 'secret' })
-  const payload = verifier(token)
-  t.assert.equal(payload.sub, 'user')
-})
-
-test('crit: throws on invalid allowedCritHeaders option (not an array)', t => {
-  t.assert.throws(() => createVerifier({ key: 'secret', allowedCritHeaders: 'x-ext' }), {
-    code: 'FAST_JWT_INVALID_OPTION',
-    message: 'The allowedCritHeaders option must be an array of strings.'
-  })
-})
-
-test('crit: throws on invalid allowedCritHeaders option (empty string)', t => {
-  t.assert.throws(() => createVerifier({ key: 'secret', allowedCritHeaders: [''] }), {
-    code: 'FAST_JWT_INVALID_OPTION',
-    message: 'The allowedCritHeaders option must be an array of strings.'
-  })
-})
-
-describe('GHSA-gmvf-9v4p-v8jc: Empty HMAC secret rejection', () => {
-  function forgeEmptyKeyToken(header = { alg: 'HS256', typ: 'JWT', kid: 'unknown-kid' }) {
-    function encodeSegment(value) {
-      return Buffer.from(JSON.stringify(value)).toString('base64url')
-    }
-
-    const now = Math.floor(Date.now() / 1000)
-    const payload = { sub: 'attacker', admin: true, iat: now, exp: now + 60 }
-
-    const encodedHeader = encodeSegment(header)
-    const encodedPayload = encodeSegment(payload)
-    const signingInput = `${encodedHeader}.${encodedPayload}`
-
-    const hashAlgorithm = `sha${header.alg.slice(2)}`
-    const signature = createHmac(hashAlgorithm, '').update(signingInput).digest('base64url')
-
-    return `${signingInput}.${signature}`
-  }
-
-  test('forgery case 1: async key resolver returns empty string with HS256', async t => {
-    const forgedToken = forgeEmptyKeyToken({ alg: 'HS256', typ: 'JWT', kid: 'unknown-kid' })
-    const verifier = createVerifier({
-      key: async () => ''
+    test('should use the right hash method for storing values - EdDSA with Ed448', t => {
+      const signer = createSigner({
+        algorithm: 'EdDSA',
+        key: privateKeys.Ed448,
+        noTimestamp: 1,
+        header: { crv: 'Ed448' }
+      })
+      const verifier = createVerifier({ key: publicKeys.Ed448, cache: true })
+      const token = signer({ a: 1 })
+      const hash = createHash('shake256', { outputLength: 114 }).update(token).digest('hex')
+
+      t.assert.deepStrictEqual(verifier(token), { a: 1 })
+      t.assert.equal(verifier.cache.size, 1)
+      t.assert.equal(Array.from(verifier.cache.keys())[0], hash)
     })
 
-    await t.assert.rejects(verifier(forgedToken), {
-      code: 'FAST_JWT_INVALID_KEY',
-      message: 'The key cannot be an empty string or buffer.'
+    test('should be able to manipulate cache directly', t => {
+      t.mock.timers.enable({ now: 100000 })
+
+      const signer = createSigner({ key: 'secret', expiresIn: 100000 })
+      const verifier = createVerifier({ key: 'secret', cache: true })
+      const token = signer({ a: 1 })
+
+      t.assert.equal(verifier.cache.size, 0)
+      t.assert.deepStrictEqual(verifier(token), { a: 1, iat: 100, exp: 200 })
+      t.assert.equal(verifier.cache.size, 1)
+      t.assert.deepStrictEqual(verifier.cache.get(hashToken(token)), [{ a: 1, iat: 100, exp: 200 }, 0, 200000])
+      verifier.cache.clear()
+      t.assert.equal(verifier.cache.size, 0)
+      verifier.cache.set(token, 'WHATEVER')
+      t.assert.deepStrictEqual(verifier.cache.get(token), 'WHATEVER')
+      verifier.cache.set(token, null)
+      t.assert.deepStrictEqual(verifier.cache.get(token), null)
+
+      t.mock.timers.reset()
+    })
+
+    test('should correctly expire cached token using the exp claim', t => {
+      t.mock.timers.enable({ now: 100000 })
+
+      const signer = createSigner({ key: 'secret', expiresIn: 100000 })
+      const verifier = createVerifier({ key: 'secret', cache: true })
+      const token = signer({ a: 1 })
+
+      // First of all, make a token and verify it's cached
+      t.assert.equal(verifier.cache.size, 0)
+      t.assert.deepStrictEqual(verifier(token), { a: 1, iat: 100, exp: 200 })
+      t.assert.equal(verifier.cache.size, 1)
+      t.assert.deepStrictEqual(verifier(token), { a: 1, iat: 100, exp: 200 })
+      t.assert.equal(verifier.cache.size, 1)
+      t.assert.deepStrictEqual(verifier.cache.get(hashToken(token)), [{ a: 1, iat: 100, exp: 200 }, 0, 200000])
+
+      // Now advance to expired time
+      t.mock.timers.tick(200000)
+
+      // The token should now be expired and the cache should have been updated to reflect it
+      t.assert.throws(() => verifier(token), { message: 'The token has expired at 1970-01-01T00:03:20.000Z.' })
+      t.assert.equal(verifier.cache.size, 1)
+      t.assert.ok(verifier.cache.get(hashToken(token))[0] instanceof TokenError)
+
+      t.assert.throws(() => verifier(token), { message: 'The token has expired at 1970-01-01T00:03:20.000Z.' })
+      t.assert.throws(() => verifier(token), { message: 'The token has expired at 1970-01-01T00:03:20.000Z.' })
+
+      t.mock.timers.reset()
+
+      // Now the real time is used, make cache considers the clockTimestamp algorithm
+      verifier.cache.clear()
+      t.assert.throws(() => verifier(token), { message: 'The token has expired at 1970-01-01T00:03:20.000Z.' })
+      t.assert.equal(verifier.cache.size, 1)
+      t.assert.ok(verifier.cache.get(hashToken(token))[0] instanceof TokenError)
+
+      const verifierWithTimestamp = createVerifier({ key: 'secret', cache: true, clockTimestamp: 100000 })
+      t.assert.deepStrictEqual(verifierWithTimestamp(token), { a: 1, iat: 100, exp: 200 })
+      t.assert.equal(verifierWithTimestamp.cache.size, 1)
+      t.assert.deepStrictEqual(verifierWithTimestamp.cache.get(hashToken(token)), [
+        { a: 1, iat: 100, exp: 200 },
+        0,
+        200000
+      ])
+    })
+
+    test('should correctly expire cached token using the maxAge claim', t => {
+      t.mock.timers.enable({ now: 100000 })
+
+      const signer = createSigner({ key: 'secret' })
+      const verifier = createVerifier({ key: 'secret', cache: true, maxAge: 100000 })
+      const token = signer({ a: 1 })
+
+      // First of all, make a token and verify it's cached
+      t.assert.equal(verifier.cache.size, 0)
+      t.assert.deepStrictEqual(verifier(token), { a: 1, iat: 100 })
+      t.assert.equal(verifier.cache.size, 1)
+      t.assert.deepStrictEqual(verifier(token), { a: 1, iat: 100 })
+      t.assert.equal(verifier.cache.size, 1)
+      t.assert.deepStrictEqual(verifier.cache.get(hashToken(token)), [{ a: 1, iat: 100 }, 0, 200000])
+
+      // Now advance to expired time
+      t.mock.timers.tick(200000)
+
+      // The token should now be expired and the cache should have been updated to reflect it
+      t.assert.throws(() => verifier(token), { message: 'The token has expired at 1970-01-01T00:03:20.000Z.' })
+      t.assert.equal(verifier.cache.size, 1)
+      t.assert.ok(verifier.cache.get(hashToken(token))[0] instanceof TokenError)
+      t.assert.throws(() => verifier(token), { message: 'The token has expired at 1970-01-01T00:03:20.000Z.' })
+      t.assert.throws(() => verifier(token), { message: 'The token has expired at 1970-01-01T00:03:20.000Z.' })
+
+      t.mock.timers.reset()
+    })
+
+    test('should correctly expire not yet cached token using the nbf claim at exact notBefore time', t => {
+      t.mock.timers.enable({ now: 100000 })
+
+      const signer = createSigner({ key: 'secret', notBefore: 200000 })
+      const verifier = createVerifier({ key: 'secret', cache: true })
+      const token = signer({ a: 1 })
+
+      // First of all, make a token and verify it's cached and rejected
+      t.assert.equal(verifier.cache.size, 0)
+      t.assert.throws(() => verifier(token), { message: 'The token will be active at 1970-01-01T00:05:00.000Z.' })
+      t.assert.equal(verifier.cache.size, 1)
+      t.assert.throws(() => verifier(token), { message: 'The token will be active at 1970-01-01T00:05:00.000Z.' })
+      t.assert.ok(verifier.cache.get(hashToken(token))[0] instanceof TokenError)
+
+      // Now advance to expired time
+      t.mock.timers.tick(200000)
+
+      // The token should now be active and the cache should have been updated to reflect it
+      t.assert.deepStrictEqual(verifier(token), { a: 1, iat: 100, nbf: 300 })
+      t.assert.equal(verifier.cache.size, 1)
+      t.assert.deepStrictEqual(verifier(token), { a: 1, iat: 100, nbf: 300 })
+      t.assert.equal(verifier.cache.size, 1)
+      t.assert.deepStrictEqual(verifier.cache.get(hashToken(token)), [{ a: 1, iat: 100, nbf: 300 }, 300000, 900000])
+
+      t.mock.timers.reset()
+    })
+
+    test('should correctly expire not yet cached token using the nbf claim while checking after expiry period', t => {
+      t.mock.timers.enable({ now: 100000 })
+
+      const signer = createSigner({ key: 'secret', notBefore: 200000 })
+      const verifier = createVerifier({ key: 'secret', cache: true })
+      const token = signer({ a: 1 })
+
+      // First of all, make a token and verify it's cached and rejected
+      t.assert.equal(verifier.cache.size, 0)
+      t.assert.throws(() => verifier(token), { message: 'The token will be active at 1970-01-01T00:05:00.000Z.' })
+      t.assert.equal(verifier.cache.size, 1)
+      t.assert.throws(() => verifier(token), { message: 'The token will be active at 1970-01-01T00:05:00.000Z.' })
+      t.assert.ok(verifier.cache.get(hashToken(token))[0] instanceof TokenError)
+
+      // Now advance after expired time
+      t.mock.timers.tick(200010)
+
+      // The token should now be active and the cache should have been updated to reflect it
+      t.assert.deepStrictEqual(verifier(token), { a: 1, iat: 100, nbf: 300 })
+      t.assert.equal(verifier.cache.size, 1)
+      t.assert.deepStrictEqual(verifier(token), { a: 1, iat: 100, nbf: 300 })
+      t.assert.equal(verifier.cache.size, 1)
+      t.assert.deepStrictEqual(verifier.cache.get(hashToken(token)), [{ a: 1, iat: 100, nbf: 300 }, 300000, 900010])
+
+      t.mock.timers.reset()
+    })
+
+    test('should be able to consider both nbf and exp field at the same time', t => {
+      t.mock.timers.enable({ now: 100000 })
+
+      const signer = createSigner({ key: 'secret', expiresIn: 400000, notBefore: 200000 })
+      const verifier = createVerifier({ key: 'secret', cache: true })
+      const token = signer({ a: 1 })
+
+      // At the beginning, the token is not active yet
+      t.assert.equal(verifier.cache.size, 0)
+      t.assert.throws(() => verifier(token), { message: 'The token will be active at 1970-01-01T00:05:00.000Z.' })
+      t.assert.equal(verifier.cache.size, 1)
+      t.assert.throws(() => verifier(token), { message: 'The token will be active at 1970-01-01T00:05:00.000Z.' })
+      t.assert.ok(verifier.cache.get(hashToken(token))[0] instanceof TokenError)
+
+      // Now advance to activation time
+      t.mock.timers.tick(200000)
+
+      // The token should now be active and the cache should have been updated to reflect it
+      t.assert.deepStrictEqual(verifier(token), { a: 1, iat: 100, nbf: 300, exp: 500 })
+      t.assert.equal(verifier.cache.size, 1)
+      t.assert.deepStrictEqual(verifier(token), { a: 1, iat: 100, nbf: 300, exp: 500 })
+      t.assert.equal(verifier.cache.size, 1)
+      t.assert.deepStrictEqual(verifier.cache.get(hashToken(token)), [
+        { a: 1, iat: 100, nbf: 300, exp: 500 },
+        300000,
+        500000
+      ])
+
+      // Now advance again after the expiry time
+      t.mock.timers.tick(210000)
+
+      // The token should now be expired and the cache should have been updated to reflect it
+      t.assert.throws(() => verifier(token), { message: 'The token has expired at 1970-01-01T00:08:20.000Z.' })
+      t.assert.equal(verifier.cache.size, 1)
+      t.assert.ok(verifier.cache.get(hashToken(token))[0] instanceof TokenError)
+      t.assert.throws(() => verifier(token), { message: 'The token has expired at 1970-01-01T00:08:20.000Z.' })
+      t.assert.throws(() => verifier(token), { message: 'The token has expired at 1970-01-01T00:08:20.000Z.' })
+
+      t.mock.timers.reset()
+    })
+
+    test('should be able to consider clockTolerance on both nbf and exp field', t => {
+      t.mock.timers.enable({ now: 100000 })
+
+      const signer = createSigner({ key: 'secret', expiresIn: 400000, notBefore: 200000 })
+      const verifier = createVerifier({ key: 'secret', cache: true, clockTolerance: 60000 })
+      const token = signer({ a: 1 })
+
+      // At the beginning, the token is not active yet
+      t.assert.equal(verifier.cache.size, 0)
+      t.assert.throws(() => verifier(token), { message: 'The token will be active at 1970-01-01T00:04:00.000Z.' })
+      t.assert.equal(verifier.cache.size, 1)
+      t.assert.throws(() => verifier(token), { message: 'The token will be active at 1970-01-01T00:04:00.000Z.' })
+      t.assert.ok(verifier.cache.get(hashToken(token))[0] instanceof TokenError)
+
+      // Now advance before the activation time, in clockTolerance range
+      t.mock.timers.tick(140000)
+
+      // The token should now be active and the cache should have been updated to reflect it
+      t.assert.deepStrictEqual(verifier(token), { a: 1, iat: 100, nbf: 300, exp: 500 })
+      t.assert.equal(verifier.cache.size, 1)
+      t.assert.deepStrictEqual(verifier(token), { a: 1, iat: 100, nbf: 300, exp: 500 })
+      t.assert.equal(verifier.cache.size, 1)
+      t.assert.deepStrictEqual(verifier.cache.get(hashToken(token)), [
+        { a: 1, iat: 100, nbf: 300, exp: 500 },
+        240000,
+        560000
+      ])
+
+      // Now advance to activation time
+      t.mock.timers.tick(150000)
+
+      // The token should now be active and the cache should have been updated to reflect it
+      t.assert.deepStrictEqual(verifier(token), { a: 1, iat: 100, nbf: 300, exp: 500 })
+      t.assert.equal(verifier.cache.size, 1)
+      t.assert.deepStrictEqual(verifier(token), { a: 1, iat: 100, nbf: 300, exp: 500 })
+      t.assert.equal(verifier.cache.size, 1)
+      t.assert.deepStrictEqual(verifier.cache.get(hashToken(token)), [
+        { a: 1, iat: 100, nbf: 300, exp: 500 },
+        240000,
+        560000
+      ])
+
+      // Now advance again after the expiry time, in clockTolerance range (current time going to be 540000 )
+      t.mock.timers.tick(150000)
+      t.assert.deepStrictEqual(verifier(token), { a: 1, iat: 100, nbf: 300, exp: 500 })
+      t.assert.equal(verifier.cache.size, 1)
+      t.assert.deepStrictEqual(verifier(token), { a: 1, iat: 100, nbf: 300, exp: 500 })
+      t.assert.equal(verifier.cache.size, 1)
+      t.assert.deepStrictEqual(verifier.cache.get(hashToken(token)), [
+        { a: 1, iat: 100, nbf: 300, exp: 500 },
+        240000,
+        560000
+      ])
+
+      t.mock.timers.tick(100000)
+      // The token should now be expired and the cache should have been updated to reflect it
+      t.assert.throws(() => verifier(token), { message: 'The token has expired at 1970-01-01T00:09:20.000Z.' })
+      t.assert.equal(verifier.cache.size, 1)
+      t.assert.ok(verifier.cache.get(hashToken(token))[0] instanceof TokenError)
+      t.assert.throws(() => verifier(token), { message: 'The token has expired at 1970-01-01T00:09:20.000Z.' })
+      t.assert.throws(() => verifier(token), { message: 'The token has expired at 1970-01-01T00:09:20.000Z.' })
+
+      t.mock.timers.reset()
+    })
+
+    test('should ignore the nbf and exp when asked to', t => {
+      t.mock.timers.enable({ now: 100000 })
+
+      const signer = createSigner({ key: 'secret', expiresIn: 400000, notBefore: 200000 })
+      const verifier = createVerifier({ key: 'secret', cache: true })
+      const verifierNoNbf = createVerifier({ key: 'secret', cache: true, ignoreNotBefore: true })
+      const verifierNoExp = createVerifier({ key: 'secret', cache: true, ignoreExpiration: true })
+      const token = signer({ a: 1 })
+
+      // At the beginning, the token is not active yet
+      t.assert.equal(verifier.cache.size, 0)
+      t.assert.throws(() => verifier(token), { message: 'The token will be active at 1970-01-01T00:05:00.000Z.' })
+      t.assert.equal(verifier.cache.size, 1)
+      t.assert.throws(() => verifier(token), { message: 'The token will be active at 1970-01-01T00:05:00.000Z.' })
+      t.assert.ok(verifier.cache.get(hashToken(token))[0] instanceof TokenError)
+
+      // For the verifier which ignores notBefore, the token is already active
+      t.assert.deepStrictEqual(verifierNoNbf(token), { a: 1, iat: 100, nbf: 300, exp: 500 })
+      t.assert.equal(verifierNoNbf.cache.size, 1)
+      t.assert.deepStrictEqual(verifierNoNbf(token), { a: 1, iat: 100, nbf: 300, exp: 500 })
+      t.assert.equal(verifierNoNbf.cache.size, 1)
+      t.assert.deepStrictEqual(verifierNoNbf.cache.get(hashToken(token)), [
+        { a: 1, iat: 100, nbf: 300, exp: 500 },
+        0,
+        500000
+      ])
+
+      // Now advance to activation time
+      t.mock.timers.tick(200000)
+
+      // The token should now be active and the cache should have been updated to reflect it
+      t.assert.deepStrictEqual(verifier(token), { a: 1, iat: 100, nbf: 300, exp: 500 })
+      t.assert.equal(verifier.cache.size, 1)
+      t.assert.deepStrictEqual(verifier(token), { a: 1, iat: 100, nbf: 300, exp: 500 })
+      t.assert.equal(verifier.cache.size, 1)
+      t.assert.deepStrictEqual(verifier.cache.get(hashToken(token)), [
+        { a: 1, iat: 100, nbf: 300, exp: 500 },
+        300000,
+        500000
+      ])
+
+      // Now advance again after the expiry time
+      t.mock.timers.tick(210000)
+
+      // The token should now be expired and the cache should have been updated to reflect it
+      t.assert.throws(() => verifier(token), { message: 'The token has expired at 1970-01-01T00:08:20.000Z.' })
+      t.assert.equal(verifier.cache.size, 1)
+      t.assert.ok(verifier.cache.get(hashToken(token))[0] instanceof TokenError)
+      t.assert.throws(() => verifier(token), { message: 'The token has expired at 1970-01-01T00:08:20.000Z.' })
+      t.assert.throws(() => verifier(token), { message: 'The token has expired at 1970-01-01T00:08:20.000Z.' })
+
+      // For the verifier which ignores expiration, the token is still active
+      t.assert.deepStrictEqual(verifierNoExp(token), { a: 1, iat: 100, nbf: 300, exp: 500 })
+      t.assert.equal(verifierNoExp.cache.size, 1)
+      t.assert.deepStrictEqual(verifierNoExp(token), { a: 1, iat: 100, nbf: 300, exp: 500 })
+      t.assert.equal(verifierNoExp.cache.size, 1)
+      t.assert.deepStrictEqual(verifierNoExp.cache.get(hashToken(token)), [
+        { a: 1, iat: 100, nbf: 300, exp: 500 },
+        300000,
+        1110000
+      ])
+
+      t.mock.timers.reset()
+    })
+
+    test('default errorCacheTTL should not cache errors', async t => {
+      t.mock.timers.enable({ now: 0 })
+      const token = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxfQ.57TF7smP9XDhIexBqPC-F1toZReYZLWb_YRU5tv0sxM'
+      const verifier = createVerifier({
+        key: async () => {
+          throw new Error('invalid')
+        },
+        cache: true,
+        clockTolerance: 0
+      })
+
+      t.assert.equal(verifier.cache.size, 0)
+      await t.assert.rejects(async () => verifier(token))
+      t.assert.equal(verifier.cache.size, 1)
+      t.assert.deepStrictEqual(verifier.cache.get(hashToken(token))[2], -1)
+      t.mock.timers.reset()
+    })
+
+    test('errors should have ttl equal to errorCacheTTL', async t => {
+      t.mock.timers.enable({ now: 0 })
+      const errorCacheTTL = 20000
+      const token = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxfQ.57TF7smP9XDhIexBqPC-F1toZReYZLWb_YRU5tv0sxM'
+      const verifier = createVerifier({
+        key: async () => {
+          throw new Error('invalid')
+        },
+        cache: true,
+        clockTolerance: 0,
+        errorCacheTTL
+      })
+
+      t.assert.equal(verifier.cache.size, 0)
+      await t.assert.rejects(async () => verifier(token))
+      t.assert.equal(verifier.cache.size, 1)
+      t.assert.deepStrictEqual(verifier.cache.get(hashToken(token))[2], errorCacheTTL)
+      t.mock.timers.reset()
+    })
+
+    test('errors should have ttl equal to errorCacheTTL', async t => {
+      t.mock.timers.enable({ now: 0 })
+      const errorCacheTTL = 20000
+      const token = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxfQ.57TF7smP9XDhIexBqPC-F1toZReYZLWb_YRU5tv0sxM'
+      const verifier = createVerifier({
+        key: async () => {
+          throw new Error('invalid')
+        },
+        cache: true,
+        clockTolerance: 0,
+        errorCacheTTL
+      })
+
+      t.assert.equal(verifier.cache.size, 0)
+      await t.assert.rejects(async () => verifier(token))
+      t.assert.equal(verifier.cache.size, 1)
+      t.assert.deepStrictEqual(verifier.cache.get(hashToken(token))[2], errorCacheTTL)
+
+      t.mock.timers.tick(1000)
+      // cache hit and ttl not changed
+      await t.assert.rejects(async () => verifier(token))
+      t.assert.deepStrictEqual(verifier.cache.get(hashToken(token))[2], errorCacheTTL)
+
+      t.mock.timers.tick(errorCacheTTL)
+      // cache expired, request performed, new ttl
+      await t.assert.rejects(async () => verifier(token))
+      t.assert.deepStrictEqual(verifier.cache.get(hashToken(token))[2], errorCacheTTL + 1000 + errorCacheTTL)
+
+      t.mock.timers.reset()
+    })
+
+    test('errors should have ttl equal to errorCacheTTL as function', async t => {
+      t.mock.timers.enable({ now: 0 })
+
+      const fetchKeyErrorTTL = 2000
+      const errorCacheTTL = tokenError => {
+        if (tokenError.code === 'FAST_JWT_KEY_FETCHING_ERROR') {
+          return fetchKeyErrorTTL
+        }
+        return 1000
+      }
+
+      const token = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxfQ.57TF7smP9XDhIexBqPC-F1toZReYZLWb_YRU5tv0sxM'
+      const verifier = createVerifier({
+        key: async () => {
+          throw new Error('error fetching key')
+        },
+        cache: true,
+        clockTolerance: 0,
+        errorCacheTTL
+      })
+
+      t.assert.equal(verifier.cache.size, 0)
+      await t.assert.rejects(async () => verifier(token))
+      t.assert.equal(verifier.cache.size, 1)
+      t.assert.deepStrictEqual(verifier.cache.get(hashToken(token))[2], fetchKeyErrorTTL)
+
+      t.mock.timers.reset()
+    })
+
+    test('invalid errorCacheTTL function should be handle ', async t => {
+      t.mock.timers.enable({ now: 0 })
+
+      const errorCacheTTL = () => {
+        throw new Error('invalid errorCacheTTL function')
+      }
+
+      const token = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxfQ.57TF7smP9XDhIexBqPC-F1toZReYZLWb_YRU5tv0sxM'
+      const verifier = createVerifier({
+        key: () => {
+          throw new Error('invalid')
+        },
+        cache: true,
+        clockTolerance: 0,
+        errorCacheTTL
+      })
+
+      t.assert.equal(verifier.cache.size, 0)
+      t.assert.throws(() => verifier(token))
+      t.assert.equal(verifier.cache.size, 0)
+
+      t.mock.timers.reset()
+    })
+
+    test('default errorCacheTTL should not cache errors when sub millisecond execution', async t => {
+      t.mock.timers.enable({ now: 0 })
+
+      const token = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxfQ.57TF7smP9XDhIexBqPC-F1toZReYZLWb_YRU5tv0sxM'
+      const verifier = createVerifier({
+        key: async () => {
+          throw new Error('invalid')
+        },
+        cache: true
+      })
+      const checkToken = 'check'
+      t.assert.equal(verifier.cache.size, 0)
+      await t.assert.rejects(async () => verifier(token))
+      t.assert.equal(verifier.cache.size, 1)
+
+      // change cache to check if hits
+      verifier.cache.set(hashToken(token), [checkToken, 0, -1])
+
+      await t.assert.rejects(async () => verifier(token))
+
+      t.assert.notDeepStrictEqual(verifier.cache.get(hashToken(token))[0], checkToken)
+
+      t.mock.timers.reset()
     })
   })
 
-  test('forgery case 2: async key resolver returns empty string with HS384', async t => {
-    const forgedToken = forgeEmptyKeyToken({ alg: 'HS384', typ: 'JWT', kid: 'unknown-kid' })
-    const verifier = createVerifier({
-      key: async () => ''
+  describe('unsafe RegExp warnings', () => {
+    test('emits FAST_JWT_UNSAFE_REGEXP warning for unsafe RegExp in allowedAud', async t => {
+      const w = await expectWarning('FAST_JWT_UNSAFE_REGEXP', () =>
+        createVerifier({ key: 'secret', allowedAud: /^(a+)+X$/ })
+      )
+      t.assert.equal(w.code, 'FAST_JWT_UNSAFE_REGEXP')
+      t.assert.ok(w.message.includes('allowedAud'))
+      t.assert.ok(w.message.includes('/^(a+)+X$/'), 'warning should include the offending regex')
+      t.assert.ok(w.message.includes('https://'), 'warning should include an advisory link')
     })
 
-    await t.assert.rejects(verifier(forgedToken), {
-      code: 'FAST_JWT_INVALID_KEY',
-      message: 'The key cannot be an empty string or buffer.'
-    })
-  })
-
-  test('forgery case 3: async key resolver returns empty string with HS512', async t => {
-    const forgedToken = forgeEmptyKeyToken({ alg: 'HS512', typ: 'JWT', kid: 'unknown-kid' })
-    const verifier = createVerifier({
-      key: async () => ''
+    test('emits FAST_JWT_UNSAFE_REGEXP warning for unsafe RegExp in allowedIss', async t => {
+      const w = await expectWarning('FAST_JWT_UNSAFE_REGEXP', () =>
+        createVerifier({ key: 'secret', allowedIss: /^(a+)+X$/ })
+      )
+      t.assert.equal(w.code, 'FAST_JWT_UNSAFE_REGEXP')
+      t.assert.ok(w.message.includes('allowedIss'))
+      t.assert.ok(w.message.includes('/^(a+)+X$/'), 'warning should include the offending regex')
     })
 
-    await t.assert.rejects(verifier(forgedToken), {
-      code: 'FAST_JWT_INVALID_KEY',
-      message: 'The key cannot be an empty string or buffer.'
-    })
-  })
-
-  test('forgery case 4: async key resolver returns empty buffer with HS256', async t => {
-    const forgedToken = forgeEmptyKeyToken({ alg: 'HS256', typ: 'JWT', kid: 'unknown-kid' })
-    const verifier = createVerifier({
-      key: async () => Buffer.alloc(0)
+    test('emits FAST_JWT_UNSAFE_REGEXP warning for unsafe RegExp in allowedSub', async t => {
+      const w = await expectWarning('FAST_JWT_UNSAFE_REGEXP', () =>
+        createVerifier({ key: 'secret', allowedSub: /^(a+)+X$/ })
+      )
+      t.assert.equal(w.code, 'FAST_JWT_UNSAFE_REGEXP')
+      t.assert.ok(w.message.includes('allowedSub'))
+      t.assert.ok(w.message.includes('/^(a+)+X$/'), 'warning should include the offending regex')
     })
 
-    await t.assert.rejects(verifier(forgedToken), {
-      code: 'FAST_JWT_INVALID_KEY',
-      message: 'The key cannot be an empty string or buffer.'
-    })
-  })
-
-  test('forgery case 5: callback-style resolver returns empty string', async t => {
-    const forgedToken = forgeEmptyKeyToken({ alg: 'HS256', typ: 'JWT', kid: 'unknown-kid' })
-    const verifier = createVerifier({
-      key: (decoded, callback) => callback(null, '')
+    test('emits FAST_JWT_UNSAFE_REGEXP warning for unsafe RegExp in allowedJti', async t => {
+      const w = await expectWarning('FAST_JWT_UNSAFE_REGEXP', () =>
+        createVerifier({ key: 'secret', allowedJti: /^(a+)+X$/ })
+      )
+      t.assert.equal(w.code, 'FAST_JWT_UNSAFE_REGEXP')
+      t.assert.ok(w.message.includes('allowedJti'))
+      t.assert.ok(w.message.includes('/^(a+)+X$/'), 'warning should include the offending regex')
     })
 
-    await t.assert.rejects(verifier(forgedToken), {
-      code: 'FAST_JWT_INVALID_KEY',
-      message: 'The key cannot be an empty string or buffer.'
+    test('emits FAST_JWT_UNSAFE_REGEXP warning for unsafe RegExp in allowedNonce', async t => {
+      const w = await expectWarning('FAST_JWT_UNSAFE_REGEXP', () =>
+        createVerifier({ key: 'secret', allowedNonce: /^(a+)+X$/ })
+      )
+      t.assert.equal(w.code, 'FAST_JWT_UNSAFE_REGEXP')
+      t.assert.ok(w.message.includes('allowedNonce'))
+      t.assert.ok(w.message.includes('/^(a+)+X$/'), 'warning should include the offending regex')
     })
-  })
 
-  test('forgery case 6: JWKS-fallback idiom returns empty string for missing kid', async t => {
-    const forgedToken = forgeEmptyKeyToken({ alg: 'HS256', typ: 'JWT', kid: 'unknown-kid' })
-    const verifier = createVerifier({
-      key: async decoded => {
-        const jwksCache = { 'real-kid': 'real-secret-key' }
-        return jwksCache[decoded.header.kid] || ''
+    test('emits warning for various nested quantifier patterns that may cause ReDoS', async t => {
+      const unsafePatterns = [/^(a+)+X$/, /(a*)+b/, /(\w+)+@/, /(a+)*b/, /(( a+))+X/, /(a{2,})+X/]
+      for (const pattern of unsafePatterns) {
+        const w = await expectWarning('FAST_JWT_UNSAFE_REGEXP', () =>
+          createVerifier({ key: 'secret', allowedAud: pattern })
+        )
+        t.assert.equal(w.code, 'FAST_JWT_UNSAFE_REGEXP', `expected warning for pattern ${pattern}`)
       }
     })
 
-    await t.assert.rejects(verifier(forgedToken), {
-      code: 'FAST_JWT_INVALID_KEY',
-      message: 'The key cannot be an empty string or buffer.'
+    test('emits warning when an unsafe RegExp is among an array of allowed values', async t => {
+      const w = await expectWarning('FAST_JWT_UNSAFE_REGEXP', () =>
+        createVerifier({ key: 'secret', allowedAud: ['safe-audience', /^(a+)+X$/] })
+      )
+      t.assert.equal(w.code, 'FAST_JWT_UNSAFE_REGEXP')
+      t.assert.ok(w.message.includes('allowedAud'))
+      t.assert.ok(w.message.includes('/^(a+)+X$/'), 'warning should identify the specific offending regex')
+    })
+
+    test('emits one warning per unsafe RegExp when multiple are passed in the same option', async t => {
+      const unsafePatterns = [/^(a+)+X$/, /(a*)+b/, /(\w+)+@/]
+      const warnings = await expectWarnings('FAST_JWT_UNSAFE_REGEXP', 3, () =>
+        createVerifier({ key: 'secret', allowedAud: unsafePatterns })
+      )
+      t.assert.equal(warnings.length, 3, 'should emit one warning per unsafe pattern')
+      for (const [i, w] of warnings.entries()) {
+        t.assert.equal(w.code, 'FAST_JWT_UNSAFE_REGEXP')
+        t.assert.ok(w.message.includes(String(unsafePatterns[i])), `warning ${i} should name the offending regex`)
+      }
+    })
+
+    test('does not emit warning for safe RegExp patterns in allowed options', async t => {
+      let warningReceived = false
+      const onWarning = w => {
+        if (w.code === 'FAST_JWT_UNSAFE_REGEXP') warningReceived = true
+      }
+      process.on('warning', onWarning)
+      t.after(() => process.off('warning', onWarning))
+
+      createVerifier({ key: 'secret', allowedAud: /^api\.company\.com$/ })
+      createVerifier({ key: 'secret', allowedAud: /^[a-z]+$/ })
+      createVerifier({ key: 'secret', allowedAud: /^admin$/ })
+      createVerifier({ key: 'secret', allowedIss: /^https:\/\/auth\.example\.com$/ })
+      createVerifier({ key: 'secret', allowedSub: /^user-\d+$/ })
+
+      await new Promise(resolve => setImmediate(resolve))
+      t.assert.equal(warningReceived, false)
+    })
+
+    test('tokens are still verified correctly with a safe RegExp in allowedAud', t => {
+      t.mock.timers.enable({ now: 100000 })
+      const sign = createSigner({ key: 'secret' })
+      const token = sign({ aud: 'api.company.com' })
+      const verifier = createVerifier({ key: 'secret', allowedAud: /^api\.company\.com$/ })
+      t.assert.doesNotThrow(() => verifier(token))
     })
   })
 
-  test('forgery case 7: explicit HS256/HS384/HS512 algorithms with empty key', async t => {
-    const forgedToken = forgeEmptyKeyToken({ alg: 'HS256', typ: 'JWT', kid: 'unknown-kid' })
-    const verifier = createVerifier({
-      key: async () => '',
-      algorithms: ['HS256', 'HS384', 'HS512']
+  describe('stateful RegExp flags', () => {
+    test('/g flag must not cause non-deterministic claim validation - allowedAud', t => {
+      t.mock.timers.enable({ now: 100000 })
+      const sign = createSigner({ key: 'secret' })
+      const token = sign({ aud: 'admin', iss: 'issuer', sub: 'subject', jti: 'id-123', nonce: 'nonce-xyz' })
+      const verifier = createVerifier({ key: 'secret', allowedAud: /^admin$/g })
+
+      // All 8 successive calls with the same valid token must succeed
+      for (let i = 0; i < 8; i++) {
+        t.assert.doesNotThrow(() => verifier(token), `call ${i} should pass with /g flag on allowedAud`)
+      }
     })
 
-    await t.assert.rejects(verifier(forgedToken), {
-      code: 'FAST_JWT_INVALID_KEY',
-      message: 'The key cannot be an empty string or buffer.'
-    })
-  })
+    test('/y flag must not cause non-deterministic claim validation - allowedAud', t => {
+      t.mock.timers.enable({ now: 100000 })
+      const sign = createSigner({ key: 'secret' })
+      const token = sign({ aud: 'admin', iss: 'issuer', sub: 'subject', jti: 'id-123', nonce: 'nonce-xyz' })
+      const verifier = createVerifier({ key: 'secret', allowedAud: /^admin$/y })
 
-  test('forgery case 8: mixed algorithms HS256/RS256 with empty key', async t => {
-    const forgedToken = forgeEmptyKeyToken({ alg: 'HS256', typ: 'JWT', kid: 'unknown-kid' })
-    const verifier = createVerifier({
-      key: async () => '',
-      algorithms: ['HS256', 'RS256']
+      for (let i = 0; i < 8; i++) {
+        t.assert.doesNotThrow(() => verifier(token), `call ${i} should pass with /y flag on allowedAud`)
+      }
     })
 
-    await t.assert.rejects(verifier(forgedToken), {
-      code: 'FAST_JWT_INVALID_KEY',
-      message: 'The key cannot be an empty string or buffer.'
-    })
-  })
+    test('/g flag must not cause non-deterministic claim validation - allowedIss', t => {
+      t.mock.timers.enable({ now: 100000 })
+      const sign = createSigner({ key: 'secret' })
+      const token = sign({ aud: 'admin', iss: 'issuer', sub: 'subject', jti: 'id-123', nonce: 'nonce-xyz' })
+      const verifier = createVerifier({ key: 'secret', allowedIss: /^issuer$/g })
 
-  test('regression case 9: valid async HMAC secret verifies token normally', async t => {
-    const validSecret = 'my-valid-secret-key'
-    const signer = createSigner({
-      key: validSecret,
-      algorithm: 'HS256',
-      noTimestamp: true
-    })
-    const token = signer({ sub: 'user', admin: false })
-
-    const verifier = createVerifier({
-      key: async () => validSecret,
-      noTimestamp: true
+      for (let i = 0; i < 8; i++) {
+        t.assert.doesNotThrow(() => verifier(token), `call ${i} should pass with /g flag on allowedIss`)
+      }
     })
 
-    const payload = await verifier(token)
-    t.assert.strictEqual(payload.sub, 'user')
-    t.assert.strictEqual(payload.admin, false)
-  })
+    test('/g flag must not cause non-deterministic claim validation - allowedSub', t => {
+      t.mock.timers.enable({ now: 100000 })
+      const sign = createSigner({ key: 'secret' })
+      const token = sign({ aud: 'admin', iss: 'issuer', sub: 'subject', jti: 'id-123', nonce: 'nonce-xyz' })
+      const verifier = createVerifier({ key: 'secret', allowedSub: /^subject$/g })
 
-  test('regression case 10: async resolver returning null/undefined still rejects with key fetching error', async t => {
-    const forgedToken = forgeEmptyKeyToken({ alg: 'HS256', typ: 'JWT', kid: 'unknown-kid' })
-    const verifier = createVerifier({
-      key: async () => null
+      for (let i = 0; i < 8; i++) {
+        t.assert.doesNotThrow(() => verifier(token), `call ${i} should pass with /g flag on allowedSub`)
+      }
     })
 
-    await t.assert.rejects(verifier(forgedToken), {
-      code: 'FAST_JWT_KEY_FETCHING_ERROR',
-      message: 'The key returned from the callback must be a string or a buffer containing a secret or a public key.'
-    })
-  })
+    test('/g flag must not cause non-deterministic claim validation - allowedJti', t => {
+      t.mock.timers.enable({ now: 100000 })
+      const sign = createSigner({ key: 'secret' })
+      const token = sign({ aud: 'admin', iss: 'issuer', sub: 'subject', jti: 'id-123', nonce: 'nonce-xyz' })
+      const verifier = createVerifier({ key: 'secret', allowedJti: /^id-123$/g })
 
-  test('regression case 11: synchronous empty key throws MISSING_KEY at verify time', t => {
-    const signer = createSigner({
-      key: 'valid-secret',
-      algorithm: 'HS256',
-      noTimestamp: true
-    })
-    const validToken = signer({ sub: 'user' })
-
-    const verifier = createVerifier({
-      key: '',
-      noTimestamp: true
+      for (let i = 0; i < 8; i++) {
+        t.assert.doesNotThrow(() => verifier(token), `call ${i} should pass with /g flag on allowedJti`)
+      }
     })
 
-    t.assert.throws(() => verifier(validToken), {
-      code: 'FAST_JWT_MISSING_KEY',
-      message: 'The key option is missing.'
+    test('/g flag must not cause non-deterministic claim validation - allowedNonce', t => {
+      t.mock.timers.enable({ now: 100000 })
+      const sign = createSigner({ key: 'secret' })
+      const token = sign({ aud: 'admin', iss: 'issuer', sub: 'subject', jti: 'id-123', nonce: 'nonce-xyz' })
+      const verifier = createVerifier({ key: 'secret', allowedNonce: /^nonce-xyz$/g })
+
+      for (let i = 0; i < 8; i++) {
+        t.assert.doesNotThrow(() => verifier(token), `call ${i} should pass with /g flag on allowedNonce`)
+      }
     })
   })
 
-  test('regression case 12: async resolver with valid RS256 public key verifies normally', async t => {
-    const rsPublicKey = publicKeys.RS
-    const rsPrivateKey = privateKeys.RS
-
-    const signer = createSigner({
-      key: rsPrivateKey,
-      algorithm: 'RS512',
-      noTimestamp: true
-    })
-    const token = signer({ sub: 'asymmetric-user' })
-
-    const verifier = createVerifier({
-      key: async () => rsPublicKey,
-      noTimestamp: true,
-      algorithms: ['RS512']
+  describe('crit header validation (RFC 7515 §4.1.11)', () => {
+    test('rejects token with unknown critical extension (secure-by-default, no allowedCritHeaders)', t => {
+      const signer = createSigner({
+        key: 'secret',
+        algorithm: 'HS256',
+        header: { crit: ['x-custom-policy'], 'x-custom-policy': 'require-mfa' }
+      })
+      const token = signer({ sub: 'user' })
+      const verifier = createVerifier({ key: 'secret' })
+      t.assert.throws(() => verifier(token), {
+        code: 'FAST_JWT_INVALID_CRIT_HEADER',
+        message: 'Critical extension "x-custom-policy" is not supported.'
+      })
     })
 
-    const payload = await verifier(token)
-    t.assert.strictEqual(payload.sub, 'asymmetric-user')
+    test('accepts token when extension is in allowedCritHeaders and present in header', t => {
+      const signer = createSigner({
+        key: 'secret',
+        algorithm: 'HS256',
+        header: { crit: ['x-custom-policy'], 'x-custom-policy': 'require-mfa' }
+      })
+      const token = signer({ sub: 'user' })
+      const verifier = createVerifier({ key: 'secret', allowedCritHeaders: ['x-custom-policy'] })
+      const payload = verifier(token)
+      t.assert.equal(payload.sub, 'user')
+    })
+
+    test('rejects token when allowed extension is listed in crit but missing from header', t => {
+      // Manually craft a token where crit lists an extension not actually present in the header
+      const signer = createSigner({ key: 'secret', algorithm: 'HS256', header: { crit: ['x-missing'] } })
+      const token = signer({ sub: 'user' })
+      const verifier = createVerifier({ key: 'secret', allowedCritHeaders: ['x-missing'] })
+      t.assert.throws(() => verifier(token), {
+        code: 'FAST_JWT_INVALID_CRIT_HEADER',
+        message: 'Critical extension "x-missing" is listed in crit but is not present in the header.'
+      })
+    })
+
+    test('rejects token with empty crit array', t => {
+      // Build token manually since the signer would spread an empty array
+      const header = Buffer.from(JSON.stringify({ alg: 'HS256', typ: 'JWT', crit: [] })).toString('base64url')
+      const payload = Buffer.from(JSON.stringify({ sub: 'user' })).toString('base64url')
+      const { createHmac } = require('node:crypto')
+      const sig = createHmac('sha256', 'secret').update(`${header}.${payload}`).digest('base64url')
+      const token = `${header}.${payload}.${sig}`
+      const verifier = createVerifier({ key: 'secret' })
+      t.assert.throws(() => verifier(token), {
+        code: 'FAST_JWT_INVALID_CRIT_HEADER',
+        message: 'The crit header must be a non-empty array.'
+      })
+    })
+
+    test('rejects token with a standard JWS header name in crit (e.g. "alg")', t => {
+      // Craft token manually — signer won't let you set crit: ['alg'] easily
+      const header = Buffer.from(JSON.stringify({ alg: 'HS256', typ: 'JWT', crit: ['alg'] })).toString('base64url')
+      const payload = Buffer.from(JSON.stringify({ sub: 'user' })).toString('base64url')
+      const { createHmac } = require('node:crypto')
+      const sig = createHmac('sha256', 'secret').update(`${header}.${payload}`).digest('base64url')
+      const token = `${header}.${payload}.${sig}`
+      const verifier = createVerifier({ key: 'secret', allowedCritHeaders: ['alg'] })
+      t.assert.throws(() => verifier(token), {
+        code: 'FAST_JWT_INVALID_CRIT_HEADER',
+        message: 'The crit header must not contain the standard header parameter name "alg".'
+      })
+    })
+
+    test('rejects token with duplicate entries in crit', t => {
+      const header = Buffer.from(
+        JSON.stringify({ alg: 'HS256', typ: 'JWT', crit: ['x-ext', 'x-ext'], 'x-ext': '1' })
+      ).toString('base64url')
+      const payload = Buffer.from(JSON.stringify({ sub: 'user' })).toString('base64url')
+      const { createHmac } = require('node:crypto')
+      const sig = createHmac('sha256', 'secret').update(`${header}.${payload}`).digest('base64url')
+      const token = `${header}.${payload}.${sig}`
+      const verifier = createVerifier({ key: 'secret', allowedCritHeaders: ['x-ext'] })
+      t.assert.throws(() => verifier(token), {
+        code: 'FAST_JWT_INVALID_CRIT_HEADER',
+        message: 'Duplicate entry "x-ext" in crit header.'
+      })
+    })
+
+    test('token without crit header is accepted normally', t => {
+      const signer = createSigner({ key: 'secret', algorithm: 'HS256' })
+      const token = signer({ sub: 'user' })
+      const verifier = createVerifier({ key: 'secret' })
+      const payload = verifier(token)
+      t.assert.equal(payload.sub, 'user')
+    })
+
+    test('throws on invalid allowedCritHeaders option (not an array)', t => {
+      t.assert.throws(() => createVerifier({ key: 'secret', allowedCritHeaders: 'x-ext' }), {
+        code: 'FAST_JWT_INVALID_OPTION',
+        message: 'The allowedCritHeaders option must be an array of strings.'
+      })
+    })
+
+    test('throws on invalid allowedCritHeaders option (empty string)', t => {
+      t.assert.throws(() => createVerifier({ key: 'secret', allowedCritHeaders: [''] }), {
+        code: 'FAST_JWT_INVALID_OPTION',
+        message: 'The allowedCritHeaders option must be an array of strings.'
+      })
+    })
+  })
+
+  describe('GHSA-gmvf-9v4p-v8jc: Empty HMAC secret rejection', () => {
+    function forgeEmptyKeyToken(header = { alg: 'HS256', typ: 'JWT', kid: 'unknown-kid' }) {
+      function encodeSegment(value) {
+        return Buffer.from(JSON.stringify(value)).toString('base64url')
+      }
+
+      const now = Math.floor(Date.now() / 1000)
+      const payload = { sub: 'attacker', admin: true, iat: now, exp: now + 60 }
+
+      const encodedHeader = encodeSegment(header)
+      const encodedPayload = encodeSegment(payload)
+      const signingInput = `${encodedHeader}.${encodedPayload}`
+
+      const hashAlgorithm = `sha${header.alg.slice(2)}`
+      const signature = createHmac(hashAlgorithm, '').update(signingInput).digest('base64url')
+
+      return `${signingInput}.${signature}`
+    }
+
+    test('forgery case 1: async key resolver returns empty string with HS256', async t => {
+      const forgedToken = forgeEmptyKeyToken({ alg: 'HS256', typ: 'JWT', kid: 'unknown-kid' })
+      const verifier = createVerifier({
+        key: async () => ''
+      })
+
+      await t.assert.rejects(verifier(forgedToken), {
+        code: 'FAST_JWT_INVALID_KEY',
+        message: 'The key cannot be an empty string or buffer.'
+      })
+    })
+
+    test('forgery case 2: async key resolver returns empty string with HS384', async t => {
+      const forgedToken = forgeEmptyKeyToken({ alg: 'HS384', typ: 'JWT', kid: 'unknown-kid' })
+      const verifier = createVerifier({
+        key: async () => ''
+      })
+
+      await t.assert.rejects(verifier(forgedToken), {
+        code: 'FAST_JWT_INVALID_KEY',
+        message: 'The key cannot be an empty string or buffer.'
+      })
+    })
+
+    test('forgery case 3: async key resolver returns empty string with HS512', async t => {
+      const forgedToken = forgeEmptyKeyToken({ alg: 'HS512', typ: 'JWT', kid: 'unknown-kid' })
+      const verifier = createVerifier({
+        key: async () => ''
+      })
+
+      await t.assert.rejects(verifier(forgedToken), {
+        code: 'FAST_JWT_INVALID_KEY',
+        message: 'The key cannot be an empty string or buffer.'
+      })
+    })
+
+    test('forgery case 4: async key resolver returns empty buffer with HS256', async t => {
+      const forgedToken = forgeEmptyKeyToken({ alg: 'HS256', typ: 'JWT', kid: 'unknown-kid' })
+      const verifier = createVerifier({
+        key: async () => Buffer.alloc(0)
+      })
+
+      await t.assert.rejects(verifier(forgedToken), {
+        code: 'FAST_JWT_INVALID_KEY',
+        message: 'The key cannot be an empty string or buffer.'
+      })
+    })
+
+    test('forgery case 5: callback-style resolver returns empty string', async t => {
+      const forgedToken = forgeEmptyKeyToken({ alg: 'HS256', typ: 'JWT', kid: 'unknown-kid' })
+      const verifier = createVerifier({
+        key: (decoded, callback) => callback(null, '')
+      })
+
+      await t.assert.rejects(verifier(forgedToken), {
+        code: 'FAST_JWT_INVALID_KEY',
+        message: 'The key cannot be an empty string or buffer.'
+      })
+    })
+
+    test('forgery case 6: JWKS-fallback idiom returns empty string for missing kid', async t => {
+      const forgedToken = forgeEmptyKeyToken({ alg: 'HS256', typ: 'JWT', kid: 'unknown-kid' })
+      const verifier = createVerifier({
+        key: async decoded => {
+          const jwksCache = { 'real-kid': 'real-secret-key' }
+          return jwksCache[decoded.header.kid] || ''
+        }
+      })
+
+      await t.assert.rejects(verifier(forgedToken), {
+        code: 'FAST_JWT_INVALID_KEY',
+        message: 'The key cannot be an empty string or buffer.'
+      })
+    })
+
+    test('forgery case 7: explicit HS256/HS384/HS512 algorithms with empty key', async t => {
+      const forgedToken = forgeEmptyKeyToken({ alg: 'HS256', typ: 'JWT', kid: 'unknown-kid' })
+      const verifier = createVerifier({
+        key: async () => '',
+        algorithms: ['HS256', 'HS384', 'HS512']
+      })
+
+      await t.assert.rejects(verifier(forgedToken), {
+        code: 'FAST_JWT_INVALID_KEY',
+        message: 'The key cannot be an empty string or buffer.'
+      })
+    })
+
+    test('forgery case 8: mixed algorithms HS256/RS256 with empty key', async t => {
+      const forgedToken = forgeEmptyKeyToken({ alg: 'HS256', typ: 'JWT', kid: 'unknown-kid' })
+      const verifier = createVerifier({
+        key: async () => '',
+        algorithms: ['HS256', 'RS256']
+      })
+
+      await t.assert.rejects(verifier(forgedToken), {
+        code: 'FAST_JWT_INVALID_KEY',
+        message: 'The key cannot be an empty string or buffer.'
+      })
+    })
+
+    test('regression case 9: valid async HMAC secret verifies token normally', async t => {
+      const validSecret = 'my-valid-secret-key'
+      const signer = createSigner({
+        key: validSecret,
+        algorithm: 'HS256',
+        noTimestamp: true
+      })
+      const token = signer({ sub: 'user', admin: false })
+
+      const verifier = createVerifier({
+        key: async () => validSecret,
+        noTimestamp: true
+      })
+
+      const payload = await verifier(token)
+      t.assert.strictEqual(payload.sub, 'user')
+      t.assert.strictEqual(payload.admin, false)
+    })
+
+    test('regression case 10: async resolver returning null/undefined still rejects with key fetching error', async t => {
+      const forgedToken = forgeEmptyKeyToken({ alg: 'HS256', typ: 'JWT', kid: 'unknown-kid' })
+      const verifier = createVerifier({
+        key: async () => null
+      })
+
+      await t.assert.rejects(verifier(forgedToken), {
+        code: 'FAST_JWT_KEY_FETCHING_ERROR',
+        message: 'The key returned from the callback must be a string or a buffer containing a secret or a public key.'
+      })
+    })
+
+    test('regression case 11: synchronous empty key throws MISSING_KEY at verify time', t => {
+      const signer = createSigner({
+        key: 'valid-secret',
+        algorithm: 'HS256',
+        noTimestamp: true
+      })
+      const validToken = signer({ sub: 'user' })
+
+      const verifier = createVerifier({
+        key: '',
+        noTimestamp: true
+      })
+
+      t.assert.throws(() => verifier(validToken), {
+        code: 'FAST_JWT_MISSING_KEY',
+        message: 'The key option is missing.'
+      })
+    })
+
+    test('regression case 12: async resolver with valid RS256 public key verifies normally', async t => {
+      const rsPublicKey = publicKeys.RS
+      const rsPrivateKey = privateKeys.RS
+
+      const signer = createSigner({
+        key: rsPrivateKey,
+        algorithm: 'RS512',
+        noTimestamp: true
+      })
+      const token = signer({ sub: 'asymmetric-user' })
+
+      const verifier = createVerifier({
+        key: async () => rsPublicKey,
+        noTimestamp: true,
+        algorithms: ['RS512']
+      })
+
+      const payload = await verifier(token)
+      t.assert.strictEqual(payload.sub, 'asymmetric-user')
+    })
   })
 })
