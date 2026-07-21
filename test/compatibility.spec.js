@@ -7,7 +7,7 @@ const {
   JWK: { asKey }
 } = require('jose')
 const { resolve } = require('node:path')
-const { test } = require('node:test')
+const { describe, test } = require('node:test')
 
 const { createSigner, createVerifier } = require('../src')
 
@@ -33,45 +33,58 @@ const publicKeys = {
   Ed448: readFileSync(resolve(__dirname, '../benchmarks/keys/ed-448-public.key'))
 }
 
-for (const type of ['HS', 'ES', 'RS', 'PS']) {
-  for (const bits of ['256', '384', '512']) {
-    const algorithm = `${type}${bits}`
-    const privateKey = privateKeys[type === 'ES' ? algorithm : type]
-    const publicKey = publicKeys[type === 'ES' ? algorithm : type]
+describe('3rd party library compatibility', () => {
+  describe('jsonwebtoken', () => {
+    for (const type of ['HS', 'ES', 'RS', 'PS']) {
+      for (const bits of ['256', '384', '512']) {
+        const algorithm = `${type}${bits}`
+        const privateKey = privateKeys[type === 'ES' ? algorithm : type]
+        const publicKey = publicKeys[type === 'ES' ? algorithm : type]
 
-    test(`fast-jwt should correcty verify tokens created by jsonwebtoken - ${algorithm}`, t => {
-      const verify = createVerifier({ algorithm, key: publicKey.toString() })
-      const token = jsonwebtokenSign({ a: 1, b: 2, c: 3 }, privateKey.toString(), { algorithm, noTimestamp: true })
+        describe(algorithm, () => {
+          test('fast-jwt should correctly verify tokens created by jsonwebtoken', t => {
+            const verify = createVerifier({ algorithm, key: publicKey.toString() })
+            const token = jsonwebtokenSign({ a: 1, b: 2, c: 3 }, privateKey.toString(), {
+              algorithm,
+              noTimestamp: true
+            })
 
-      t.assert.deepStrictEqual(verify(token), { a: 1, b: 2, c: 3 })
-    })
+            t.assert.deepStrictEqual(verify(token), { a: 1, b: 2, c: 3 })
+          })
 
-    test(`jsonwebtoken should correcty verify tokens created by fast-jwt - ${algorithm}`, t => {
-      const signer = createSigner({ algorithm, key: privateKey, noTimestamp: true })
-      const token = signer({ a: 1, b: 2, c: 3 })
+          test('jsonwebtoken should correctly verify tokens created by fast-jwt', t => {
+            const signer = createSigner({ algorithm, key: privateKey, noTimestamp: true })
+            const token = signer({ a: 1, b: 2, c: 3 })
 
-      t.assert.deepStrictEqual(jsonwebtokenVerify(token, publicKey, { algorithm }), { a: 1, b: 2, c: 3 })
-    })
-  }
-}
-
-for (const curve of ['Ed25519', 'Ed448']) {
-  test(`fast-jwt should correcty verify tokens created by jose - EdDSA with ${curve}`, t => {
-    const verify = createVerifier({ key: publicKeys[curve].toString() })
-    const token = joseSign({ a: 1, b: 2, c: 3 }, asKey(privateKeys[curve]), {
-      iat: false,
-      header: {
-        typ: 'JWT'
+            t.assert.deepStrictEqual(jsonwebtokenVerify(token, publicKey, { algorithm }), { a: 1, b: 2, c: 3 })
+          })
+        })
       }
-    })
-
-    t.assert.deepStrictEqual(verify(token), { a: 1, b: 2, c: 3 })
+    }
   })
 
-  test(`jose should correcty verify tokens created by fast-jwt - EdDSA with ${curve}`, t => {
-    const signer = createSigner({ key: privateKeys[curve], noTimestamp: true })
-    const token = signer({ a: 1, b: 2, c: 3 })
+  describe('jose', () => {
+    for (const curve of ['Ed25519', 'Ed448']) {
+      describe(`EdDSA with ${curve}`, () => {
+        test('fast-jwt should correctly verify tokens created by jose', t => {
+          const verify = createVerifier({ key: publicKeys[curve].toString() })
+          const token = joseSign({ a: 1, b: 2, c: 3 }, asKey(privateKeys[curve]), {
+            iat: false,
+            header: {
+              typ: 'JWT'
+            }
+          })
 
-    t.assert.deepStrictEqual(joseVerify(token, asKey(publicKeys[curve])), { a: 1, b: 2, c: 3 })
+          t.assert.deepStrictEqual(verify(token), { a: 1, b: 2, c: 3 })
+        })
+
+        test('jose should correctly verify tokens created by fast-jwt', t => {
+          const signer = createSigner({ key: privateKeys[curve], noTimestamp: true })
+          const token = signer({ a: 1, b: 2, c: 3 })
+
+          t.assert.deepStrictEqual(joseVerify(token, asKey(publicKeys[curve])), { a: 1, b: 2, c: 3 })
+        })
+      })
+    }
   })
-}
+})
