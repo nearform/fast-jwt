@@ -430,6 +430,26 @@ describe('GHSA-ww5h-9m49-7xx4 - RSA to HS256 algorithm confusion via key prefix'
   })
 })
 
+// GHSA-ww5h-9m49-7xx4 (review follow-up): the two detectors must agree on
+// junk-before-a-real-header input. A real key hidden behind an unrelated PEM
+// block must be refused by BOTH detectors (never classified as an HMAC secret),
+// so the paths cannot drift the way earlier fixes in this CVE lineage did.
+describe('GHSA-ww5h-9m49-7xx4 - detector consistency on junk PEM block before a real key', () => {
+  const junkBlock = '-----BEGIN COMMENT-----\nQUJD\n-----END COMMENT-----\n'
+
+  test('private-key detection refuses a real key behind a junk PEM block', t => {
+    t.assert.throws(() => detectPrivateKeyAlgorithm(junkBlock + privateKeys.RS.toString('utf-8')), {
+      message: 'Unsupported PEM private key.'
+    })
+  })
+
+  test('public-key detection refuses a real key behind a junk PEM block', t => {
+    t.assert.throws(() => detectPublicKeyAlgorithms(junkBlock + publicKeys.RS.toString('utf-8')), {
+      message: 'Unsupported PEM public key.'
+    })
+  })
+})
+
 for (const bits of [256, 384, 512]) {
   const hsAlgorithm = `HS${bits}`
   const key = privateKeys.HS

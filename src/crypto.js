@@ -79,6 +79,22 @@ function cacheSet(cache, key, value, error) {
   return value || error
 }
 
+// Single source of truth for locating a PEM/certificate block. Returns the key
+// sliced from its first `-----BEGIN ...-----` header, or flags it as a raw HMAC
+// secret when no header is present anywhere. Both detectors MUST use this and
+// classify by the leading header of the slice, so their handling can never
+// drift apart (the drift is how this CVE lineage stayed incomplete —
+// GHSA-ww5h-9m49-7xx4 / CVE-2026-34950 / CVE-2023-48223).
+function locatePem(trimmedKey) {
+  const pemStart = trimmedKey.search(pemBeginMatcher)
+
+  if (pemStart === -1) {
+    return { pem: null, isRawSecret: true }
+  }
+
+  return { pem: trimmedKey.slice(pemStart), isRawSecret: false }
+}
+
 function performDetectPrivateKeyAlgorithm(key, providedAlgorithm) {
   const trimmedKey = key.trim()
 
@@ -87,19 +103,13 @@ function performDetectPrivateKeyAlgorithm(key, providedAlgorithm) {
     return providedAlgorithm
   }
 
-  // Locate the PEM block wherever it starts. If there is no PEM/certificate
-  // header at all, this is a genuine raw HMAC secret. If there is one, it must
-  // be classified as asymmetric key material below and can never fall back to
-  // being used as an HMAC secret.
-  const pemStart = trimmedKey.search(pemBeginMatcher)
+  const { pem, isRawSecret } = locatePem(trimmedKey)
 
-  if (pemStart === -1) {
+  if (isRawSecret) {
     return 'HS256'
   }
 
-  const pem = trimmedKey.slice(pemStart)
-
-  if (pem.match(publicKeyPemMatcher) || pem.includes(publicKeyX509CertMatcher)) {
+  if (pem.match(publicKeyPemMatcher) || pem.startsWith(publicKeyX509CertMatcher)) {
     throw new TokenError(TokenError.codes.invalidKey, 'Public keys are not supported for signing.')
   }
 
@@ -155,18 +165,13 @@ function performDetectPrivateKeyAlgorithm(key, providedAlgorithm) {
 function performDetectPublicKeyAlgorithms(key) {
   const trimmedKey = key.trim()
 
-  // Locate the PEM/certificate block wherever it starts. Only a key with no PEM
-  // header anywhere is treated as a raw HMAC secret; once a header is present it
-  // must be classified as asymmetric key material and can never fall back to
-  // HMAC, otherwise a public key would be usable as the HMAC shared secret.
-  const pemStart = trimmedKey.search(pemBeginMatcher)
+  const { pem, isRawSecret } = locatePem(trimmedKey)
 
-  if (pemStart === -1) {
+  if (isRawSecret) {
     // Not a PEM, assume a plain secret
     return hsAlgorithms
   }
 
-  const pem = trimmedKey.slice(pemStart)
   const publicKeyPemMatch = pem.match(publicKeyPemMatcher)
 
   if (pem.match(privateKeyPemMatcher)) {
@@ -174,11 +179,16 @@ function performDetectPublicKeyAlgorithms(key) {
   } else if (publicKeyPemMatch && publicKeyPemMatch[1] === 'RSA') {
     // pkcs1 format - Can only be RSA key
     return rsaAlgorithms
+  } else if (!publicKeyPemMatch && !pem.startsWith(publicKeyX509CertMatcher)) {
+    // The leading PEM header is neither a public key nor a certificate. Refuse
+    // rather than scanning past it (asn1 would) so this matches the private path
+    // exactly for junk-before-a-real-header input.
+    throw new TokenError(TokenError.codes.invalidKey, 'Unsupported PEM public key.')
   }
 
   // if the key is a X509 cert we need to convert it
   let resolvedKey = pem
-  if (pem.includes(publicKeyX509CertMatcher)) {
+  if (pem.startsWith(publicKeyX509CertMatcher)) {
     resolvedKey = createPublicKey(pem).export({ type: 'spki', format: 'pem' })
   }
 
