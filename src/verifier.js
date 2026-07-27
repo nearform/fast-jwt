@@ -524,16 +524,28 @@ module.exports = function createVerifier(options) {
     key = prepareKeyOrSecret(key, hsAlgorithms.includes(availableAlgorithms[0]))
   }
 
-  if (clockTimestamp && (typeof clockTimestamp !== 'number' || clockTimestamp < 0)) {
-    throw new TokenError(TokenError.codes.invalidOption, 'The clockTimestamp option must be a positive number.')
+  if (
+    clockTimestamp !== undefined &&
+    (typeof clockTimestamp !== 'number' || !Number.isFinite(clockTimestamp) || clockTimestamp < 0)
+  ) {
+    throw new TokenError(
+      TokenError.codes.invalidOption,
+      'The clockTimestamp option must be a finite, non-negative number.'
+    )
   }
 
-  if (clockTolerance && (typeof clockTolerance !== 'number' || clockTolerance < 0)) {
-    throw new TokenError(TokenError.codes.invalidOption, 'The clockTolerance option must be a positive number.')
+  if (
+    clockTolerance !== undefined &&
+    (typeof clockTolerance !== 'number' || !Number.isFinite(clockTolerance) || clockTolerance < 0)
+  ) {
+    throw new TokenError(
+      TokenError.codes.invalidOption,
+      'The clockTolerance option must be a finite, non-negative number.'
+    )
   }
 
-  if (cacheTTL && (typeof cacheTTL !== 'number' || cacheTTL < 0)) {
-    throw new TokenError(TokenError.codes.invalidOption, 'The cacheTTL option must be a positive number.')
+  if (cacheTTL !== undefined && (typeof cacheTTL !== 'number' || !Number.isFinite(cacheTTL) || cacheTTL < 0)) {
+    throw new TokenError(TokenError.codes.invalidOption, 'The cacheTTL option must be a finite, non-negative number.')
   }
 
   if (
