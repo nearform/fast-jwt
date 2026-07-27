@@ -193,9 +193,10 @@ describe('detectPrivateKeyAlgorithm', () => {
     }
   })
 
-  // GHSA-g3jj-5cmm-3hxx: a raw JWK/JWKS JSON string has no PEM header and must not be
-  // usable as an HMAC secret when signing, matching the verify-side fix.
-  test('a raw asymmetric JWK JSON key must be refused (not used as a secret)', t => {
+  // GHSA-g3jj-5cmm-3hxx: a raw JWK/JWKS JSON string has no PEM header, so automatic
+  // algorithm detection must not treat it as a plain HMAC secret, matching the
+  // verify-side fix.
+  test('a raw asymmetric JWK JSON key must be refused by automatic detection', t => {
     const { publicKey } = generateKeyPairSync('rsa', { modulusLength: 2048 })
     const jwk = publicKey.export({ format: 'jwk' })
 
@@ -204,6 +205,9 @@ describe('detectPrivateKeyAlgorithm', () => {
     })
   })
 
+  // Pre-existing escape hatch (unchanged by this fix, same as for PEM-shaped keys above):
+  // explicitly forcing an HS* algorithm skips detection entirely and uses the string
+  // as-is, since the caller is asserting the key is a raw secret.
   test('a raw asymmetric JWK JSON key is accepted as a secret when HS256 is explicitly requested', t => {
     const { publicKey } = generateKeyPairSync('rsa', { modulusLength: 2048 })
     const jwk = publicKey.export({ format: 'jwk' })
