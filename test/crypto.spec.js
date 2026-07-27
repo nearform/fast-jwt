@@ -1,6 +1,7 @@
 'use strict'
 
 const { describe, test } = require('node:test')
+const { createHmac, generateKeyPairSync } = require('node:crypto')
 const { readFileSync } = require('node:fs')
 const { resolve } = require('node:path')
 
@@ -191,6 +192,24 @@ describe('detectPrivateKeyAlgorithm', () => {
       t.assert.equal(detectPrivateKeyAlgorithm(prefix + privateKeys.ES256.toString('utf-8')), 'ES256')
     }
   })
+
+  // GHSA-g3jj-5cmm-3hxx: a raw JWK/JWKS JSON string has no PEM header and must not be
+  // usable as an HMAC secret when signing, matching the verify-side fix.
+  test('a raw asymmetric JWK JSON key must be refused (not used as a secret)', t => {
+    const { publicKey } = generateKeyPairSync('rsa', { modulusLength: 2048 })
+    const jwk = publicKey.export({ format: 'jwk' })
+
+    t.assert.throws(() => detectPrivateKeyAlgorithm(JSON.stringify(jwk)), {
+      message: 'Raw asymmetric JWK/JWKS JSON cannot be used as an HMAC secret.'
+    })
+  })
+
+  test('a raw asymmetric JWK JSON key is accepted as a secret when HS256 is explicitly requested', t => {
+    const { publicKey } = generateKeyPairSync('rsa', { modulusLength: 2048 })
+    const jwk = publicKey.export({ format: 'jwk' })
+
+    t.assert.equal(detectPrivateKeyAlgorithm(JSON.stringify(jwk), 'HS256'), 'HS256')
+  })
 })
 
 describe('detectPublicKeyAlgorithms', () => {
@@ -304,6 +323,96 @@ describe('detectPublicKeyAlgorithms', () => {
         message: 'Private keys are not supported for verifying.'
       })
     }
+  })
+
+  // GHSA-g3jj-5cmm-3hxx: a serialized public JWK/JWKS has no PEM header, so it must not
+  // fall through to being treated as a raw HMAC secret (RSA -> HS256 confusion via JWK JSON).
+  describe('raw JWK/JWKS JSON must never be usable as an HMAC secret', () => {
+    for (const kty of ['RSA', 'EC', 'OKP']) {
+      test(`rejects a compact serialized public JWK with kty=${kty}`, t => {
+        const { publicKey } =
+          kty === 'RSA'
+            ? generateKeyPairSync('rsa', { modulusLength: 2048 })
+            : kty === 'EC'
+              ? generateKeyPairSync('ec', { namedCurve: 'P-256' })
+              : generateKeyPairSync('ed25519')
+        const jwk = { ...publicKey.export({ format: 'jwk' }), kid: 'test', use: 'sig' }
+
+        t.assert.throws(() => detectPublicKeyAlgorithms(JSON.stringify(jwk)), {
+          message: 'Raw asymmetric JWK/JWKS JSON cannot be used as an HMAC secret.'
+        })
+      })
+    }
+
+    test('rejects a pretty-printed public JWK', t => {
+      const { publicKey } = generateKeyPairSync('rsa', { modulusLength: 2048 })
+      const jwk = publicKey.export({ format: 'jwk' })
+
+      t.assert.throws(() => detectPublicKeyAlgorithms(JSON.stringify(jwk, null, 2)), {
+        message: 'Raw asymmetric JWK/JWKS JSON cannot be used as an HMAC secret.'
+      })
+    })
+
+    test('rejects a JWKS containing an asymmetric key', t => {
+      const { publicKey } = generateKeyPairSync('rsa', { modulusLength: 2048 })
+      const jwks = { keys: [publicKey.export({ format: 'jwk' })] }
+
+      t.assert.throws(() => detectPublicKeyAlgorithms(JSON.stringify(jwks)), {
+        message: 'Raw asymmetric JWK/JWKS JSON cannot be used as an HMAC secret.'
+      })
+    })
+
+    test('rejects a JWK/JWKS with leading or trailing whitespace', t => {
+      const { publicKey } = generateKeyPairSync('rsa', { modulusLength: 2048 })
+      const jwk = publicKey.export({ format: 'jwk' })
+
+      t.assert.throws(() => detectPublicKeyAlgorithms(`\n  ${JSON.stringify(jwk)}\n\t`), {
+        message: 'Raw asymmetric JWK/JWKS JSON cannot be used as an HMAC secret.'
+      })
+    })
+
+    test('a genuine symmetric (kty=oct) JWK is still usable as an HMAC secret', t => {
+      const jwk = { kty: 'oct', k: 'c2VjcmV0c2VjcmV0c2VjcmV0' }
+
+      t.assert.deepStrictEqual(detectPublicKeyAlgorithms(JSON.stringify(jwk)), hsAlgorithms)
+    })
+
+    test('a plain non-JSON string is still usable as an HMAC secret', t => {
+      t.assert.deepStrictEqual(detectPublicKeyAlgorithms('some-plain-secret'), hsAlgorithms)
+    })
+
+    test('malformed JSON-looking text falls back to a plain secret without throwing', t => {
+      t.assert.deepStrictEqual(detectPublicKeyAlgorithms('{not valid json'), hsAlgorithms)
+    })
+  })
+})
+
+// GHSA-g3jj-5cmm-3hxx: end-to-end proof that a raw public JWK JSON string cannot be used
+// to forge an HS256 token, even though it is public-by-design and known to an attacker.
+describe('GHSA-g3jj-5cmm-3hxx - RSA to HS256 algorithm confusion via raw JWK JSON', () => {
+  function forgeHsToken(secret, alg = 'HS256') {
+    const header = Buffer.from(JSON.stringify({ alg, typ: 'JWT' })).toString('base64url')
+    const payload = Buffer.from(JSON.stringify({ admin: true, sub: 'attacker' })).toString('base64url')
+    const signature = createHmac(`sha${alg.slice(2)}`, secret)
+      .update(`${header}.${payload}`)
+      .digest('base64url')
+    return `${header}.${payload}.${signature}`
+  }
+
+  test('a raw public JWK string must not be usable as an HMAC secret (mixed allowlist)', t => {
+    const { publicKey } = generateKeyPairSync('rsa', { modulusLength: 2048 })
+    const key = JSON.stringify({ ...publicKey.export({ format: 'jwk' }), kid: 'test', use: 'sig' })
+    const forged = forgeHsToken(key)
+
+    t.assert.throws(() => createVerifier({ key, algorithms: ['HS256', 'RS256'] })(forged))
+  })
+
+  test('a raw public JWK string must not be usable as an HMAC secret (inferred algorithms)', t => {
+    const { publicKey } = generateKeyPairSync('rsa', { modulusLength: 2048 })
+    const key = JSON.stringify({ ...publicKey.export({ format: 'jwk' }), kid: 'test', use: 'sig' })
+    const forged = forgeHsToken(key)
+
+    t.assert.throws(() => createVerifier({ key })(forged))
   })
 })
 

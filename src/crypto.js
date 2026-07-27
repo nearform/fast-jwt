@@ -27,6 +27,9 @@ const encoderMap = { '=': '', '+': '-', '/': '_' }
 const privateKeyPemMatcher = /^-----BEGIN(?: (RSA|EC|ENCRYPTED))? PRIVATE KEY-----/
 const publicKeyPemMatcher = /^-----BEGIN(?: (RSA))? PUBLIC KEY-----/
 const publicKeyX509CertMatcher = '-----BEGIN CERTIFICATE-----'
+// kty values that identify asymmetric JWK key material (RFC 7518 / RFC 8037).
+// "oct" (a genuine symmetric key) is deliberately excluded so raw HS* JWKs keep working.
+const asymmetricJwkKtys = new Set(['RSA', 'EC', 'OKP'])
 const privateKeysCache = new Cache(1000)
 const publicKeysCache = new Cache(1000)
 
@@ -71,6 +74,30 @@ function cacheSet(cache, key, value, error) {
   return value || error
 }
 
+function isAsymmetricJwk(candidate) {
+  return Boolean(candidate) && typeof candidate === 'object' && asymmetricJwkKtys.has(candidate.kty)
+}
+
+// A serialized public (or private) JWK/JWKS has no PEM header, so it would otherwise
+// fall through to being treated as a raw HMAC secret -- letting an attacker who knows
+// the (public) JWK JSON forge an HS*-signed token (GHSA-g3jj-5cmm-3hxx). Detect the
+// asymmetric shape before that fallback and refuse it instead.
+function isAsymmetricJwkJson(trimmedKey) {
+  if (trimmedKey[0] !== '{') {
+    return false
+  }
+
+  let parsed
+
+  try {
+    parsed = JSON.parse(trimmedKey)
+  } catch {
+    return false
+  }
+
+  return isAsymmetricJwk(parsed) || (Array.isArray(parsed.keys) && parsed.keys.some(isAsymmetricJwk))
+}
+
 function performDetectPrivateKeyAlgorithm(key, providedAlgorithm) {
   const trimmedKey = key.trim()
 
@@ -86,6 +113,13 @@ function performDetectPrivateKeyAlgorithm(key, providedAlgorithm) {
   const pemData = trimmedKey.match(privateKeyPemMatcher)
 
   if (!pemData) {
+    if (isAsymmetricJwkJson(trimmedKey)) {
+      throw new TokenError(
+        TokenError.codes.invalidKey,
+        'Raw asymmetric JWK/JWKS JSON cannot be used as an HMAC secret.'
+      )
+    }
+
     return 'HS256'
   }
 
@@ -140,6 +174,13 @@ function performDetectPublicKeyAlgorithms(key) {
     // pkcs1 format - Can only be RSA key
     return rsaAlgorithms
   } else if (!publicKeyPemMatch && !trimmedKey.includes(publicKeyX509CertMatcher)) {
+    if (isAsymmetricJwkJson(trimmedKey)) {
+      throw new TokenError(
+        TokenError.codes.invalidKey,
+        'Raw asymmetric JWK/JWKS JSON cannot be used as an HMAC secret.'
+      )
+    }
+
     // Not a PEM, assume a plain secret
     return hsAlgorithms
   }
