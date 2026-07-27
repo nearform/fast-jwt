@@ -62,7 +62,7 @@ function decode({ complete, checkTyp }, token) {
     // 10.  Verify that the resulting octet sequence is a UTF-8-encoded
     //      representation of a completely valid JSON object conforming to
     //      RFC 7159 [RFC7159]; let the JWT Claims Set be this JSON object.
-    if (!payload || typeof payload !== 'object') {
+    if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
       throw new TokenError(TokenError.codes.invalidPayload, 'The payload must be an object', { payload })
     }
 

@@ -2392,4 +2392,31 @@ describe('createVerifier', () => {
       t.assert.strictEqual(payload.sub, 'asymmetric-user')
     })
   })
+
+  describe('array payload claim-validator bypass', () => {
+    function forgeArrayPayloadToken(key, payload = ['attacker', 'role:admin']) {
+      const header = Buffer.from(JSON.stringify({ alg: 'HS256', typ: 'JWT' })).toString('base64url')
+      const encodedPayload = Buffer.from(JSON.stringify(payload)).toString('base64url')
+      const signingInput = `${header}.${encodedPayload}`
+      const signature = createHmac('sha256', key).update(signingInput).digest('base64url')
+
+      return `${signingInput}.${signature}`
+    }
+
+    test('rejects a validly-signed token whose payload is a JSON array instead of an object', t => {
+      const key = 'shared-secret'
+      const forgedToken = forgeArrayPayloadToken(key)
+
+      const verifier = createVerifier({
+        key,
+        allowedIss: ['legit-issuer'],
+        allowedAud: ['legit-audience'],
+        allowedSub: ['legit-subject']
+      })
+
+      t.assert.throws(() => verifier(forgedToken), {
+        message: 'The payload must be an object'
+      })
+    })
+  })
 })

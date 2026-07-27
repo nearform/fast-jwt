@@ -104,6 +104,12 @@ describe('createDecoder', () => {
         message: 'The payload must be an object'
       }
     )
+
+    // array - typeof [] === 'object', so this must be rejected explicitly
+    const arrayPayloadToken = `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.${Buffer.from('["a","b"]').toString('base64url')}.x`
+    t.assert.throws(() => defaultDecoder(arrayPayloadToken), {
+      message: 'The payload must be an object'
+    })
   })
 
   // https://datatracker.ietf.org/doc/html/rfc4648#section-3.3 - strict base64url
