@@ -1231,31 +1231,43 @@ describe('createVerifier', () => {
 
     test('clockTimestamp', t => {
       t.assert.throws(() => createVerifier({ key: 'secret', clockTimestamp: '123' }), {
-        message: 'The clockTimestamp option must be a positive number.'
+        message: 'The clockTimestamp option must be a finite positive number.'
       })
 
       t.assert.throws(() => createVerifier({ key: 'secret', clockTimestamp: -1 }), {
-        message: 'The clockTimestamp option must be a positive number.'
+        message: 'The clockTimestamp option must be a finite positive number.'
+      })
+
+      t.assert.throws(() => createVerifier({ key: 'secret', clockTimestamp: Infinity }), {
+        message: 'The clockTimestamp option must be a finite positive number.'
       })
     })
 
     test('clockTolerance', t => {
       t.assert.throws(() => createVerifier({ key: 'secret', clockTolerance: '123' }), {
-        message: 'The clockTolerance option must be a positive number.'
+        message: 'The clockTolerance option must be a finite positive number.'
       })
 
       t.assert.throws(() => createVerifier({ key: 'secret', clockTolerance: -1 }), {
-        message: 'The clockTolerance option must be a positive number.'
+        message: 'The clockTolerance option must be a finite positive number.'
+      })
+
+      t.assert.throws(() => createVerifier({ key: 'secret', clockTolerance: Infinity }), {
+        message: 'The clockTolerance option must be a finite positive number.'
       })
     })
 
     test('cacheTTL', t => {
       t.assert.throws(() => createVerifier({ key: 'secret', cacheTTL: '123' }), {
-        message: 'The cacheTTL option must be a positive number.'
+        message: 'The cacheTTL option must be a finite positive number.'
       })
 
       t.assert.throws(() => createVerifier({ key: 'secret', cacheTTL: -1 }), {
-        message: 'The cacheTTL option must be a positive number.'
+        message: 'The cacheTTL option must be a finite positive number.'
+      })
+
+      t.assert.throws(() => createVerifier({ key: 'secret', cacheTTL: Infinity }), {
+        message: 'The cacheTTL option must be a finite positive number.'
       })
     })
 
