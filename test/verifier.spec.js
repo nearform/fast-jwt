@@ -1241,6 +1241,10 @@ describe('createVerifier', () => {
       t.assert.throws(() => createVerifier({ key: 'secret', clockTimestamp: Infinity }), {
         message: 'The clockTimestamp option must be a finite positive number.'
       })
+
+      t.assert.throws(() => createVerifier({ key: 'secret', clockTimestamp: NaN }), {
+        message: 'The clockTimestamp option must be a finite positive number.'
+      })
     })
 
     test('clockTolerance', t => {
@@ -1255,6 +1259,10 @@ describe('createVerifier', () => {
       t.assert.throws(() => createVerifier({ key: 'secret', clockTolerance: Infinity }), {
         message: 'The clockTolerance option must be a finite positive number.'
       })
+
+      t.assert.throws(() => createVerifier({ key: 'secret', clockTolerance: NaN }), {
+        message: 'The clockTolerance option must be a finite positive number.'
+      })
     })
 
     test('cacheTTL', t => {
@@ -1267,6 +1275,10 @@ describe('createVerifier', () => {
       })
 
       t.assert.throws(() => createVerifier({ key: 'secret', cacheTTL: Infinity }), {
+        message: 'The cacheTTL option must be a finite positive number.'
+      })
+
+      t.assert.throws(() => createVerifier({ key: 'secret', cacheTTL: NaN }), {
         message: 'The cacheTTL option must be a finite positive number.'
       })
     })

@@ -525,20 +525,20 @@ module.exports = function createVerifier(options) {
   }
 
   if (
-    clockTimestamp &&
+    clockTimestamp !== undefined &&
     (typeof clockTimestamp !== 'number' || !Number.isFinite(clockTimestamp) || clockTimestamp < 0)
   ) {
     throw new TokenError(TokenError.codes.invalidOption, 'The clockTimestamp option must be a finite positive number.')
   }
 
   if (
-    clockTolerance &&
+    clockTolerance !== undefined &&
     (typeof clockTolerance !== 'number' || !Number.isFinite(clockTolerance) || clockTolerance < 0)
   ) {
     throw new TokenError(TokenError.codes.invalidOption, 'The clockTolerance option must be a finite positive number.')
   }
 
-  if (cacheTTL && (typeof cacheTTL !== 'number' || !Number.isFinite(cacheTTL) || cacheTTL < 0)) {
+  if (cacheTTL !== undefined && (typeof cacheTTL !== 'number' || !Number.isFinite(cacheTTL) || cacheTTL < 0)) {
     throw new TokenError(TokenError.codes.invalidOption, 'The cacheTTL option must be a finite positive number.')
   }
 
