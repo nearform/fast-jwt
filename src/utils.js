@@ -45,7 +45,7 @@ function ensurePromiseCallback(callback) {
 function hashToken(token) {
   const rawHeader = token.split('.', 1)[0]
   const header = Buffer.from(rawHeader, 'base64').toString('utf-8')
-  let hasher = null
+  let hasher
 
   /* istanbul ignore next */
   if (header.match(edAlgorithmMatcher) && header.match(ed448CurveMatcher)) {
