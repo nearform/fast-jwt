@@ -427,7 +427,7 @@ describe('detectPublicKeyAlgorithms', () => {
       })
     })
 
-    test('rejects a bare array of JWKs (a JWKS\' `keys` serialized without its wrapper)', t => {
+    test("rejects a bare array of JWKs (a JWKS' `keys` serialized without its wrapper)", t => {
       const { publicKey } = generateKeyPairSync('rsa', { modulusLength: 2048 })
       const keys = [publicKey.export({ format: 'jwk' })]
 
