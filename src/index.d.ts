@@ -106,6 +106,7 @@ export interface VerifierOptions {
   clockTolerance?: number
   requiredClaims?: Array<string>
   checkTyp?: string
+  allowedCritHeaders?: Array<string>
   cacheKeyBuilder?: (token: string) => string
 }
 
@@ -132,6 +133,7 @@ export const TOKEN_ERROR_CODES: {
   readonly verifyError: 'FAST_JWT_VERIFY_ERROR';
   readonly missingRequiredClaim: 'FAST_JWT_MISSING_REQUIRED_CLAIM';
   readonly missingSignature: 'FAST_JWT_MISSING_SIGNATURE';
+  readonly invalidCritHeader: 'FAST_JWT_INVALID_CRIT_HEADER';
 };
 
 export function createSigner<T = SignerPayload>(

@@ -27,6 +27,14 @@ const encoderMap = { '=': '', '+': '-', '/': '_' }
 const privateKeyPemMatcher = /^-----BEGIN(?: (RSA|EC|ENCRYPTED))? PRIVATE KEY-----/
 const publicKeyPemMatcher = /^-----BEGIN(?: (RSA))? PUBLIC KEY-----/
 const publicKeyX509CertMatcher = '-----BEGIN CERTIFICATE-----'
+// Matches any PEM/certificate header regardless of its position in the string.
+// Used to locate the start of a PEM block so that leading bytes (whitespace,
+// control chars, zero-width unicode, comments, wrappers, ...) cannot push the
+// header off position 0 and defeat the ^-anchored matchers above, which would
+// misclassify an asymmetric key as an HMAC secret (algorithm confusion —
+// GHSA-ww5h-9m49-7xx4, the incomplete-fix lineage of CVE-2023-48223 /
+// CVE-2026-34950).
+const pemBeginMatcher = /-----BEGIN [A-Z0-9 ]+?-----/
 const privateKeysCache = new Cache(1000)
 const publicKeysCache = new Cache(1000)
 
@@ -71,15 +79,46 @@ function cacheSet(cache, key, value, error) {
   return value || error
 }
 
-function performDetectPrivateKeyAlgorithm(key) {
-  if (key.match(publicKeyPemMatcher) || key.includes(publicKeyX509CertMatcher)) {
+// Single source of truth for locating a PEM/certificate block. Returns the key
+// sliced from its first `-----BEGIN ...-----` header, or flags it as a raw HMAC
+// secret when no header is present anywhere. Both detectors MUST use this and
+// classify by the leading header of the slice, so their handling can never
+// drift apart (the drift is how this CVE lineage stayed incomplete —
+// GHSA-ww5h-9m49-7xx4 / CVE-2026-34950 / CVE-2023-48223).
+function locatePem(trimmedKey) {
+  const pemStart = trimmedKey.search(pemBeginMatcher)
+
+  if (pemStart === -1) {
+    return { pem: null, isRawSecret: true }
+  }
+
+  return { pem: trimmedKey.slice(pemStart), isRawSecret: false }
+}
+
+function performDetectPrivateKeyAlgorithm(key, providedAlgorithm) {
+  const trimmedKey = key.trim()
+
+  if (hsAlgorithms.includes(providedAlgorithm)) {
+    // the key string might look like a public/private key, but it should be used as a raw string
+    return providedAlgorithm
+  }
+
+  const { pem, isRawSecret } = locatePem(trimmedKey)
+
+  if (isRawSecret) {
+    return 'HS256'
+  }
+
+  if (pem.match(publicKeyPemMatcher) || pem.startsWith(publicKeyX509CertMatcher)) {
     throw new TokenError(TokenError.codes.invalidKey, 'Public keys are not supported for signing.')
   }
 
-  const pemData = key.trim().match(privateKeyPemMatcher)
+  const pemData = pem.match(privateKeyPemMatcher)
 
   if (!pemData) {
-    return 'HS256'
+    // A PEM header is present but it is neither a supported private key nor a
+    // public key/certificate: refuse rather than silently using it as a secret.
+    throw new TokenError(TokenError.codes.invalidKey, 'Unsupported PEM private key.')
   }
 
   let keyData
@@ -90,14 +129,14 @@ function performDetectPrivateKeyAlgorithm(key) {
     case 'RSA': // pkcs1 format - Can only be RSA key
       return 'RS256'
     case 'EC': // sec1 format - Can only be a EC key
-      keyData = ECPrivateKey.decode(key, 'pem', { label: 'EC PRIVATE KEY' })
+      keyData = ECPrivateKey.decode(pem, 'pem', { label: 'EC PRIVATE KEY' })
       curveId = keyData.parameters.value.join('.')
       break
     case 'ENCRYPTED': // Can be either RSA or EC key - we'll used the supplied algorithm
       return 'ENCRYPTED'
     default:
       // pkcs8
-      keyData = PrivateKey.decode(key, 'pem', { label: 'PRIVATE KEY' })
+      keyData = PrivateKey.decode(pem, 'pem', { label: 'PRIVATE KEY' })
       oid = keyData.algorithm.algorithm.join('.')
 
       switch (oid) {
@@ -124,24 +163,36 @@ function performDetectPrivateKeyAlgorithm(key) {
 }
 
 function performDetectPublicKeyAlgorithms(key) {
-  const publicKeyPemMatch = key.match(publicKeyPemMatcher)
+  const trimmedKey = key.trim()
 
-  if (key.match(privateKeyPemMatcher)) {
-    throw new TokenError(TokenError.codes.invalidKey, 'Private keys are not supported for verifying.')
-  } else if (publicKeyPemMatch && publicKeyPemMatch[1] === 'RSA') {
-    // pkcs1 format - Can only be RSA key
-    return rsaAlgorithms
-  } else if (!publicKeyPemMatch && !key.includes(publicKeyX509CertMatcher)) {
+  const { pem, isRawSecret } = locatePem(trimmedKey)
+
+  if (isRawSecret) {
     // Not a PEM, assume a plain secret
     return hsAlgorithms
   }
 
-  // if the key is a X509 cert we need to convert it
-  if (key.includes(publicKeyX509CertMatcher)) {
-    key = createPublicKey(key).export({ type: 'spki', format: 'pem' })
+  const publicKeyPemMatch = pem.match(publicKeyPemMatcher)
+
+  if (pem.match(privateKeyPemMatcher)) {
+    throw new TokenError(TokenError.codes.invalidKey, 'Private keys are not supported for verifying.')
+  } else if (publicKeyPemMatch && publicKeyPemMatch[1] === 'RSA') {
+    // pkcs1 format - Can only be RSA key
+    return rsaAlgorithms
+  } else if (!publicKeyPemMatch && !pem.startsWith(publicKeyX509CertMatcher)) {
+    // The leading PEM header is neither a public key nor a certificate. Refuse
+    // rather than scanning past it (asn1 would) so this matches the private path
+    // exactly for junk-before-a-real-header input.
+    throw new TokenError(TokenError.codes.invalidKey, 'Unsupported PEM public key.')
   }
 
-  const keyData = PublicKey.decode(key, 'pem', { label: 'PUBLIC KEY' })
+  // if the key is a X509 cert we need to convert it
+  let resolvedKey = pem
+  if (pem.startsWith(publicKeyX509CertMatcher)) {
+    resolvedKey = createPublicKey(pem).export({ type: 'spki', format: 'pem' })
+  }
+
+  const keyData = PublicKey.decode(resolvedKey, 'pem', { label: 'PUBLIC KEY' })
   const oid = keyData.algorithm.algorithm.join('.')
   let curveId
 
@@ -185,7 +236,7 @@ function detectPrivateKeyAlgorithm(key, providedAlgorithm) {
 
   // Try detecting
   try {
-    const detectedAlgorithm = performDetectPrivateKeyAlgorithm(key)
+    const detectedAlgorithm = performDetectPrivateKeyAlgorithm(key, providedAlgorithm)
 
     if (detectedAlgorithm === 'ENCRYPTED') {
       return cacheSet(privateKeysCache, key, providedAlgorithm)
@@ -201,10 +252,17 @@ function detectPrivateKeyAlgorithm(key, providedAlgorithm) {
   }
 }
 
-function detectPublicKeyAlgorithms(key) {
+function detectPublicKeyAlgorithms(key, providedAlgorithms) {
   if (!key) {
     return 'none'
   }
+
+  // If all provided algorithms are HS, skip detection and caching entirely
+  // since the key might look like a PEM but should be used as a raw HMAC secret
+  if (providedAlgorithms && providedAlgorithms.length && providedAlgorithms.every(a => hsAlgorithms.includes(a))) {
+    return providedAlgorithms
+  }
+
   // Check cache first
   const [cached, error] = publicKeysCache.get(key) || []
 

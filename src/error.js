@@ -17,7 +17,8 @@ const TOKEN_ERROR_CODES = {
   signError: 'FAST_JWT_SIGN_ERROR', // Cannot create the signature
   verifyError: 'FAST_JWT_VERIFY_ERROR', // Cannot verify the signature
   missingRequiredClaim: 'FAST_JWT_MISSING_REQUIRED_CLAIM', // A required claim is missing
-  missingSignature: 'FAST_JWT_MISSING_SIGNATURE' // The token signature is missing
+  missingSignature: 'FAST_JWT_MISSING_SIGNATURE', // The token signature is missing
+  invalidCritHeader: 'FAST_JWT_INVALID_CRIT_HEADER' // A critical extension header is invalid or not supported
 }
 
 class TokenError extends Error {

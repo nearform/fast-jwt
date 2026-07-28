@@ -176,7 +176,7 @@ Create a verifier function by calling `createVerifier` and providing one or more
 
 - `clockTolerance`: Timespan in milliseconds is the tolerance to apply to the current timestamp when performing time comparisons. Default is `0`.
 
-- `cacheKeyBuilder`: The function that will be used to create the [cache's key](#caching) for each token. To mitigate the risk of leaking sensitive information and generate collisions, [a hashing function](./src/utils.js) is used by default.
+- `cacheKeyBuilder`: The function that will be used to create the [cache's key](#caching) for each token. To mitigate the risk of leaking sensitive information and reduce the risk of collisions, [a hashing function](./src/utils.js) is used by default. When using a custom function, users must be aware of the possible risks. Check the [Caching section](#caching) for more information.
 
 The verifier is a function which accepts a token (as Buffer or string) and returns the payload or the sections of the token.
 
@@ -280,7 +280,13 @@ The default `cacheKeyBuilder` is a function that hashes the token. This provides
 
 For a detailed discussion about it, take a look at [this issue](https://github.com/nearform/fast-jwt/issues/503).
 
-> **_Note:_** Errors are not cached by default, to change this behaviour use the `errorCacheTTL` option.
+> [!NOTE] 
+> Errors are not cached by default, to change this behaviour use the `errorCacheTTL` option.
+
+> [!WARNING] 
+> Setting up a custom `cacheKeyBuilder` method which does not properly create unique keys for different tokens can lead to cache collisions. This could cause tokens to be mis-identified during the verification process. For more information check [this GHSA](https://github.com/advisories/GHSA-rp9m-7r4c-75qg).
+> Users willing to set up a custom cache key builder method have to make sure it works properly.
+
 
 ## Token Error Codes
 

@@ -3,6 +3,8 @@
 const { createPublicKey, createSecretKey } = require('node:crypto')
 const Cache = require('mnemonist/lru-cache')
 
+const safeRegex = require('safe-regex2')
+
 const { hsAlgorithms, verifySignature, detectPublicKeyAlgorithms } = require('./crypto')
 const createDecoder = require('./decoder')
 const { TokenError } = require('./error')
@@ -33,7 +35,24 @@ function prepareKeyOrSecret(key, isSecret) {
     key = Buffer.from(key, 'utf-8')
   }
 
+  if (isSecret && key.length === 0) {
+    throw new TokenError(TokenError.codes.invalidKey, 'The key cannot be an empty string or buffer.')
+  }
+
   return isSecret ? createSecretKey(key) : createPublicKey(key)
+}
+
+function checkForUnsafeRegExp(raw, optionName) {
+  const patterns = Array.isArray(raw) ? raw : [raw]
+  for (const r of patterns) {
+    if (r instanceof RegExp && !safeRegex(r)) {
+      process.emitWarning(
+        `The ${optionName} option contains an unsafe RegExp ${r} that may cause a ReDoS attack. Please review it. ` +
+          'See https://github.com/nearform/fast-jwt/security/advisories/GHSA-cjw9-ghj4-fwxf for details.',
+        { code: 'FAST_JWT_UNSAFE_REGEXP' }
+      )
+    }
+  }
 }
 
 function ensureStringClaimMatcher(raw) {
@@ -44,6 +63,15 @@ function ensureStringClaimMatcher(raw) {
   return raw
     .filter(r => r)
     .map(r => {
+      if (r instanceof RegExp) {
+        return {
+          test: v => {
+            r.lastIndex = 0
+            return r.test(v)
+          }
+        }
+      }
+
       if (r && typeof r.test === 'function') {
         return r
       }
@@ -135,7 +163,9 @@ function validateAlgorithmAndSignature(input, header, signature, key, allowedAlg
     throw new TokenError(TokenError.codes.invalidAlgorithm, 'The token algorithm is invalid.')
   }
 
-  // Verify the signature, if present
+  // Verify the signature, if present. The decoder has already rejected tokens
+  // whose segments contain characters outside the base64url alphabet, so by
+  // the time we get here `signature` is either empty or canonical.
   if (signature && !verifySignature(header.alg, key, input, signature)) {
     throw new TokenError(TokenError.codes.invalidSignature, 'The token signature is invalid.')
   }
@@ -174,10 +204,68 @@ function validateClaimDateValue(value, modifier, now, greater, errorCode, errorV
   }
 }
 
+// Standard JWS header parameter names (RFC 7515 §4 + JWA) that MUST NOT appear in crit
+const JWS_REGISTERED_HEADERS = new Set([
+  'alg',
+  'jku',
+  'jwk',
+  'kid',
+  'x5u',
+  'x5c',
+  'x5t',
+  'x5t#S256',
+  'typ',
+  'cty',
+  'crit'
+])
+
+function validateCrit(header, allowedCritHeaders) {
+  if (!header.crit) return
+
+  // crit MUST be a non-empty array
+  if (!Array.isArray(header.crit) || header.crit.length === 0) {
+    throw new TokenError(TokenError.codes.invalidCritHeader, 'The crit header must be a non-empty array.')
+  }
+
+  const seen = new Set()
+  for (const ext of header.crit) {
+    if (typeof ext !== 'string') {
+      throw new TokenError(TokenError.codes.invalidCritHeader, 'Each crit entry must be a string.')
+    }
+
+    // MUST NOT contain standard JWS/JWA header names (recipients MAY reject)
+    if (JWS_REGISTERED_HEADERS.has(ext)) {
+      throw new TokenError(
+        TokenError.codes.invalidCritHeader,
+        `The crit header must not contain the standard header parameter name "${ext}".`
+      )
+    }
+
+    // MUST NOT contain duplicate names (recipients MAY reject)
+    if (seen.has(ext)) {
+      throw new TokenError(TokenError.codes.invalidCritHeader, `Duplicate entry "${ext}" in crit header.`)
+    }
+    seen.add(ext)
+
+    // Extension listed in crit MUST be understood by the recipient
+    if (!allowedCritHeaders.has(ext)) {
+      throw new TokenError(TokenError.codes.invalidCritHeader, `Critical extension "${ext}" is not supported.`)
+    }
+
+    // Extension listed in crit MUST be present in the header
+    if (!(ext in header)) {
+      throw new TokenError(
+        TokenError.codes.invalidCritHeader,
+        `Critical extension "${ext}" is listed in crit but is not present in the header.`
+      )
+    }
+  }
+}
+
 function verifyToken(
   key,
   { input, header, payload, signature },
-  { validators, allowedAlgorithms, checkTyp, clockTimestamp, requiredClaims }
+  { validators, allowedAlgorithms, checkTyp, clockTimestamp, requiredClaims, allowedCritHeaders }
 ) {
   // Verify the key
   /* istanbul ignore next */
@@ -190,6 +278,9 @@ function verifyToken(
   }
 
   validateAlgorithmAndSignature(input, header, signature, key, allowedAlgorithms)
+
+  // Verify crit (RFC 7515 §4.1.11)
+  validateCrit(header, allowedCritHeaders)
 
   // Verify typ
   if (
@@ -249,6 +340,7 @@ function verify(
     decode,
     cache,
     requiredClaims,
+    allowedCritHeaders,
     errorCacheTTL,
     cacheKeyBuilder
   },
@@ -256,6 +348,16 @@ function verify(
   cb
 ) {
   const [callback, promise] = isAsync ? ensurePromiseCallback(cb) : []
+
+  // Validate token type before any processing
+  if (!(token instanceof Buffer) && typeof token !== 'string') {
+    const error = new TokenError(TokenError.codes.invalidType, 'The token must be a string or a buffer.')
+    if (callback) {
+      callback(error)
+      return promise
+    }
+    throw error
+  }
 
   // Check the cache
   if (cache) {
@@ -306,7 +408,15 @@ function verify(
     payload,
     cacheKeyBuilder
   }
-  const validationContext = { validators, allowedAlgorithms, checkTyp, clockTimestamp, clockTolerance, requiredClaims }
+  const validationContext = {
+    validators,
+    allowedAlgorithms,
+    checkTyp,
+    clockTimestamp,
+    clockTolerance,
+    requiredClaims,
+    allowedCritHeaders
+  }
 
   // We have the key
   if (!callback) {
@@ -384,6 +494,7 @@ module.exports = function createVerifier(options) {
     allowedSub,
     allowedNonce,
     requiredClaims,
+    allowedCritHeaders,
     cacheKeyBuilder
   } = { cacheTTL: 600_000, clockTolerance: 0, errorCacheTTL: -1, cacheKeyBuilder: hashToken, ...options }
 
@@ -402,7 +513,7 @@ module.exports = function createVerifier(options) {
 
   if (key && keyType !== 'function') {
     // Detect the private key - If the algorithms were known, just verify they match, otherwise assign them
-    const availableAlgorithms = detectPublicKeyAlgorithms(key)
+    const availableAlgorithms = detectPublicKeyAlgorithms(key, allowedAlgorithms)
 
     if (allowedAlgorithms.length) {
       checkAreCompatibleAlgorithms(allowedAlgorithms, availableAlgorithms)
@@ -410,19 +521,31 @@ module.exports = function createVerifier(options) {
       allowedAlgorithms = availableAlgorithms
     }
 
-    key = prepareKeyOrSecret(key, availableAlgorithms[0] === hsAlgorithms[0])
+    key = prepareKeyOrSecret(key, hsAlgorithms.includes(availableAlgorithms[0]))
   }
 
-  if (clockTimestamp && (typeof clockTimestamp !== 'number' || clockTimestamp < 0)) {
-    throw new TokenError(TokenError.codes.invalidOption, 'The clockTimestamp option must be a positive number.')
+  if (
+    clockTimestamp !== undefined &&
+    (typeof clockTimestamp !== 'number' || !Number.isFinite(clockTimestamp) || clockTimestamp < 0)
+  ) {
+    throw new TokenError(
+      TokenError.codes.invalidOption,
+      'The clockTimestamp option must be a finite, non-negative number.'
+    )
   }
 
-  if (clockTolerance && (typeof clockTolerance !== 'number' || clockTolerance < 0)) {
-    throw new TokenError(TokenError.codes.invalidOption, 'The clockTolerance option must be a positive number.')
+  if (
+    clockTolerance !== undefined &&
+    (typeof clockTolerance !== 'number' || !Number.isFinite(clockTolerance) || clockTolerance < 0)
+  ) {
+    throw new TokenError(
+      TokenError.codes.invalidOption,
+      'The clockTolerance option must be a finite, non-negative number.'
+    )
   }
 
-  if (cacheTTL && (typeof cacheTTL !== 'number' || cacheTTL < 0)) {
-    throw new TokenError(TokenError.codes.invalidOption, 'The cacheTTL option must be a positive number.')
+  if (cacheTTL !== undefined && (typeof cacheTTL !== 'number' || !Number.isFinite(cacheTTL) || cacheTTL < 0)) {
+    throw new TokenError(TokenError.codes.invalidOption, 'The cacheTTL option must be a finite, non-negative number.')
   }
 
   if (
@@ -437,6 +560,33 @@ module.exports = function createVerifier(options) {
 
   if (requiredClaims && !Array.isArray(requiredClaims)) {
     throw new TokenError(TokenError.codes.invalidOption, 'The requiredClaims option must be an array.')
+  }
+
+  if (allowedJti) checkForUnsafeRegExp(allowedJti, 'allowedJti')
+  if (allowedAud) checkForUnsafeRegExp(allowedAud, 'allowedAud')
+  if (allowedIss) checkForUnsafeRegExp(allowedIss, 'allowedIss')
+  if (allowedSub) checkForUnsafeRegExp(allowedSub, 'allowedSub')
+  if (allowedNonce) checkForUnsafeRegExp(allowedNonce, 'allowedNonce')
+
+  if (
+    allowedCritHeaders !== undefined &&
+    (!Array.isArray(allowedCritHeaders) || allowedCritHeaders.some(h => typeof h !== 'string' || h.length === 0))
+  ) {
+    throw new TokenError(TokenError.codes.invalidOption, 'The allowedCritHeaders option must be an array of strings.')
+  }
+
+  const allowedCritHeadersSet = new Set(allowedCritHeaders || [])
+
+  const cache = createCache(cacheSize)
+
+  if (cache && options?.cacheKeyBuilder) {
+    process.emitWarning(
+      'A custom cacheKeyBuilder is in use with caching enabled. ' +
+        'Cache key collisions can lead to identity/authorization bypass. ' +
+        'Make sure your cacheKeyBuilder generates unique keys for different tokens. ' +
+        'See https://github.com/nearform/fast-jwt/security/advisories/GHSA-rp9m-7r4c-75qg',
+      { code: 'FAST_JWT_CACHE_KEY_BUILDER_SECURITY_RISK' }
+    )
   }
 
   // Add validators
@@ -504,8 +654,9 @@ module.exports = function createVerifier(options) {
     isAsync: keyType === 'function',
     validators,
     decode: createDecoder({ complete: true }),
-    cache: createCache(cacheSize),
+    cache,
     requiredClaims,
+    allowedCritHeaders: allowedCritHeadersSet,
     cacheKeyBuilder
   }
 
