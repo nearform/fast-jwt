@@ -1231,31 +1231,55 @@ describe('createVerifier', () => {
 
     test('clockTimestamp', t => {
       t.assert.throws(() => createVerifier({ key: 'secret', clockTimestamp: '123' }), {
-        message: 'The clockTimestamp option must be a positive number.'
+        message: 'The clockTimestamp option must be a finite, non-negative number.'
       })
 
       t.assert.throws(() => createVerifier({ key: 'secret', clockTimestamp: -1 }), {
-        message: 'The clockTimestamp option must be a positive number.'
+        message: 'The clockTimestamp option must be a finite, non-negative number.'
+      })
+
+      t.assert.throws(() => createVerifier({ key: 'secret', clockTimestamp: Infinity }), {
+        message: 'The clockTimestamp option must be a finite, non-negative number.'
+      })
+
+      t.assert.throws(() => createVerifier({ key: 'secret', clockTimestamp: NaN }), {
+        message: 'The clockTimestamp option must be a finite, non-negative number.'
       })
     })
 
     test('clockTolerance', t => {
       t.assert.throws(() => createVerifier({ key: 'secret', clockTolerance: '123' }), {
-        message: 'The clockTolerance option must be a positive number.'
+        message: 'The clockTolerance option must be a finite, non-negative number.'
       })
 
       t.assert.throws(() => createVerifier({ key: 'secret', clockTolerance: -1 }), {
-        message: 'The clockTolerance option must be a positive number.'
+        message: 'The clockTolerance option must be a finite, non-negative number.'
+      })
+
+      t.assert.throws(() => createVerifier({ key: 'secret', clockTolerance: Infinity }), {
+        message: 'The clockTolerance option must be a finite, non-negative number.'
+      })
+
+      t.assert.throws(() => createVerifier({ key: 'secret', clockTolerance: NaN }), {
+        message: 'The clockTolerance option must be a finite, non-negative number.'
       })
     })
 
     test('cacheTTL', t => {
       t.assert.throws(() => createVerifier({ key: 'secret', cacheTTL: '123' }), {
-        message: 'The cacheTTL option must be a positive number.'
+        message: 'The cacheTTL option must be a finite, non-negative number.'
       })
 
       t.assert.throws(() => createVerifier({ key: 'secret', cacheTTL: -1 }), {
-        message: 'The cacheTTL option must be a positive number.'
+        message: 'The cacheTTL option must be a finite, non-negative number.'
+      })
+
+      t.assert.throws(() => createVerifier({ key: 'secret', cacheTTL: Infinity }), {
+        message: 'The cacheTTL option must be a finite, non-negative number.'
+      })
+
+      t.assert.throws(() => createVerifier({ key: 'secret', cacheTTL: NaN }), {
+        message: 'The cacheTTL option must be a finite, non-negative number.'
       })
     })
 
@@ -2366,6 +2390,33 @@ describe('createVerifier', () => {
 
       const payload = await verifier(token)
       t.assert.strictEqual(payload.sub, 'asymmetric-user')
+    })
+  })
+
+  describe('array payload claim-validator bypass', () => {
+    function forgeArrayPayloadToken(key, payload = ['attacker', 'role:admin']) {
+      const header = Buffer.from(JSON.stringify({ alg: 'HS256', typ: 'JWT' })).toString('base64url')
+      const encodedPayload = Buffer.from(JSON.stringify(payload)).toString('base64url')
+      const signingInput = `${header}.${encodedPayload}`
+      const signature = createHmac('sha256', key).update(signingInput).digest('base64url')
+
+      return `${signingInput}.${signature}`
+    }
+
+    test('rejects a validly-signed token whose payload is a JSON array instead of an object', t => {
+      const key = 'shared-secret'
+      const forgedToken = forgeArrayPayloadToken(key)
+
+      const verifier = createVerifier({
+        key,
+        allowedIss: ['legit-issuer'],
+        allowedAud: ['legit-audience'],
+        allowedSub: ['legit-subject']
+      })
+
+      t.assert.throws(() => verifier(forgedToken), {
+        message: 'The payload must be an object'
+      })
     })
   })
 })

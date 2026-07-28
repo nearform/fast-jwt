@@ -30,6 +30,14 @@ const publicKeyX509CertMatcher = '-----BEGIN CERTIFICATE-----'
 // kty values that identify asymmetric JWK key material (RFC 7518 / RFC 8037).
 // "oct" (a genuine symmetric key) is deliberately excluded so raw HS* JWKs keep working.
 const asymmetricJwkKtys = new Set(['RSA', 'EC', 'OKP'])
+// Matches any PEM/certificate header regardless of its position in the string.
+// Used to locate the start of a PEM block so that leading bytes (whitespace,
+// control chars, zero-width unicode, comments, wrappers, ...) cannot push the
+// header off position 0 and defeat the ^-anchored matchers above, which would
+// misclassify an asymmetric key as an HMAC secret (algorithm confusion —
+// GHSA-ww5h-9m49-7xx4, the incomplete-fix lineage of CVE-2023-48223 /
+// CVE-2026-34950).
+const pemBeginMatcher = /-----BEGIN [A-Z0-9 ]+?-----/
 const privateKeysCache = new Cache(1000)
 const publicKeysCache = new Cache(1000)
 
@@ -98,6 +106,31 @@ function isAsymmetricJwkJson(trimmedKey) {
   return isAsymmetricJwk(parsed) || (Array.isArray(parsed.keys) && parsed.keys.some(isAsymmetricJwk))
 }
 
+// Single source of truth for locating a PEM/certificate block. Returns the key
+// sliced from its first `-----BEGIN ...-----` header, or flags it as a raw HMAC
+// secret when no header is present anywhere. Both detectors MUST use this and
+// classify by the leading header of the slice, so their handling can never
+// drift apart (the drift is how this CVE lineage stayed incomplete —
+// GHSA-ww5h-9m49-7xx4 / CVE-2026-34950 / CVE-2023-48223).
+function locatePem(trimmedKey) {
+  const pemStart = trimmedKey.search(pemBeginMatcher)
+
+  if (pemStart === -1) {
+    return { pem: null, isRawSecret: true }
+  }
+
+  return { pem: trimmedKey.slice(pemStart), isRawSecret: false }
+}
+
+// A raw secret that is really serialized asymmetric JWK/JWKS material must not be
+// accepted as an HMAC secret: since public JWK JSON is public by design, anyone who
+// knows it could forge an HS*-signed token (GHSA-g3jj-5cmm-3hxx).
+function assertNotAsymmetricJwkJson(trimmedKey) {
+  if (isAsymmetricJwkJson(trimmedKey)) {
+    throw new TokenError(TokenError.codes.invalidKey, 'Raw asymmetric JWK/JWKS JSON cannot be used as an HMAC secret.')
+  }
+}
+
 function performDetectPrivateKeyAlgorithm(key, providedAlgorithm) {
   const trimmedKey = key.trim()
 
@@ -106,21 +139,24 @@ function performDetectPrivateKeyAlgorithm(key, providedAlgorithm) {
     return providedAlgorithm
   }
 
-  if (trimmedKey.match(publicKeyPemMatcher) || trimmedKey.includes(publicKeyX509CertMatcher)) {
+  const { pem, isRawSecret } = locatePem(trimmedKey)
+
+  if (isRawSecret) {
+    assertNotAsymmetricJwkJson(trimmedKey)
+
+    return 'HS256'
+  }
+
+  if (pem.match(publicKeyPemMatcher) || pem.startsWith(publicKeyX509CertMatcher)) {
     throw new TokenError(TokenError.codes.invalidKey, 'Public keys are not supported for signing.')
   }
 
-  const pemData = trimmedKey.match(privateKeyPemMatcher)
+  const pemData = pem.match(privateKeyPemMatcher)
 
   if (!pemData) {
-    if (isAsymmetricJwkJson(trimmedKey)) {
-      throw new TokenError(
-        TokenError.codes.invalidKey,
-        'Raw asymmetric JWK/JWKS JSON cannot be used as an HMAC secret.'
-      )
-    }
-
-    return 'HS256'
+    // A PEM header is present but it is neither a supported private key nor a
+    // public key/certificate: refuse rather than silently using it as a secret.
+    throw new TokenError(TokenError.codes.invalidKey, 'Unsupported PEM private key.')
   }
 
   let keyData
@@ -131,14 +167,14 @@ function performDetectPrivateKeyAlgorithm(key, providedAlgorithm) {
     case 'RSA': // pkcs1 format - Can only be RSA key
       return 'RS256'
     case 'EC': // sec1 format - Can only be a EC key
-      keyData = ECPrivateKey.decode(trimmedKey, 'pem', { label: 'EC PRIVATE KEY' })
+      keyData = ECPrivateKey.decode(pem, 'pem', { label: 'EC PRIVATE KEY' })
       curveId = keyData.parameters.value.join('.')
       break
     case 'ENCRYPTED': // Can be either RSA or EC key - we'll used the supplied algorithm
       return 'ENCRYPTED'
     default:
       // pkcs8
-      keyData = PrivateKey.decode(trimmedKey, 'pem', { label: 'PRIVATE KEY' })
+      keyData = PrivateKey.decode(pem, 'pem', { label: 'PRIVATE KEY' })
       oid = keyData.algorithm.algorithm.join('.')
 
       switch (oid) {
@@ -166,29 +202,34 @@ function performDetectPrivateKeyAlgorithm(key, providedAlgorithm) {
 
 function performDetectPublicKeyAlgorithms(key) {
   const trimmedKey = key.trim()
-  const publicKeyPemMatch = trimmedKey.match(publicKeyPemMatcher)
 
-  if (trimmedKey.match(privateKeyPemMatcher)) {
-    throw new TokenError(TokenError.codes.invalidKey, 'Private keys are not supported for verifying.')
-  } else if (publicKeyPemMatch && publicKeyPemMatch[1] === 'RSA') {
-    // pkcs1 format - Can only be RSA key
-    return rsaAlgorithms
-  } else if (!publicKeyPemMatch && !trimmedKey.includes(publicKeyX509CertMatcher)) {
-    if (isAsymmetricJwkJson(trimmedKey)) {
-      throw new TokenError(
-        TokenError.codes.invalidKey,
-        'Raw asymmetric JWK/JWKS JSON cannot be used as an HMAC secret.'
-      )
-    }
+  const { pem, isRawSecret } = locatePem(trimmedKey)
+
+  if (isRawSecret) {
+    assertNotAsymmetricJwkJson(trimmedKey)
 
     // Not a PEM, assume a plain secret
     return hsAlgorithms
   }
 
+  const publicKeyPemMatch = pem.match(publicKeyPemMatcher)
+
+  if (pem.match(privateKeyPemMatcher)) {
+    throw new TokenError(TokenError.codes.invalidKey, 'Private keys are not supported for verifying.')
+  } else if (publicKeyPemMatch && publicKeyPemMatch[1] === 'RSA') {
+    // pkcs1 format - Can only be RSA key
+    return rsaAlgorithms
+  } else if (!publicKeyPemMatch && !pem.startsWith(publicKeyX509CertMatcher)) {
+    // The leading PEM header is neither a public key nor a certificate. Refuse
+    // rather than scanning past it (asn1 would) so this matches the private path
+    // exactly for junk-before-a-real-header input.
+    throw new TokenError(TokenError.codes.invalidKey, 'Unsupported PEM public key.')
+  }
+
   // if the key is a X509 cert we need to convert it
-  let resolvedKey = trimmedKey
-  if (trimmedKey.includes(publicKeyX509CertMatcher)) {
-    resolvedKey = createPublicKey(trimmedKey).export({ type: 'spki', format: 'pem' })
+  let resolvedKey = pem
+  if (pem.startsWith(publicKeyX509CertMatcher)) {
+    resolvedKey = createPublicKey(pem).export({ type: 'spki', format: 'pem' })
   }
 
   const keyData = PublicKey.decode(resolvedKey, 'pem', { label: 'PUBLIC KEY' })

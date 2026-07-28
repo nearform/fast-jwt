@@ -78,6 +78,24 @@ T7r5sAUIWaF0Q5uk5NYmLOnCFxoP8Ua16sraCbAozdvg0wfvT7Cq
 
 const leadingWhitespacePrefixes = ['\n', ' ', ' \n', '\n ', '\t\t']
 
+// GHSA-ww5h-9m49-7xx4 (incomplete fix of CVE-2026-34950): `String.prototype.trim()`
+// only strips whitespace, so any NON-whitespace leading byte used to push the PEM
+// header off position 0 and defeat the ^-anchored matcher, causing an asymmetric
+// key to be misclassified as an HMAC secret (RSA -> HS256 algorithm confusion).
+const leadingNonWhitespacePrefixes = [
+  '# some comment\n', // comment line
+  '// comment\n',
+  '.', // arbitrary printable byte
+  'HTTP/1.1 200 OK\r\n\r\n', // HTTP-style header
+  String.fromCodePoint(0x00), // NUL
+  String.fromCodePoint(0x01), // SOH
+  String.fromCodePoint(0x1b), // ESC (ANSI escape)
+  String.fromCodePoint(0x7f), // DEL
+  String.fromCodePoint(0x200b), // zero-width space
+  String.fromCodePoint(0x200d), // zero-width joiner
+  String.fromCodePoint(0x180e) // Mongolian vowel separator
+]
+
 describe('detectPrivateKeyAlgorithm', () => {
   for (const type of ['HS', 'ES', 'RS', 'PS']) {
     for (const bits of [256, 384, 512]) {
@@ -147,6 +165,15 @@ describe('detectPrivateKeyAlgorithm', () => {
     })
   })
 
+  test('a key with an unrecognized PEM header must be refused (not used as a secret)', t => {
+    t.assert.throws(
+      () => detectPrivateKeyAlgorithm('# note\n-----BEGIN SOMETHING-----\nQUJD\n-----END SOMETHING-----'),
+      {
+        message: 'Unsupported PEM private key.'
+      }
+    )
+  })
+
   test('public keys should be accepted if HS256, HS384, HS512 is used', t => {
     ;['HS256', 'HS384', 'HS512'].forEach(algorithm => {
       t.assert.equal(
@@ -214,6 +241,31 @@ describe('detectPrivateKeyAlgorithm', () => {
 
     t.assert.equal(detectPrivateKeyAlgorithm(JSON.stringify(jwk), 'HS256'), 'HS256')
   })
+
+  // GHSA-ww5h-9m49-7xx4 (signer side): a non-whitespace prefix must not push the PEM
+  // header off position 0 and cause a public/private key to be treated as an HMAC secret.
+  test('public key with non-whitespace prefix must still be rejected', t => {
+    for (const prefix of leadingNonWhitespacePrefixes) {
+      t.assert.throws(() => detectPrivateKeyAlgorithm(prefix + publicKeys.RS.toString('utf-8')), {
+        message: 'Public keys are not supported for signing.'
+      })
+    }
+  })
+
+  test('X.509 cert with non-whitespace prefix must still be rejected', t => {
+    const cert = readFileSync(resolve(__dirname, '../benchmarks/keys/rs-x509-public.key'))
+    for (const prefix of leadingNonWhitespacePrefixes) {
+      t.assert.throws(() => detectPrivateKeyAlgorithm(prefix + cert.toString('utf-8')), {
+        message: 'Public keys are not supported for signing.'
+      })
+    }
+  })
+
+  test('EC private key with non-whitespace prefix must still be detected (not HMAC)', t => {
+    for (const prefix of leadingNonWhitespacePrefixes) {
+      t.assert.equal(detectPrivateKeyAlgorithm(prefix + privateKeys.ES256.toString('utf-8')), 'ES256')
+    }
+  })
 })
 
 describe('detectPublicKeyAlgorithms', () => {
@@ -278,6 +330,15 @@ describe('detectPublicKeyAlgorithms', () => {
     t.assert.throws(() => detectPublicKeyAlgorithms(privateKeys.RS), {
       message: 'Private keys are not supported for verifying.'
     })
+  })
+
+  test('a key with an unrecognized PEM header must be refused (not used as a secret)', t => {
+    t.assert.throws(
+      () => detectPublicKeyAlgorithms('# note\n-----BEGIN SOMETHING-----\nQUJD\n-----END SOMETHING-----'),
+      {
+        message: 'Unsupported PEM public key.'
+      }
+    )
   })
 
   test('public key-like strings should be accepted if all provided algorithms are HS', t => {
@@ -389,20 +450,48 @@ describe('detectPublicKeyAlgorithms', () => {
       t.assert.deepStrictEqual(detectPublicKeyAlgorithms('{not valid json'), hsAlgorithms)
     })
   })
+
+  // GHSA-ww5h-9m49-7xx4: a non-whitespace prefix must not defeat detection and cause an
+  // asymmetric public key to be misclassified as an HMAC secret (RSA -> HS256 confusion).
+  test('RSA public key with non-whitespace prefix must be detected as RSA (not HMAC)', t => {
+    for (const prefix of leadingNonWhitespacePrefixes) {
+      t.assert.deepStrictEqual(detectPublicKeyAlgorithms(prefix + publicKeys.RS.toString('utf-8')), rsaAlgorithms)
+    }
+  })
+
+  test('EC public key with non-whitespace prefix must be detected as EC (not HMAC)', t => {
+    for (const prefix of leadingNonWhitespacePrefixes) {
+      t.assert.deepStrictEqual(detectPublicKeyAlgorithms(prefix + publicKeys.ES256.toString('utf-8')), ['ES256'])
+    }
+  })
+
+  test('Ed25519 public key with non-whitespace prefix must be detected as EdDSA (not HMAC)', t => {
+    for (const prefix of leadingNonWhitespacePrefixes) {
+      t.assert.deepStrictEqual(detectPublicKeyAlgorithms(prefix + publicKeys.Ed25519.toString('utf-8')), ['EdDSA'])
+    }
+  })
+
+  test('private key with non-whitespace prefix must still be rejected', t => {
+    for (const prefix of leadingNonWhitespacePrefixes) {
+      t.assert.throws(() => detectPublicKeyAlgorithms(prefix + privateKeys.RS.toString('utf-8')), {
+        message: 'Private keys are not supported for verifying.'
+      })
+    }
+  })
 })
+
+function forgeHsToken(secret, alg = 'HS256') {
+  const header = Buffer.from(JSON.stringify({ alg, typ: 'JWT' })).toString('base64url')
+  const payload = Buffer.from(JSON.stringify({ admin: true, sub: 'attacker' })).toString('base64url')
+  const signature = createHmac(`sha${alg.slice(2)}`, secret)
+    .update(`${header}.${payload}`)
+    .digest('base64url')
+  return `${header}.${payload}.${signature}`
+}
 
 // GHSA-g3jj-5cmm-3hxx: end-to-end proof that a raw public JWK JSON string cannot be used
 // to forge an HS256 token, even though it is public-by-design and known to an attacker.
 describe('GHSA-g3jj-5cmm-3hxx - RSA to HS256 algorithm confusion via raw JWK JSON', () => {
-  function forgeHsToken(secret, alg = 'HS256') {
-    const header = Buffer.from(JSON.stringify({ alg, typ: 'JWT' })).toString('base64url')
-    const payload = Buffer.from(JSON.stringify({ admin: true, sub: 'attacker' })).toString('base64url')
-    const signature = createHmac(`sha${alg.slice(2)}`, secret)
-      .update(`${header}.${payload}`)
-      .digest('base64url')
-    return `${header}.${payload}.${signature}`
-  }
-
   test('a raw public JWK string must not be usable as an HMAC secret (mixed allowlist)', t => {
     const { publicKey } = generateKeyPairSync('rsa', { modulusLength: 2048 })
     const key = JSON.stringify({ ...publicKey.export({ format: 'jwk' }), kid: 'test', use: 'sig' })
@@ -417,6 +506,50 @@ describe('GHSA-g3jj-5cmm-3hxx - RSA to HS256 algorithm confusion via raw JWK JSO
     const forged = forgeHsToken(key)
 
     t.assert.throws(() => createVerifier({ key })(forged))
+  })
+})
+
+// GHSA-ww5h-9m49-7xx4: end-to-end proof that the RSA -> HS256 algorithm-confusion
+// attack (forge an HS256 token whose signature is an HMAC keyed with the target's
+// RSA public key) is rejected even when the loaded key carries a non-whitespace prefix.
+describe('GHSA-ww5h-9m49-7xx4 - RSA to HS256 algorithm confusion via key prefix', () => {
+  test('a prefixed RSA public key must not be usable as an HMAC secret (default verifier)', t => {
+    const publicKey = publicKeys.RS.toString('utf-8')
+    for (const prefix of leadingNonWhitespacePrefixes) {
+      const key = prefix + publicKey
+      const forged = forgeHsToken(key)
+      // No algorithms allowlist -> the key must be detected as RSA, so an HS256 token
+      // can never be accepted. Rejection may surface at verifier creation or at verify.
+      t.assert.throws(() => createVerifier({ key })(forged))
+    }
+  })
+
+  test('the clean (unprefixed) RSA public key is also not usable as an HMAC secret', t => {
+    const key = publicKeys.RS.toString('utf-8')
+    const forged = forgeHsToken(key)
+    t.assert.throws(() => createVerifier({ key })(forged), {
+      code: 'FAST_JWT_INVALID_ALGORITHM'
+    })
+  })
+})
+
+// GHSA-ww5h-9m49-7xx4 (review follow-up): the two detectors must agree on
+// junk-before-a-real-header input. A real key hidden behind an unrelated PEM
+// block must be refused by BOTH detectors (never classified as an HMAC secret),
+// so the paths cannot drift the way earlier fixes in this CVE lineage did.
+describe('GHSA-ww5h-9m49-7xx4 - detector consistency on junk PEM block before a real key', () => {
+  const junkBlock = '-----BEGIN COMMENT-----\nQUJD\n-----END COMMENT-----\n'
+
+  test('private-key detection refuses a real key behind a junk PEM block', t => {
+    t.assert.throws(() => detectPrivateKeyAlgorithm(junkBlock + privateKeys.RS.toString('utf-8')), {
+      message: 'Unsupported PEM private key.'
+    })
+  })
+
+  test('public-key detection refuses a real key behind a junk PEM block', t => {
+    t.assert.throws(() => detectPublicKeyAlgorithms(junkBlock + publicKeys.RS.toString('utf-8')), {
+      message: 'Unsupported PEM public key.'
+    })
   })
 })
 
