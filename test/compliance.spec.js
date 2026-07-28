@@ -1,34 +1,39 @@
 'use strict'
 
 const { describe, test } = require('node:test')
-const {
-  JWK: { asKey }
-} = require('jose')
+const { createPrivateKey, createPublicKey } = require('node:crypto')
 
 const { createVerifier, createSigner } = require('../src')
+
+/*
+  jose has been promise based since v3, which cannot be awaited at the top level of a CommonJS
+  file, so the JWK to PEM conversion these fixtures need is done with the crypto module instead
+*/
+const publicKeyToPEM = jwk => createPublicKey({ key: jwk, format: 'jwk' }).export({ type: 'spki', format: 'pem' })
+const privateKeyToPEM = jwk => createPrivateKey({ key: jwk, format: 'jwk' }).export({ type: 'pkcs8', format: 'pem' })
 
 const payload = {
   text: "It’s a dangerous business, Frodo, going out your door. You step onto the road, and if you don't keep your feet, there’s no knowing where you might be swept off to."
 }
 
 // All the keys here are extracted from https://tools.ietf.org/html/rfc7520
-const symmetricKey = asKey({
+const symmetricKey = {
   kty: 'oct',
   kid: '018c0ae5-4d9b-471b-bfd6-eef314bc7037',
   use: 'sig',
   alg: 'HS256',
   k: 'hJtXIZ2uSN5kbQfbtTNWbpdmhkV8FJG-Onbc6mxCcYg'
-})
+}
 
-const rsaPublicKey = asKey({
+const rsaPublicKey = publicKeyToPEM({
   kty: 'RSA',
   kid: 'bilbo.baggins@hobbiton.example',
   use: 'sig',
   n: 'n4EPtAOCc9AlkeQHPzHStgAbgs7bTZLwUBZdR8_KuKPEHLd4rHVTeT-O-XV2jRojdNhxJWTDvNd7nqQ0VEiZQHz_AJmSCpMaJMRBSFKrKb2wqVwGU_NsYOYL-QtiWN2lbzcEe6XC0dApr5ydQLrHqkHHig3RBordaZ6Aj-oBHqFEHYpPe7Tpe-OfVfHd1E6cS6M1FZcD1NNLYD5lFHpPI9bTwJlsde3uhGqC0ZCuEHg8lhzwOHrtIQbS0FVbb9k3-tVTU4fg_3L_vniUFAKwuCLqKnS2BYwdq_mzSnbLY7h_qixoR7jig3__kRhuaxwUkRz5iaiQkqgc5gHdrNP5zw',
   e: 'AQAB'
-}).toPEM()
+})
 
-const rsaPrivateKey = asKey({
+const rsaPrivateKey = privateKeyToPEM({
   kty: 'RSA',
   kid: 'bilbo.baggins@hobbiton.example',
   use: 'sig',
@@ -40,18 +45,18 @@ const rsaPrivateKey = asKey({
   dp: 'B8PVvXkvJrj2L-GYQ7v3y9r6Kw5g9SahXBwsWUzp19TVlgI-YV85q1NIb1rxQtD-IsXXR3-TanevuRPRt5OBOdiMGQp8pbt26gljYfKU_E9xn-RULHz0-ed9E9gXLKD4VGngpz-PfQ_q29pk5xWHoJp009Qf1HvChixRX59ehik',
   dq: 'CLDmDGduhylc9o7r84rEUVn7pzQ6PF83Y-iBZx5NT-TpnOZKF1pErAMVeKzFEl41DlHHqqBLSM0W1sOFbwTxYWZDm6sI6og5iTbwQGIC3gnJKbi_7k_vJgGHwHxgPaX2PnvP-zyEkDERuf-ry4c_Z11Cq9AqC2yeL6kdKT1cYF8',
   qi: '3PiqvXQN0zwMeE-sBvZgi289XP9XCQF3VWqPzMKnIgQp7_Tugo6-NZBKCQsMf3HaEGBjTVJs_jcK8-TRXvaKe-7ZMaQj8VfBdYkssbu0NKDDhjJ-GtiseaDVWt7dcH0cfwxgFUHpQh7FoCrjFJ6h6ZEpMF6xmujs4qMpPz8aaI4'
-}).toPEM(true)
+})
 
-const ecPublicKey = asKey({
+const ecPublicKey = publicKeyToPEM({
   kty: 'EC',
   kid: 'bilbo.baggins@hobbiton.example',
   use: 'sig',
   crv: 'P-521',
   x: 'AHKZLLOsCOzz5cY97ewNUajB957y-C-U88c3v13nmGZx6sYl_oJXu9A5RkTKqjqvjyekWF-7ytDyRXYgCF5cj0Kt',
   y: 'AdymlHvOiLxXkEhayXQnNCvDX4h9htZaCJN34kfmC6pV5OhQHiraVySsUdaQkAgDPrwQrJmbnX9cwlGfP-HqHZR1'
-}).toPEM()
+})
 
-const ecPrivateKey = asKey({
+const ecPrivateKey = privateKeyToPEM({
   kty: 'EC',
   kid: 'bilbo.baggins@hobbiton.example',
   use: 'sig',
@@ -59,7 +64,7 @@ const ecPrivateKey = asKey({
   x: 'AHKZLLOsCOzz5cY97ewNUajB957y-C-U88c3v13nmGZx6sYl_oJXu9A5RkTKqjqvjyekWF-7ytDyRXYgCF5cj0Kt',
   y: 'AdymlHvOiLxXkEhayXQnNCvDX4h9htZaCJN34kfmC6pV5OhQHiraVySsUdaQkAgDPrwQrJmbnX9cwlGfP-HqHZR1',
   d: 'AAhRON2r9cqXX1hg-RoI6R1tX5p2rUAYdmpHZoC1XNM56KtscrX6zbKipQrCW9CGZH3T4ubpnoTKLDYJ_fF3_rJt'
-}).toPEM(true)
+})
 
 describe('RFC 7520 compliance', () => {
   test('HS256', t => {
@@ -136,18 +141,18 @@ describe('RFC 7520 compliance', () => {
 })
 
 // All the keys here are extracted from https://tools.ietf.org/html/rfc8037
-const ed25519PublicKey = asKey({
+const ed25519PublicKey = publicKeyToPEM({
   kty: 'OKP',
   crv: 'Ed25519',
   x: '11qYAYKxCrfVS_7TyWQHOg7hcvPapiMlrwIaaPcHURo'
-}).toPEM()
+})
 
-const ed25519PrivateKey = asKey({
+const ed25519PrivateKey = privateKeyToPEM({
   kty: 'OKP',
   crv: 'Ed25519',
   d: 'nWGxne_9WmC6hEr0kuwsxERJxWl7MmkZcDusAxyuf2A',
   x: '11qYAYKxCrfVS_7TyWQHOg7hcvPapiMlrwIaaPcHURo'
-}).toPEM(true)
+})
 
 describe('RFC 8037 compliance', () => {
   test('EdDSA - Ed25519', t => {
