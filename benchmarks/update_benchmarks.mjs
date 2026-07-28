@@ -24,6 +24,9 @@ const pageMarkdownContent = `# Benchmarks
 
 Made with [mitata](https://github.com/evanwashere/mitata) library
 
+Note that \`@node-rs/jsonwebtoken\` does not support ES512, so it is excluded from the ES512 comparisons,
+and that \`jose\` has been promise based since v3, so it only appears in the asynchronous comparisons.
+
 ## Signing
 
 ${signBenchmark.map(printDetail).join('\n')}

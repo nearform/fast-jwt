@@ -2,7 +2,7 @@
 
 import nodeRsJwt, { Algorithm } from '@node-rs/jsonwebtoken'
 import { run, bench, summary } from 'mitata'
-import { createSecretKey, createPublicKey, createPrivateKey } from 'crypto'
+import { createSecretKey, createPublicKey, createPrivateKey, webcrypto } from 'crypto'
 import { readFileSync } from 'fs'
 import { mkdir, writeFile } from 'fs/promises'
 import { dirname, resolve } from 'path'
@@ -10,7 +10,7 @@ import { fileURLToPath } from 'url'
 
 import jwt from 'jsonwebtoken'
 
-import { JWK as JWKJose, JWT as JWTJose } from 'jose'
+import * as jose from 'jose'
 
 import { createDecoder, createSigner, createVerifier } from '../src/index.js'
 
@@ -18,10 +18,24 @@ const __dirname = dirname(fileURLToPath(import.meta.url))
 
 const { sign: jsonwebtokenSign, decode: jsonwebtokenDecode, verify: jsonwebtokenVerify } = jwt
 
-const { sign: nodeRsSign, signSync: nodeRsSignSync, verifySync: nodeRsVerifySync } = nodeRsJwt
+const { sign: nodeRsSign, signSync: nodeRsSignSync, verify: nodeRsVerify, verifySync: nodeRsVerifySync } = nodeRsJwt
 
-const { sign: joseSign, verify: joseVerify, decode: joseDecode } = JWTJose
-const { asKey } = JWKJose
+/*
+  The Algorithm enum keys match the JWA names exactly, including the mixed case of EdDSA,
+  so they must not be upper cased. Algorithms missing from the enum (like ES512) are not
+  supported by the library and are excluded from its benchmarks.
+*/
+const nodeRsAlgorithms = new Set(Object.keys(Algorithm))
+
+/*
+  The benchmark tokens carry no exp claim, which @node-rs/jsonwebtoken requires by default,
+  so the other libraries would otherwise be measured against a failing verification.
+*/
+const nodeRsValidation = algorithm => ({
+  algorithms: [Algorithm[algorithm]],
+  requiredSpecClaims: [],
+  validateExp: false
+})
 
 const output = []
 const mitataOptions = {
@@ -98,7 +112,9 @@ export function compareDecoding(token, algorithm) {
     log('-------')
     log(`Decoded ${algorithm} tokens:`)
     log(`  jsonwebtoken: ${JSON.stringify(jsonwebtokenDecode(token, { complete: true }))}`)
-    log(`          jose: ${JSON.stringify(joseDecode(token, { complete: true }))}`)
+    log(
+      `          jose: ${JSON.stringify({ header: jose.decodeProtectedHeader(token), payload: jose.decodeJwt(token) })}`
+    )
     log(`       fastjwt: ${JSON.stringify(fastjwtCompleteDecoder(token, { complete: true }))}`)
     log('-------')
   }
@@ -117,14 +133,60 @@ export function compareDecoding(token, algorithm) {
       jsonwebtokenDecode(token, { complete: true })
     },
     [`${algorithm} - jose`]: function () {
-      joseDecode(token)
+      jose.decodeJwt(token)
     },
+    // jose has no single call returning both, so the complete decoding is composed of the two
     [`${algorithm} - jose (complete)`]: function () {
-      joseDecode(token, { complete: true })
+      jose.decodeProtectedHeader(token)
+      jose.decodeJwt(token)
     }
   }
 
   return runMitata(tests, mitataOptions)
+}
+
+/*
+  jose only accepts PKCS#8 private keys and SPKI public keys, while some of the benchmark keys
+  are PKCS#1, so they are normalised through the crypto module first. This all happens once,
+  outside of the measured code.
+*/
+function joseSecret(algorithm, secret) {
+  /*
+    A raw secret would be imported by jose on every single call, so it is imported here instead,
+    to match the prepared keys the other libraries are given
+  */
+  return webcrypto.subtle.importKey(
+    'raw',
+    new TextEncoder().encode(secret),
+    { name: 'HMAC', hash: `SHA-${algorithm.slice(2)}` },
+    false,
+    ['sign', 'verify']
+  )
+}
+
+function josePrivateKeyFor(algorithm, privateKey) {
+  if (algorithm.startsWith('HS')) {
+    return joseSecret(algorithm, privateKey)
+  }
+
+  return jose.importPKCS8(createPrivateKey(privateKey).export({ type: 'pkcs8', format: 'pem' }), algorithm)
+}
+
+function josePublicKeyFor(algorithm, publicKey) {
+  if (algorithm.startsWith('HS')) {
+    return joseSecret(algorithm, publicKey)
+  }
+
+  return jose.importSPKI(createPublicKey(publicKey).export({ type: 'spki', format: 'pem' }), algorithm)
+}
+
+function joseSign(payload, algorithm, key) {
+  // No setIssuedAt() call, to match the noTimestamp option used for the other libraries
+  return new jose.SignJWT(payload).setProtectedHeader({ alg: algorithm, typ: 'JWT' }).sign(key)
+}
+
+function joseVerify(token, algorithm, key) {
+  return jose.jwtVerify(token, key, { algorithms: [algorithm] })
 }
 
 function jsonwebtokenPrivateKeyFromString(privateKey) {
@@ -151,29 +213,23 @@ function jsonwebtokenKeyFromString(key, keyFunc) {
 
 export async function compareSigning(payload, algorithm, privateKey, publicKey) {
   const isEdDSA = algorithm.slice(0, 2) === 'Ed'
+  const hasNodeRs = nodeRsAlgorithms.has(algorithm)
 
   const fastjwtSign = createSigner({ algorithm, key: privateKey, noTimestamp: true })
   const fastjwtSignAsync = createSigner({ algorithm, key: async () => privateKey, noTimestamp: true })
   const fastjwtVerify = createVerifier({ key: publicKey })
 
-  const josePrivateKey = asKey(privateKey)
+  const josePrivateKey = await josePrivateKeyFor(algorithm, privateKey)
   const jsonwebtokenKey = /^(?:RS|PS|ES)/.test(algorithm)
     ? jsonwebtokenPrivateKeyFromString(privateKey)
     : jsonwebtokenSecretKeyFromString(publicKey)
-  const joseOptions = {
-    algorithm,
-    iat: false,
-    header: {
-      typ: 'JWT'
-    }
-  }
 
   if ((process.env.NODE_DEBUG || '').includes('fast-jwt')) {
     const fastjwtGenerated = fastjwtSign(payload)
-    const joseGenerated = joseSign(payload, josePrivateKey, joseOptions)
-    const nodeRsGenerated = nodeRsSignSync({ data: payload, exp: Date.now() }, privateKey, {
-      algorithm: Algorithm[algorithm.toUpperCase()]
-    })
+    const joseGenerated = await joseSign(payload, algorithm, josePrivateKey)
+    const nodeRsGenerated = hasNodeRs
+      ? nodeRsSignSync({ data: payload, exp: Date.now() }, privateKey, { algorithm: Algorithm[algorithm] })
+      : null
     const jsonwebtokenGenerated = isEdDSA
       ? null
       : jsonwebtokenSign(payload, jsonwebtokenKey, { algorithm, noTimestamp: true })
@@ -185,22 +241,29 @@ export async function compareSigning(payload, algorithm, privateKey, publicKey) 
     }
     log(`                 jose: ${JSON.stringify(joseGenerated)}`)
     log(`              fastjwt: ${JSON.stringify(fastjwtGenerated)}`)
-    log(`@node-rs/jsonwebtoken: ${JSON.stringify(nodeRsGenerated)}`)
+    if (hasNodeRs) {
+      log(`@node-rs/jsonwebtoken: ${JSON.stringify(nodeRsGenerated)}`)
+    }
     log('Generated tokens verification:')
     if (!isEdDSA) {
       log(`         jsonwebtoken: ${JSON.stringify(jsonwebtokenVerify(jsonwebtokenGenerated, jsonwebtokenKey))}`)
     }
-    log(`                 jose: ${JSON.stringify(joseVerify(joseGenerated, asKey(publicKey)))}`)
-    log(`              fastjwt: ${JSON.stringify(fastjwtVerify(fastjwtGenerated))}`)
     log(
-      `@node-rs/jsonwebtoken: ${JSON.stringify(nodeRsVerifySync(nodeRsGenerated, publicKey, { algorithms: [Algorithm[algorithm.toUpperCase()]] }))}`
+      `                 jose: ${JSON.stringify((await joseVerify(joseGenerated, algorithm, await josePublicKeyFor(algorithm, publicKey))).payload)}`
     )
+    log(`              fastjwt: ${JSON.stringify(fastjwtVerify(fastjwtGenerated))}`)
+    if (hasNodeRs) {
+      log(
+        `@node-rs/jsonwebtoken: ${JSON.stringify(nodeRsVerifySync(nodeRsGenerated, publicKey, { algorithms: [Algorithm[algorithm]] }))}`
+      )
+    }
     log('-------')
   }
 
+  // jose has been promise based since v3, so it only offers an asynchronous comparison
   const tests = {
-    [`${algorithm} - jose (sync)`]: function () {
-      joseSign(payload, josePrivateKey, joseOptions)
+    [`${algorithm} - jose (async)`]: async function () {
+      return joseSign(payload, algorithm, josePrivateKey)
     }
   }
 
@@ -223,27 +286,33 @@ export async function compareSigning(payload, algorithm, privateKey, publicKey) 
     },
     [`${algorithm} - fast-jwt (async)`]: async function () {
       return fastjwtSignAsync(payload)
-    },
-    [`${algorithm} - @node-rs/jsonwebtoken (sync)`]: function () {
-      nodeRsSignSync({ data: payload }, privateKey, { algorithm: Algorithm[algorithm.toUpperCase()] })
-    },
-    [`${algorithm} - @node-rs/jsonwebtoken (async)`]: async function () {
-      return nodeRsSign({ data: payload }, privateKey, { algorithm: Algorithm[algorithm.toUpperCase()] })
     }
   })
+
+  if (hasNodeRs) {
+    Object.assign(tests, {
+      [`${algorithm} - @node-rs/jsonwebtoken (sync)`]: function () {
+        nodeRsSignSync({ data: payload }, privateKey, { algorithm: Algorithm[algorithm] })
+      },
+      [`${algorithm} - @node-rs/jsonwebtoken (async)`]: async function () {
+        return nodeRsSign({ data: payload }, privateKey, { algorithm: Algorithm[algorithm] })
+      }
+    })
+  }
 
   return runMitata(tests, mitataOptions)
 }
 
-export function compareVerifying(token, algorithm, publicKey) {
+export async function compareVerifying(token, algorithm, publicKey) {
   const isEdDSA = algorithm.slice(0, 2) === 'Ed'
+  const hasNodeRs = nodeRsAlgorithms.has(algorithm)
 
   const fastjwtVerify = createVerifier({ key: publicKey })
   const fastjwtVerifyAsync = createVerifier({ key: async () => publicKey })
   const fastjwtCachedVerify = createVerifier({ key: publicKey, cache: true })
   const fastjwtCachedVerifyAsync = createVerifier({ key: async () => publicKey, cache: true })
 
-  const josePublicKey = asKey(publicKey)
+  const josePublicKey = await josePublicKeyFor(algorithm, publicKey)
   const jsonwebtokenKey = /^(?:RS|PS|ES)/.test(algorithm)
     ? jsonwebtokenPublicKeyFromString(publicKey)
     : jsonwebtokenSecretKeyFromString(publicKey)
@@ -254,10 +323,13 @@ export function compareVerifying(token, algorithm, publicKey) {
     if (!isEdDSA) {
       log(`        jsonwebtoken: ${JSON.stringify(jsonwebtokenVerify(token, jsonwebtokenKey))}`)
     }
-    log(`                jose: ${JSON.stringify(joseVerify(token, josePublicKey))}`)
+    log(`                jose: ${JSON.stringify((await joseVerify(token, algorithm, josePublicKey)).payload)}`)
     log(`             fastjwt: ${JSON.stringify(fastjwtVerify(token))}`)
     log(`  fastjwt+cache-miss: ${JSON.stringify(fastjwtCachedVerify(token))}`)
     log(`   fastjwt+cache-hit: ${JSON.stringify(fastjwtCachedVerify(token))}`)
+    if (hasNodeRs) {
+      log(`@node-rs/jsonwebtoken: ${JSON.stringify(nodeRsVerifySync(token, publicKey, nodeRsValidation(algorithm)))}`)
+    }
     log('-------')
   }
 
@@ -274,8 +346,9 @@ export function compareVerifying(token, algorithm, publicKey) {
     [`${algorithm} - fast-jwt (async with cache)`]: async function () {
       return fastjwtCachedVerifyAsync(token)
     },
-    [`${algorithm} - jose (sync)`]: function () {
-      joseVerify(token, josePublicKey)
+    // jose has been promise based since v3, so it only offers an asynchronous comparison
+    [`${algorithm} - jose (async)`]: async function () {
+      return joseVerify(token, algorithm, josePublicKey)
     }
   }
 
@@ -285,6 +358,17 @@ export function compareVerifying(token, algorithm, publicKey) {
     }
     tests[`${algorithm} - jsonwebtoken (async)`] = async function () {
       return new Promise(resolve => jsonwebtokenVerify(token, jsonwebtokenKey, resolve))
+    }
+  }
+
+  if (hasNodeRs) {
+    const validation = nodeRsValidation(algorithm)
+
+    tests[`${algorithm} - @node-rs/jsonwebtoken (sync)`] = function () {
+      nodeRsVerifySync(token, publicKey, validation)
+    }
+    tests[`${algorithm} - @node-rs/jsonwebtoken (async)`] = async function () {
+      return nodeRsVerify(token, publicKey, validation)
     }
   }
 

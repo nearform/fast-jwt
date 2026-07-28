@@ -2,10 +2,8 @@
 
 const { readFileSync } = require('node:fs')
 const { sign: jsonwebtokenSign, verify: jsonwebtokenVerify } = require('jsonwebtoken')
-const {
-  JWT: { sign: joseSign, verify: joseVerify },
-  JWK: { asKey }
-} = require('jose')
+// jose is ESM only, so it is imported dynamically to keep this file CommonJS
+const josePromise = import('jose')
 const { resolve } = require('node:path')
 const { test } = require('node:test')
 
@@ -55,23 +53,31 @@ for (const type of ['HS', 'ES', 'RS', 'PS']) {
   }
 }
 
-for (const curve of ['Ed25519', 'Ed448']) {
-  test(`fast-jwt should correcty verify tokens created by jose - EdDSA with ${curve}`, t => {
+// jose builds on WebCrypto, which has no Ed448 support, so only Ed25519 can be cross checked.
+// Ed448 remains covered against fast-jwt itself in crypto.spec.js, signer.spec.js and verifier.spec.js
+for (const curve of ['Ed25519']) {
+  test(`fast-jwt should correcty verify tokens created by jose - EdDSA with ${curve}`, async t => {
+    const { SignJWT, importPKCS8 } = await josePromise
+
     const verify = createVerifier({ key: publicKeys[curve].toString() })
-    const token = joseSign({ a: 1, b: 2, c: 3 }, asKey(privateKeys[curve]), {
-      iat: false,
-      header: {
-        typ: 'JWT'
-      }
-    })
+    // No setIssuedAt() call, to match the noTimestamp option used below
+    const token = await new SignJWT({ a: 1, b: 2, c: 3 })
+      .setProtectedHeader({ alg: 'EdDSA', typ: 'JWT' })
+      .sign(await importPKCS8(privateKeys[curve].toString(), 'EdDSA'))
 
     t.assert.deepStrictEqual(verify(token), { a: 1, b: 2, c: 3 })
   })
 
-  test(`jose should correcty verify tokens created by fast-jwt - EdDSA with ${curve}`, t => {
+  test(`jose should correcty verify tokens created by fast-jwt - EdDSA with ${curve}`, async t => {
+    const { jwtVerify, importSPKI } = await josePromise
+
     const signer = createSigner({ key: privateKeys[curve], noTimestamp: true })
     const token = signer({ a: 1, b: 2, c: 3 })
 
-    t.assert.deepStrictEqual(joseVerify(token, asKey(publicKeys[curve])), { a: 1, b: 2, c: 3 })
+    const { payload } = await jwtVerify(token, await importSPKI(publicKeys[curve].toString(), 'EdDSA'), {
+      algorithms: ['EdDSA']
+    })
+
+    t.assert.deepStrictEqual(payload, { a: 1, b: 2, c: 3 })
   })
 }
