@@ -91,7 +91,11 @@ function isAsymmetricJwk(candidate) {
 // the (public) JWK JSON forge an HS*-signed token (GHSA-g3jj-5cmm-3hxx). Detect the
 // asymmetric shape before that fallback and refuse it instead.
 function isAsymmetricJwkJson(trimmedKey) {
-  if (trimmedKey[0] !== '{') {
+  const firstChar = trimmedKey[0]
+
+  // `[` covers the edge case of a caller serializing a JWKS' `keys` array rather
+  // than the wrapping document.
+  if (firstChar !== '{' && firstChar !== '[') {
     return false
   }
 
@@ -103,7 +107,11 @@ function isAsymmetricJwkJson(trimmedKey) {
     return false
   }
 
-  return isAsymmetricJwk(parsed) || (Array.isArray(parsed.keys) && parsed.keys.some(isAsymmetricJwk))
+  return (
+    isAsymmetricJwk(parsed) ||
+    (Array.isArray(parsed) && parsed.some(isAsymmetricJwk)) ||
+    (Array.isArray(parsed.keys) && parsed.keys.some(isAsymmetricJwk))
+  )
 }
 
 // Single source of truth for locating a PEM/certificate block. Returns the key

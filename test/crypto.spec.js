@@ -427,6 +427,21 @@ describe('detectPublicKeyAlgorithms', () => {
       })
     })
 
+    test('rejects a bare array of JWKs (a JWKS\' `keys` serialized without its wrapper)', t => {
+      const { publicKey } = generateKeyPairSync('rsa', { modulusLength: 2048 })
+      const keys = [publicKey.export({ format: 'jwk' })]
+
+      t.assert.throws(() => detectPublicKeyAlgorithms(JSON.stringify(keys)), {
+        message: 'Raw asymmetric JWK/JWKS JSON cannot be used as an HMAC secret.'
+      })
+    })
+
+    test('a bare array of symmetric (kty=oct) JWKs is still usable as an HMAC secret', t => {
+      const keys = [{ kty: 'oct', k: 'c2VjcmV0c2VjcmV0c2VjcmV0' }]
+
+      t.assert.deepStrictEqual(detectPublicKeyAlgorithms(JSON.stringify(keys)), hsAlgorithms)
+    })
+
     test('rejects a JWK/JWKS with leading or trailing whitespace', t => {
       const { publicKey } = generateKeyPairSync('rsa', { modulusLength: 2048 })
       const jwk = publicKey.export({ format: 'jwk' })
