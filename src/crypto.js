@@ -27,6 +27,9 @@ const encoderMap = { '=': '', '+': '-', '/': '_' }
 const privateKeyPemMatcher = /^-----BEGIN(?: (RSA|EC|ENCRYPTED))? PRIVATE KEY-----/
 const publicKeyPemMatcher = /^-----BEGIN(?: (RSA))? PUBLIC KEY-----/
 const publicKeyX509CertMatcher = '-----BEGIN CERTIFICATE-----'
+// kty values that identify asymmetric JWK key material (RFC 7518 / RFC 8037).
+// "oct" (a genuine symmetric key) is deliberately excluded so raw HS* JWKs keep working.
+const asymmetricJwkKtys = new Set(['RSA', 'EC', 'OKP'])
 // Matches any PEM/certificate header regardless of its position in the string.
 // Used to locate the start of a PEM block so that leading bytes (whitespace,
 // control chars, zero-width unicode, comments, wrappers, ...) cannot push the
@@ -79,6 +82,38 @@ function cacheSet(cache, key, value, error) {
   return value || error
 }
 
+function isAsymmetricJwk(candidate) {
+  return Boolean(candidate) && typeof candidate === 'object' && asymmetricJwkKtys.has(candidate.kty)
+}
+
+// A serialized public (or private) JWK/JWKS has no PEM header, so it would otherwise
+// fall through to being treated as a raw HMAC secret -- letting an attacker who knows
+// the (public) JWK JSON forge an HS*-signed token (GHSA-g3jj-5cmm-3hxx). Detect the
+// asymmetric shape before that fallback and refuse it instead.
+function isAsymmetricJwkJson(trimmedKey) {
+  const firstChar = trimmedKey[0]
+
+  // `[` covers the edge case of a caller serializing a JWKS' `keys` array rather
+  // than the wrapping document.
+  if (firstChar !== '{' && firstChar !== '[') {
+    return false
+  }
+
+  let parsed
+
+  try {
+    parsed = JSON.parse(trimmedKey)
+  } catch {
+    return false
+  }
+
+  return (
+    isAsymmetricJwk(parsed) ||
+    (Array.isArray(parsed) && parsed.some(isAsymmetricJwk)) ||
+    (Array.isArray(parsed.keys) && parsed.keys.some(isAsymmetricJwk))
+  )
+}
+
 // Single source of truth for locating a PEM/certificate block. Returns the key
 // sliced from its first `-----BEGIN ...-----` header, or flags it as a raw HMAC
 // secret when no header is present anywhere. Both detectors MUST use this and
@@ -95,6 +130,15 @@ function locatePem(trimmedKey) {
   return { pem: trimmedKey.slice(pemStart), isRawSecret: false }
 }
 
+// A raw secret that is really serialized asymmetric JWK/JWKS material must not be
+// accepted as an HMAC secret: since public JWK JSON is public by design, anyone who
+// knows it could forge an HS*-signed token (GHSA-g3jj-5cmm-3hxx).
+function assertNotAsymmetricJwkJson(trimmedKey) {
+  if (isAsymmetricJwkJson(trimmedKey)) {
+    throw new TokenError(TokenError.codes.invalidKey, 'Raw asymmetric JWK/JWKS JSON cannot be used as an HMAC secret.')
+  }
+}
+
 function performDetectPrivateKeyAlgorithm(key, providedAlgorithm) {
   const trimmedKey = key.trim()
 
@@ -106,6 +150,8 @@ function performDetectPrivateKeyAlgorithm(key, providedAlgorithm) {
   const { pem, isRawSecret } = locatePem(trimmedKey)
 
   if (isRawSecret) {
+    assertNotAsymmetricJwkJson(trimmedKey)
+
     return 'HS256'
   }
 
@@ -168,6 +214,8 @@ function performDetectPublicKeyAlgorithms(key) {
   const { pem, isRawSecret } = locatePem(trimmedKey)
 
   if (isRawSecret) {
+    assertNotAsymmetricJwkJson(trimmedKey)
+
     // Not a PEM, assume a plain secret
     return hsAlgorithms
   }
