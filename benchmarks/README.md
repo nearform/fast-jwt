@@ -350,9 +350,10 @@ the header, which it needs for the `checkTyp` option and for the `complete` form
 of the three segments containing characters outside the base64url alphabet, so that a non canonical
 token cannot be silently accepted. `jose`'s `decodeJwt` does neither: it reads the payload only. The
 alphabet check also scans the signature, so the cost grows with signature length, and RS512 has the
-longest signature of the algorithms benchmarked here — measured across all of them, the gap ranges
-from 1.66x for HS256 to 3.06x for PS512. The `(complete)` rows are the closest to an equal
-comparison, since only there does `jose` decode the header as well.
+longest signature of the algorithms benchmarked here. A separate off-line run over the other
+algorithms, which `decode.mjs` does not cover and which therefore cannot be reproduced from the rows
+above, put the gap between 1.66x for HS256 and 3.06x for PS512. The `(complete)` rows are the closest
+to an equal comparison, since only there does `jose` decode the header as well.
 
 ## Verifying
 

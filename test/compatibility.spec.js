@@ -16,8 +16,7 @@ const privateKeys = {
   ES512: readFileSync(resolve(__dirname, '../benchmarks/keys/es-512-private.key')),
   RS: readFileSync(resolve(__dirname, '../benchmarks/keys/rs-512-private.key')),
   PS: readFileSync(resolve(__dirname, '../benchmarks/keys/ps-512-private.key')),
-  Ed25519: readFileSync(resolve(__dirname, '../benchmarks/keys/ed-25519-private.key')),
-  Ed448: readFileSync(resolve(__dirname, '../benchmarks/keys/ed-448-private.key'))
+  Ed25519: readFileSync(resolve(__dirname, '../benchmarks/keys/ed-25519-private.key'))
 }
 
 const publicKeys = {
@@ -27,8 +26,7 @@ const publicKeys = {
   ES512: readFileSync(resolve(__dirname, '../benchmarks/keys/es-512-public.key')),
   RS: readFileSync(resolve(__dirname, '../benchmarks/keys/rs-512-public.key')),
   PS: readFileSync(resolve(__dirname, '../benchmarks/keys/ps-512-public.key')),
-  Ed25519: readFileSync(resolve(__dirname, '../benchmarks/keys/ed-25519-public.key')),
-  Ed448: readFileSync(resolve(__dirname, '../benchmarks/keys/ed-448-public.key'))
+  Ed25519: readFileSync(resolve(__dirname, '../benchmarks/keys/ed-25519-public.key'))
 }
 
 describe('3rd party library compatibility', () => {
@@ -62,7 +60,9 @@ describe('3rd party library compatibility', () => {
   })
 
   describe('jose', () => {
-    // jose builds on WebCrypto, which has no Ed448 support, so only Ed25519 can be cross checked.
+    // jose v6 dropped Ed448 and X448 (https://github.com/panva/jose/releases/tag/v6.0.0), so only
+    // Ed25519 can be cross checked. This is a jose limitation, not a platform one: Node's WebCrypto
+    // does implement Ed448, as an experimental feature.
     // Ed448 remains covered against fast-jwt itself in crypto.spec.js, signer.spec.js and verifier.spec.js
     for (const curve of ['Ed25519']) {
       describe(`EdDSA with ${curve}`, () => {
