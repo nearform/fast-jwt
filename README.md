@@ -170,7 +170,7 @@ Create a verifier function by calling `createVerifier` and providing one or more
 
 - `ignoreNotBefore`: Do not validate the activation of the token. Default is `false`.
 
-- `maxAge`: The maximum allowed age (in milliseconds) for tokens to still be valid. It is only enforced when the token has an `iat` claim; use `requiredClaims: ['iat']` if that claim must be present. By default this is not checked.
+- `maxAge`: The maximum allowed age (in milliseconds) for tokens to still be valid. By default this is not checked. It is only enforced when the token has an `iat` claim; use `requiredClaims: ['iat']` if that claim must be present.
 
 - `clockTimestamp`: The timestamp in milliseconds (like the output of `Date.now()`) that should be used as the current time for all necessary time comparisons. Default is the system time.
 
