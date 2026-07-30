@@ -504,10 +504,36 @@ module.exports = function createVerifier(options) {
   }
 
   const keyType = typeof key
-  if (keyType !== 'string' && keyType !== 'object' && keyType !== 'function') {
+  const allowsOnlyNone = allowedAlgorithms.length > 0 && allowedAlgorithms.every(algorithm => algorithm === 'none')
+
+  /*
+    Unsigned tokens carry no signature, so they are the only ones verifiable without a
+    key. Mirroring createSigner, only a truthy key is refused here: that stops a real
+    key from silently pairing with the "none" algorithm, while still accepting the
+    empty string and null that callers have long used to build such a verifier.
+  */
+  if (allowsOnlyNone) {
+    if (key) {
+      throw new TokenError(
+        TokenError.codes.invalidOption,
+        'The key option must not be provided when the only allowed algorithm is "none".'
+      )
+    }
+  } else if (keyType !== 'string' && keyType !== 'object' && keyType !== 'function') {
     throw new TokenError(
-      TokenError.codes.INVALID_OPTION,
+      TokenError.codes.invalidOption,
       'The key option must be a string, a buffer or a function returning the algorithm secret or public key.'
+    )
+  } else if (!key && keyType !== 'function') {
+    /*
+      An empty or null key can never verify a signature. Left unchecked, an explicit
+      allowlist would stay active with no key to check against: verifyToken sees
+      neither a key nor a signature, so it verifies nothing and accepts forged
+      unsigned tokens.
+    */
+    throw new TokenError(
+      TokenError.codes.invalidKey,
+      'The key option is required unless the only allowed algorithm is "none".'
     )
   }
 

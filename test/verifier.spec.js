@@ -287,12 +287,18 @@ describe('createVerifier', () => {
       message: 'The token signature is missing.'
     })
 
+    // An empty key is now rejected when the verifier is built, so it can no longer
+    // reach the missing-key check at verify time. See the GHSA-8wpc-h4q6-8fxv suite
+    // for the construction-time contract and for a verifier that still reaches it.
     t.assert.throws(
       () =>
         verify('eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxfQ.57TF7smP9XDhIexBqPC-F1toZReYZLWb_YRU5tv0sxM', {
           key: ''
         }),
-      { message: 'The key option is missing.' }
+      {
+        code: 'FAST_JWT_INVALID_KEY',
+        message: 'The key option is required unless the only allowed algorithm is "none".'
+      }
     )
   })
 
@@ -1225,6 +1231,7 @@ describe('createVerifier', () => {
   describe('options validation', () => {
     test('key', t => {
       t.assert.throws(() => createVerifier({ key: 123 }), {
+        code: 'FAST_JWT_INVALID_OPTION',
         message: 'The key option must be a string, a buffer or a function returning the algorithm secret or public key.'
       })
     })
@@ -2352,23 +2359,18 @@ describe('createVerifier', () => {
       })
     })
 
-    test('regression case 11: synchronous empty key throws MISSING_KEY at verify time', t => {
-      const signer = createSigner({
-        key: 'valid-secret',
-        algorithm: 'HS256',
-        noTimestamp: true
-      })
-      const validToken = signer({ sub: 'user' })
-
-      const verifier = createVerifier({
-        key: '',
-        noTimestamp: true
-      })
-
-      t.assert.throws(() => verifier(validToken), {
-        code: 'FAST_JWT_MISSING_KEY',
-        message: 'The key option is missing.'
-      })
+    test('regression case 11: synchronous empty key is rejected when the verifier is built', t => {
+      t.assert.throws(
+        () =>
+          createVerifier({
+            key: '',
+            noTimestamp: true
+          }),
+        {
+          code: 'FAST_JWT_INVALID_KEY',
+          message: 'The key option is required unless the only allowed algorithm is "none".'
+        }
+      )
     })
 
     test('regression case 12: async resolver with valid RS256 public key verifies normally', async t => {
@@ -2416,6 +2418,149 @@ describe('createVerifier', () => {
 
       t.assert.throws(() => verifier(forgedToken), {
         message: 'The payload must be an object'
+      })
+    })
+  })
+
+  describe('GHSA-8wpc-h4q6-8fxv: falsy synchronous key with an explicit algorithms allowlist', () => {
+    function forgeUnsignedToken(algorithm, payload = { sub: 'attacker', admin: true }) {
+      const encodedHeader = Buffer.from(JSON.stringify({ alg: algorithm, typ: 'JWT' })).toString('base64url')
+      const encodedPayload = Buffer.from(JSON.stringify(payload)).toString('base64url')
+
+      // The trailing dot leaves the signature segment empty.
+      return `${encodedHeader}.${encodedPayload}.`
+    }
+
+    const expectedRejection = {
+      code: 'FAST_JWT_INVALID_KEY',
+      message: 'The key option is required unless the only allowed algorithm is "none".'
+    }
+
+    for (const emptyKey of ['', null]) {
+      const keyLabel = JSON.stringify(emptyKey)
+
+      for (const algorithm of ['HS256', 'HS512', 'RS256', 'PS256', 'ES256', 'EdDSA']) {
+        test(`rejects a verifier built with key ${keyLabel} and algorithms ['${algorithm}']`, t => {
+          t.assert.throws(() => createVerifier({ key: emptyKey, algorithms: [algorithm] }), expectedRejection)
+        })
+      }
+
+      test(`rejects a verifier built with key ${keyLabel} and a multi-algorithm allowlist`, t => {
+        t.assert.throws(() => createVerifier({ key: emptyKey, algorithms: ['HS256', 'RS256'] }), expectedRejection)
+      })
+
+      test(`rejects a verifier built with key ${keyLabel} and an allowlist mixing 'none' with a real algorithm`, t => {
+        t.assert.throws(() => createVerifier({ key: emptyKey, algorithms: ['none', 'HS256'] }), expectedRejection)
+        t.assert.throws(() => createVerifier({ key: emptyKey, algorithms: ['HS256', 'none'] }), expectedRejection)
+      })
+
+      test(`rejects a verifier built with key ${keyLabel} and no algorithms option`, t => {
+        t.assert.throws(() => createVerifier({ key: emptyKey }), expectedRejection)
+      })
+
+      test(`rejects a verifier built with key ${keyLabel} and a non-array algorithms option`, t => {
+        t.assert.throws(() => createVerifier({ key: emptyKey, algorithms: 'HS256' }), expectedRejection)
+      })
+
+      // Kept working for backwards compatibility: this was the only way to build a
+      // verifier for unsigned tokens before the key option could be omitted.
+      test(`still verifies an alg: none token with key ${keyLabel} and algorithms ['none']`, t => {
+        const unsignedToken = createSigner({ key: emptyKey, algorithm: 'none', noTimestamp: true })({
+          sub: 'anonymous'
+        })
+
+        const verifier = createVerifier({ key: emptyKey, algorithms: ['none'], noTimestamp: true })
+
+        t.assert.deepStrictEqual(verifier(unsignedToken), { sub: 'anonymous' })
+      })
+
+      test(`a none-only verifier with key ${keyLabel} still rejects an unsigned token of another algorithm`, t => {
+        const verifier = createVerifier({ key: emptyKey, algorithms: ['none'], noTimestamp: true })
+
+        t.assert.throws(() => verifier(forgeUnsignedToken('HS256')), {
+          code: 'FAST_JWT_INVALID_ALGORITHM',
+          message: 'The token algorithm is invalid.'
+        })
+      })
+    }
+
+    test("rejects a verifier built with an empty buffer key alongside algorithms ['none']", t => {
+      t.assert.throws(() => createVerifier({ key: Buffer.alloc(0), algorithms: ['none'] }), {
+        code: 'FAST_JWT_INVALID_OPTION',
+        message: 'The key option must not be provided when the only allowed algorithm is "none".'
+      })
+    })
+
+    test("rejects a verifier built with a real key alongside algorithms ['none']", t => {
+      t.assert.throws(() => createVerifier({ key: 'a-real-secret', algorithms: ['none'] }), {
+        code: 'FAST_JWT_INVALID_OPTION',
+        message: 'The key option must not be provided when the only allowed algorithm is "none".'
+      })
+    })
+
+    test("rejects a verifier built with a key function alongside algorithms ['none']", t => {
+      t.assert.throws(() => createVerifier({ key: async () => 'a-real-secret', algorithms: ['none'] }), {
+        code: 'FAST_JWT_INVALID_OPTION',
+        message: 'The key option must not be provided when the only allowed algorithm is "none".'
+      })
+    })
+
+    test("verifies an alg: none token when the key option is omitted and algorithms is ['none']", t => {
+      const unsignedToken = createSigner({ algorithm: 'none', noTimestamp: true })({ sub: 'anonymous' })
+
+      const verifier = createVerifier({ algorithms: ['none'], noTimestamp: true })
+
+      t.assert.deepStrictEqual(verifier(unsignedToken), { sub: 'anonymous' })
+    })
+
+    test('a none-only verifier rejects an unsigned token of another algorithm', t => {
+      const verifier = createVerifier({ algorithms: ['none'], noTimestamp: true })
+
+      t.assert.throws(() => verifier(forgeUnsignedToken('HS256')), {
+        code: 'FAST_JWT_INVALID_ALGORITHM',
+        message: 'The token algorithm is invalid.'
+      })
+    })
+
+    test('a none-only verifier rejects a token carrying a signature', t => {
+      const verifier = createVerifier({ algorithms: ['none'], noTimestamp: true })
+      const signedToken = `${forgeUnsignedToken('none')}AAAA`
+
+      t.assert.throws(() => verifier(signedToken), {
+        code: 'FAST_JWT_MISSING_KEY',
+        message: 'The key option is missing.'
+      })
+    })
+
+    test('does not reject a key function paired with an algorithms allowlist', async t => {
+      const key = 'a-real-secret'
+      const signedToken = createSigner({ key, algorithm: 'HS256', noTimestamp: true })({ sub: 'legit-user' })
+
+      const verifier = createVerifier({ key: async () => key, algorithms: ['HS256'], noTimestamp: true })
+
+      t.assert.deepStrictEqual(await verifier(signedToken), { sub: 'legit-user' })
+    })
+
+    test('still rejects an empty buffer key ahead of the allowlist check', t => {
+      t.assert.throws(() => createVerifier({ key: Buffer.alloc(0), algorithms: ['HS256'] }), {
+        code: 'FAST_JWT_INVALID_KEY',
+        message: 'The key cannot be an empty string or buffer.'
+      })
+    })
+
+    test('still rejects an undefined key as an invalid option', t => {
+      t.assert.throws(() => createVerifier({ algorithms: ['HS256'] }), {
+        code: 'FAST_JWT_INVALID_OPTION',
+        message: 'The key option must be a string, a buffer or a function returning the algorithm secret or public key.'
+      })
+    })
+
+    test('still reports a missing signature when a real key is configured', t => {
+      const verifier = createVerifier({ key: 'a-real-secret', algorithms: ['HS256'], noTimestamp: true })
+
+      t.assert.throws(() => verifier(forgeUnsignedToken('HS256')), {
+        code: 'FAST_JWT_MISSING_SIGNATURE',
+        message: 'The token signature is missing.'
       })
     })
   })

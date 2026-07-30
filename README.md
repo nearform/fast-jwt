@@ -142,7 +142,7 @@ const sections = decodeComplete(token)
 
 Create a verifier function by calling `createVerifier` and providing one or more of the following options:
 
-- `key`: A string or a buffer containing the secret for `HS*` algorithms or the PEM encoded public key for `RS*`, `PS*`, `ES*` and `EdDSA` algorithms. The key can also be a function accepting a Node style callback or a function returning a promise. This is the only mandatory option, which MUST NOT be provided if the token algorithm is `none`.
+- `key`: A string or a buffer containing the secret for `HS*` algorithms or the PEM encoded public key for `RS*`, `PS*`, `ES*` and `EdDSA` algorithms. The key can also be a function accepting a Node style callback or a function returning a promise. This option is mandatory unless `none` is the only allowed algorithm, in which case it MUST be omitted, an empty string or `null`. To verify unsigned tokens, omit the key and set `algorithms` to `['none']`. An empty string or `null` is rejected whenever any other algorithm is allowed.
 
 - `algorithms`: List of strings with the names of the allowed algorithms. By default, all algorithms are accepted.
 
