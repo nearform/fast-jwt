@@ -570,8 +570,8 @@ module.exports = function createVerifier(options) {
     )
   }
 
-  if (cacheTTL !== undefined && (typeof cacheTTL !== 'number' || !Number.isFinite(cacheTTL) || cacheTTL < 0)) {
-    throw new TokenError(TokenError.codes.invalidOption, 'The cacheTTL option must be a finite, non-negative number.')
+  if (cacheTTL !== undefined && (typeof cacheTTL !== 'number' || Number.isNaN(cacheTTL) || cacheTTL < 0)) {
+    throw new TokenError(TokenError.codes.invalidOption, 'The cacheTTL option must be a non-negative number.')
   }
 
   if (

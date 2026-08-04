@@ -1274,20 +1274,18 @@ describe('createVerifier', () => {
 
     test('cacheTTL', t => {
       t.assert.throws(() => createVerifier({ key: 'secret', cacheTTL: '123' }), {
-        message: 'The cacheTTL option must be a finite, non-negative number.'
+        message: 'The cacheTTL option must be a non-negative number.'
       })
 
       t.assert.throws(() => createVerifier({ key: 'secret', cacheTTL: -1 }), {
-        message: 'The cacheTTL option must be a finite, non-negative number.'
-      })
-
-      t.assert.throws(() => createVerifier({ key: 'secret', cacheTTL: Infinity }), {
-        message: 'The cacheTTL option must be a finite, non-negative number.'
+        message: 'The cacheTTL option must be a non-negative number.'
       })
 
       t.assert.throws(() => createVerifier({ key: 'secret', cacheTTL: NaN }), {
-        message: 'The cacheTTL option must be a finite, non-negative number.'
+        message: 'The cacheTTL option must be a non-negative number.'
       })
+
+      t.assert.doesNotThrow(() => createVerifier({ key: 'secret', cacheTTL: Infinity }))
     })
 
     test('requiredClaims', t => {
@@ -1778,6 +1776,24 @@ describe('createVerifier', () => {
         300000,
         1110000
       ])
+
+      t.mock.timers.reset()
+    })
+
+    test('cacheTTL: Infinity should still reject expired tokens', t => {
+      t.mock.timers.enable({ now: 100000 })
+
+      const signer = createSigner({ key: 'secret', expiresIn: 100000 })
+      const verifier = createVerifier({ key: 'secret', cache: true, cacheTTL: Infinity })
+      const token = signer({ a: 1 })
+
+      t.assert.deepStrictEqual(verifier(token), { a: 1, iat: 100, exp: 200 })
+      t.assert.equal(verifier.cache.size, 1)
+
+      // Advance past expiry
+      t.mock.timers.tick(200000)
+
+      t.assert.throws(() => verifier(token), { message: 'The token has expired at 1970-01-01T00:03:20.000Z.' })
 
       t.mock.timers.reset()
     })
