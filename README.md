@@ -164,6 +164,8 @@ Create a verifier function by calling `createVerifier` and providing one or more
 
 - `allowedNonce`: A string, a regular expression, an array of strings or an array of regular expressions containing allowed values for the nonce claim (`nonce`). By default, all values are accepted.
 
+For the five `allowed*` options above, any object exposing a `test(value)` method happens to work at runtime in plain JavaScript, but it is not part of the TypeScript types and is not a supported configuration. fast-jwt makes a best-effort reset of a `RegExp` matcher's `lastIndex` before each test, so a stateful pattern validates deterministically in normal use. A matcher whose `lastIndex` cannot be written, such as a frozen `RegExp` or one behind a `Proxy` that refuses the write, keeps whatever state it already had, so determinism is not guaranteed for those. fast-jwt performs no state management on a custom matcher's behalf, so a stateful custom matcher is the caller's responsibility.
+
 - `requiredClaims`: An array of strings containing which claims should exist in the token. By default, no claim is marked as required.
 
 - `ignoreExpiration`: Do not validate the expiration of the token. Default is `false`.

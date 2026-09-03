@@ -1,6 +1,7 @@
 'use strict'
 
 const { createPublicKey, createSecretKey } = require('node:crypto')
+const { isRegExp } = require('node:util').types
 const Cache = require('mnemonist/lru-cache')
 
 const safeRegex = require('safe-regex2')
@@ -42,10 +43,14 @@ function prepareKeyOrSecret(key, isSecret) {
   return isSecret ? createSecretKey(key) : createPublicKey(key)
 }
 
+function isRegExpLike(value) {
+  return isRegExp(value) || value instanceof RegExp
+}
+
 function checkForUnsafeRegExp(raw, optionName) {
   const patterns = Array.isArray(raw) ? raw : [raw]
   for (const r of patterns) {
-    if (r instanceof RegExp && !safeRegex(r)) {
+    if (isRegExpLike(r) && !safeRegex(r)) {
       process.emitWarning(
         `The ${optionName} option contains an unsafe RegExp ${r} that may cause a ReDoS attack. Please review it. ` +
           'See https://github.com/nearform/fast-jwt/security/advisories/GHSA-cjw9-ghj4-fwxf for details.',
@@ -63,10 +68,15 @@ function ensureStringClaimMatcher(raw) {
   return raw
     .filter(r => r)
     .map(r => {
-      if (r instanceof RegExp) {
+      if (isRegExpLike(r)) {
         return {
           test: v => {
-            r.lastIndex = 0
+            try {
+              r.lastIndex = 0
+            } catch {
+              // A matcher can refuse the write, whether it is frozen or guarded by an accessor or a
+              // Proxy trap. It cannot be reset, so let test() decide the outcome rather than throwing.
+            }
             return r.test(v)
           }
         }
