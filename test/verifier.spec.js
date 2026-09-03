@@ -4,6 +4,7 @@ const { createHash, createHmac } = require('node:crypto')
 const { readFileSync } = require('node:fs')
 const { resolve } = require('node:path')
 const { describe, test } = require('node:test')
+const vm = require('node:vm')
 
 const { createSigner, createVerifier, TokenError } = require('../src')
 const { hashToken } = require('../src/utils')
@@ -2116,6 +2117,243 @@ describe('createVerifier', () => {
 
       for (let i = 0; i < 8; i++) {
         t.assert.doesNotThrow(() => verifier(token), `call ${i} should pass with /g flag on allowedNonce`)
+      }
+    })
+  })
+
+  describe('cross-realm and duck-typed RegExp matchers', () => {
+    test('cross-realm /g flag must not cause non-deterministic claim validation - allowedAud', t => {
+      t.mock.timers.enable({ now: 100000 })
+      const sign = createSigner({ key: 'secret' })
+      const encodedToken = sign({ aud: 'admin' })
+      const crossRealmRegExp = vm.runInNewContext('/^admin$/g')
+      const verifier = createVerifier({ key: 'secret', allowedAud: crossRealmRegExp })
+
+      // All 8 successive calls with the same valid token must succeed
+      for (let attempt = 0; attempt < 8; attempt++) {
+        t.assert.doesNotThrow(() => verifier(encodedToken), `call ${attempt} should pass with a cross-realm /g RegExp`)
+      }
+    })
+
+    test('cross-realm /g flag must not cause non-deterministic claim validation - allowedIss', t => {
+      t.mock.timers.enable({ now: 100000 })
+      const sign = createSigner({ key: 'secret' })
+      const encodedToken = sign({ iss: 'issuer' })
+      const crossRealmRegExp = vm.runInNewContext('/^issuer$/g')
+      const verifier = createVerifier({ key: 'secret', allowedIss: crossRealmRegExp })
+
+      for (let attempt = 0; attempt < 8; attempt++) {
+        t.assert.doesNotThrow(() => verifier(encodedToken), `call ${attempt} should pass with a cross-realm /g RegExp`)
+      }
+    })
+
+    test('a cross-realm RegExp that does not match the claim keeps rejecting across successive calls', t => {
+      t.mock.timers.enable({ now: 100000 })
+      const sign = createSigner({ key: 'secret' })
+      const encodedToken = sign({ aud: 'guest' })
+      const crossRealmRegExp = vm.runInNewContext('/^admin$/g')
+      const verifier = createVerifier({ key: 'secret', allowedAud: crossRealmRegExp })
+
+      for (let attempt = 0; attempt < 8; attempt++) {
+        t.assert.throws(() => verifier(encodedToken), TokenError, `call ${attempt} should reject a non-matching aud`)
+      }
+    })
+
+    test('emits FAST_JWT_UNSAFE_REGEXP warning for an unsafe cross-realm RegExp in allowedAud', async t => {
+      const crossRealmRegExp = vm.runInNewContext('/^(a+)+X$/')
+      const w = await expectWarning('FAST_JWT_UNSAFE_REGEXP', () =>
+        createVerifier({ key: 'secret', allowedAud: crossRealmRegExp })
+      )
+      t.assert.equal(w.code, 'FAST_JWT_UNSAFE_REGEXP')
+      t.assert.ok(w.message.includes('allowedAud'))
+    })
+
+    test('a plain duck-typed matcher object is used as-is', t => {
+      t.mock.timers.enable({ now: 100000 })
+      const sign = createSigner({ key: 'secret' })
+      const encodedToken = sign({ aud: 'admin' })
+      const customMatcher = {
+        test(value) {
+          return value === 'admin'
+        }
+      }
+      const verifier = createVerifier({ key: 'secret', allowedAud: customMatcher })
+
+      t.assert.doesNotThrow(() => verifier(encodedToken))
+
+      const rejectingToken = sign({ aud: 'guest' })
+      t.assert.throws(() => verifier(rejectingToken), TokenError)
+    })
+
+    test('an array mixing a cross-realm /g RegExp with a plain string behaves deterministically', t => {
+      t.mock.timers.enable({ now: 100000 })
+      const sign = createSigner({ key: 'secret' })
+      const encodedToken = sign({ aud: 'admin' })
+      const crossRealmRegExp = vm.runInNewContext('/^admin$/g')
+      const verifier = createVerifier({ key: 'secret', allowedAud: [crossRealmRegExp, 'other-audience'] })
+
+      for (let attempt = 0; attempt < 8; attempt++) {
+        t.assert.doesNotThrow(
+          () => verifier(encodedToken),
+          `call ${attempt} should pass with a cross-realm /g RegExp in an array`
+        )
+      }
+    })
+
+    test('a method-binding Proxy over a /g RegExp validates deterministically', t => {
+      t.mock.timers.enable({ now: 100000 })
+      const sign = createSigner({ key: 'secret' })
+      const encodedToken = sign({ aud: 'admin' })
+      const bindingHandler = {
+        get(target, property) {
+          const value = Reflect.get(target, property, target)
+          return typeof value === 'function' ? value.bind(target) : value
+        }
+      }
+      const proxiedRegExp = new Proxy(/^admin$/g, bindingHandler)
+      const verifier = createVerifier({ key: 'secret', allowedAud: proxiedRegExp })
+
+      for (let attempt = 0; attempt < 8; attempt++) {
+        t.assert.doesNotThrow(
+          () => verifier(encodedToken),
+          `call ${attempt} should pass with a method-binding Proxy over a /g RegExp`
+        )
+      }
+    })
+
+    // The throw here comes from safe-regex2 stringifying the matcher, not from a check fast-jwt makes,
+    // so a safe-regex2 change could move the failure without fast-jwt changing.
+    test('a Proxy-wrapped RegExp matcher fails at createVerifier() time, not on each verify() call', t => {
+      const proxiedRegExp = new Proxy(/^admin$/, {})
+
+      t.assert.throws(() => createVerifier({ key: 'secret', allowedAud: proxiedRegExp }), TypeError)
+    })
+
+    test('a frozen cross-realm RegExp without a stateful flag validates without throwing', t => {
+      t.mock.timers.enable({ now: 100000 })
+      const sign = createSigner({ key: 'secret' })
+      const encodedToken = sign({ aud: 'admin' })
+      const frozenCrossRealmRegExp = Object.freeze(vm.runInNewContext('/^admin$/'))
+      const verifier = createVerifier({ key: 'secret', allowedAud: frozenCrossRealmRegExp })
+
+      for (let attempt = 0; attempt < 4; attempt++) {
+        t.assert.doesNotThrow(
+          () => verifier(encodedToken),
+          `call ${attempt} should pass with a frozen cross-realm RegExp`
+        )
+      }
+    })
+
+    test('a matcher whose lastIndex cannot be written never throws a TypeError', t => {
+      t.mock.timers.enable({ now: 100000 })
+      const sign = createSigner({ key: 'secret' })
+      const encodedToken = sign({ aud: 'admin' })
+      const refusingHandler = {
+        get(target, property) {
+          const value = Reflect.get(target, property, target)
+          return typeof value === 'function' ? value.bind(target) : value
+        },
+        set() {
+          throw new TypeError('lastIndex write refused')
+        }
+      }
+      const proxiedRegExp = new Proxy(/^admin$/g, refusingHandler)
+      const verifier = createVerifier({ key: 'secret', allowedAud: proxiedRegExp })
+
+      // The claim may or may not match, since a lastIndex we cannot reset stays advanced, but the
+      // failure must always be a TokenError rather than the raw TypeError earlier versions threw.
+      for (let attempt = 0; attempt < 4; attempt++) {
+        try {
+          verifier(encodedToken)
+        } catch (error) {
+          t.assert.ok(error instanceof TokenError, `call ${attempt} should not throw a TypeError`)
+        }
+      }
+    })
+
+    test('a stateful matcher whose flag getters throw still validates deterministically', t => {
+      t.mock.timers.enable({ now: 100000 })
+      const sign = createSigner({ key: 'secret' })
+      const encodedToken = sign({ aud: 'admin' })
+      const throwingFlagHandler = {
+        get(target, property) {
+          if (property === 'global' || property === 'sticky') {
+            throw new TypeError('flag access refused')
+          }
+          const value = Reflect.get(target, property, target)
+          return typeof value === 'function' ? value.bind(target) : value
+        }
+      }
+      const proxiedRegExp = new Proxy(/^admin$/g, throwingFlagHandler)
+      const verifier = createVerifier({ key: 'secret', allowedAud: proxiedRegExp })
+
+      for (let attempt = 0; attempt < 8; attempt++) {
+        t.assert.doesNotThrow(() => verifier(encodedToken), `call ${attempt} should pass when flag getters throw`)
+      }
+    })
+
+    test('a /g RegExp that reports global as false is still reset between calls', t => {
+      t.mock.timers.enable({ now: 100000 })
+      const sign = createSigner({ key: 'secret' })
+      const encodedToken = sign({ aud: 'admin' })
+      const lyingRegExp = /^admin$/g
+      Object.defineProperty(lyingRegExp, 'global', { value: false })
+      const verifier = createVerifier({ key: 'secret', allowedAud: lyingRegExp })
+
+      for (let attempt = 0; attempt < 8; attempt++) {
+        t.assert.doesNotThrow(() => verifier(encodedToken), `call ${attempt} should pass despite a false global flag`)
+      }
+    })
+
+    test('a non-global RegExp subclass whose exec advances lastIndex is still reset between calls', t => {
+      t.mock.timers.enable({ now: 100000 })
+      const sign = createSigner({ key: 'secret' })
+      const encodedToken = sign({ aud: 'admin' })
+      // exec() both advances and depends on lastIndex, so it only matches when lastIndex was reset.
+      class AdvancingRegExp extends RegExp {
+        exec(input) {
+          this.lastIndex += 1
+          return this.lastIndex === 1 ? [input] : null
+        }
+      }
+      const advancingRegExp = new AdvancingRegExp('^admin$')
+      const verifier = createVerifier({ key: 'secret', allowedAud: advancingRegExp })
+
+      for (let attempt = 0; attempt < 8; attempt++) {
+        t.assert.doesNotThrow(() => verifier(encodedToken), `call ${attempt} should pass with an advancing subclass`)
+      }
+    })
+
+    test('a matcher whose flag getters throw still validates instead of throwing', t => {
+      t.mock.timers.enable({ now: 100000 })
+      const sign = createSigner({ key: 'secret' })
+      const encodedToken = sign({ aud: 'admin' })
+      const throwingFlagHandler = {
+        get(target, property) {
+          if (property === 'global' || property === 'sticky') {
+            throw new TypeError('flag access refused')
+          }
+          const value = Reflect.get(target, property, target)
+          return typeof value === 'function' ? value.bind(target) : value
+        }
+      }
+      const proxiedRegExp = new Proxy(/^admin$/, throwingFlagHandler)
+      const verifier = createVerifier({ key: 'secret', allowedAud: proxiedRegExp })
+
+      for (let attempt = 0; attempt < 4; attempt++) {
+        t.assert.doesNotThrow(() => verifier(encodedToken), `call ${attempt} should pass when flag getters throw`)
+      }
+    })
+
+    test('a frozen same-realm RegExp without a stateful flag validates without throwing', t => {
+      t.mock.timers.enable({ now: 100000 })
+      const sign = createSigner({ key: 'secret' })
+      const encodedToken = sign({ aud: 'admin' })
+      const frozenRegExp = Object.freeze(/^admin$/)
+      const verifier = createVerifier({ key: 'secret', allowedAud: frozenRegExp })
+
+      for (let attempt = 0; attempt < 4; attempt++) {
+        t.assert.doesNotThrow(() => verifier(encodedToken), `call ${attempt} should pass with a frozen RegExp`)
       }
     })
   })
