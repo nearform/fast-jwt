@@ -6,6 +6,16 @@ const { describe, test } = require('node:test')
 
 const { createSigner, createVerifier, TokenError, createDecoder } = require('../src')
 
+/*
+  Only count the signer's own warnings: on Node 20 and 22 the first use of t.mock.timers emits
+  an unrelated ExperimentalWarning through the same mocked process.emitWarning.
+*/
+function nonFiniteTimeWarningCalls(emitWarningMock) {
+  return emitWarningMock.mock.calls.filter(
+    warningCall => warningCall.arguments[1]?.code === 'FAST_JWT_NON_FINITE_TIME_OPTION'
+  )
+}
+
 const privateKeys = {
   HS: 'secretsecretsecret',
   ES256: readFileSync(resolve(__dirname, '../benchmarks/keys/es-256-private.key')),
@@ -705,7 +715,7 @@ describe('createSigner', () => {
           const decodedPayload = createDecoder()(signer({ sub: 'alice' }))
 
           t.assert.deepStrictEqual(decodedPayload, { sub: 'alice', iat: 2000, exp: 2001, nbf: 2001 })
-          t.assert.equal(emitWarning.mock.callCount(), 0)
+          t.assert.equal(nonFiniteTimeWarningCalls(emitWarning).length, 0)
         })
       }
     })
@@ -719,8 +729,9 @@ describe('createSigner', () => {
         const decodedPayload = createDecoder()(signer({ sub: 'alice' }))
 
         t.assert.deepStrictEqual(decodedPayload, { sub: 'alice', iat: 2000, exp: 2001 })
-        t.assert.equal(emitWarning.mock.callCount(), 1)
-        t.assert.deepStrictEqual(emitWarning.mock.calls[0].arguments, [
+        const warningCalls = nonFiniteTimeWarningCalls(emitWarning)
+        t.assert.equal(warningCalls.length, 1)
+        t.assert.deepStrictEqual(warningCalls[0].arguments, [
           'The clockTimestamp option is NaN, so it is ignored and the current time is used. ' +
             'This will throw an error in the next major version.',
           { code: 'FAST_JWT_NON_FINITE_TIME_OPTION' }
@@ -734,8 +745,9 @@ describe('createSigner', () => {
         const decodedPayload = createDecoder()(signer({ sub: 'alice' }))
 
         t.assert.deepStrictEqual(decodedPayload, { sub: 'alice', iat: null, exp: null, nbf: null })
-        t.assert.equal(emitWarning.mock.callCount(), 1)
-        t.assert.deepStrictEqual(emitWarning.mock.calls[0].arguments, [
+        const warningCalls = nonFiniteTimeWarningCalls(emitWarning)
+        t.assert.equal(warningCalls.length, 1)
+        t.assert.deepStrictEqual(warningCalls[0].arguments, [
           'The clockTimestamp option is Infinity, so the iat, exp and nbf claims computed from it are encoded as null. ' +
             'This will throw an error in the next major version.',
           { code: 'FAST_JWT_NON_FINITE_TIME_OPTION' }
@@ -747,7 +759,7 @@ describe('createSigner', () => {
 
         createSigner({ key: 'secret', clockTimestamp: 123000 })
 
-        t.assert.equal(emitWarning.mock.callCount(), 0)
+        t.assert.equal(nonFiniteTimeWarningCalls(emitWarning).length, 0)
       })
     })
 
@@ -797,8 +809,9 @@ describe('createSigner', () => {
           const firstDecodedPayload = createDecoder()(signer({ sub: 'alice' }))
           const secondDecodedPayload = createDecoder()(signer({ sub: 'bob' }))
 
-          t.assert.equal(emitWarning.mock.callCount(), 1)
-          const [warningMessage, warningOptions] = emitWarning.mock.calls[0].arguments
+          const warningCalls = nonFiniteTimeWarningCalls(emitWarning)
+          t.assert.equal(warningCalls.length, 1)
+          const [warningMessage, warningOptions] = warningCalls[0].arguments
           t.assert.equal(
             warningMessage,
             `The ${optionName} option is not a finite number, so it is ignored and does not set the ${claimName} claim. ` +
@@ -824,7 +837,7 @@ describe('createSigner', () => {
 
           createSigner({ key: 'secret', [optionName]: 1000 })
 
-          t.assert.equal(emitWarning.mock.callCount(), 0)
+          t.assert.equal(nonFiniteTimeWarningCalls(emitWarning).length, 0)
         })
       }
 
@@ -833,7 +846,7 @@ describe('createSigner', () => {
 
         createSigner({ key: 'secret', expiresIn: -Infinity })
 
-        t.assert.equal(emitWarning.mock.callCount(), 1)
+        t.assert.equal(nonFiniteTimeWarningCalls(emitWarning).length, 1)
       })
     })
 
