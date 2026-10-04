@@ -625,8 +625,8 @@ describe('createSigner', () => {
 
       const signingError = await new Promise(resolve => signer({ sub: 'alice' }, error => resolve(error)))
 
-      t.assert.equal(signingError.code, emptyKeyError.code)
-      t.assert.equal(signingError.message, emptyKeyError.message)
+      t.assert.strictEqual(signingError.code, emptyKeyError.code)
+      t.assert.strictEqual(signingError.message, emptyKeyError.message)
     })
 
     test('keeps rejecting a static empty string key as an invalid option', t => {
@@ -712,7 +712,7 @@ describe('createSigner', () => {
           const decodedPayload = createDecoder()(signer({ sub: 'alice' }))
 
           t.assert.deepStrictEqual(decodedPayload, { sub: 'alice', iat: 2000, exp: 2001, nbf: 2001 })
-          t.assert.equal(nonFiniteTimeWarningCalls(emitWarning).length, 0)
+          t.assert.strictEqual(nonFiniteTimeWarningCalls(emitWarning).length, 0)
         })
       }
     })
@@ -727,7 +727,7 @@ describe('createSigner', () => {
 
         t.assert.deepStrictEqual(decodedPayload, { sub: 'alice', iat: 2000, exp: 2001 })
         const warningCalls = nonFiniteTimeWarningCalls(emitWarning)
-        t.assert.equal(warningCalls.length, 1)
+        t.assert.strictEqual(warningCalls.length, 1)
         t.assert.deepStrictEqual(warningCalls[0].arguments, [
           'The clockTimestamp option is NaN, so it is ignored as if it were unset. ' +
             'This will throw an error in the next major version.',
@@ -743,7 +743,7 @@ describe('createSigner', () => {
 
         t.assert.deepStrictEqual(decodedPayload, { sub: 'alice', iat: null, exp: null, nbf: null })
         const warningCalls = nonFiniteTimeWarningCalls(emitWarning)
-        t.assert.equal(warningCalls.length, 1)
+        t.assert.strictEqual(warningCalls.length, 1)
         t.assert.deepStrictEqual(warningCalls[0].arguments, [
           'The clockTimestamp option is Infinity, so the iat, exp and nbf claims computed from it are encoded as null. ' +
             'This will throw an error in the next major version.',
@@ -756,7 +756,7 @@ describe('createSigner', () => {
 
         createSigner({ key: 'secret', clockTimestamp: 123000 })
 
-        t.assert.equal(nonFiniteTimeWarningCalls(emitWarning).length, 0)
+        t.assert.strictEqual(nonFiniteTimeWarningCalls(emitWarning).length, 0)
       })
     })
 
@@ -807,16 +807,16 @@ describe('createSigner', () => {
           const secondDecodedPayload = createDecoder()(signer({ sub: 'bob' }))
 
           const warningCalls = nonFiniteTimeWarningCalls(emitWarning)
-          t.assert.equal(warningCalls.length, 1)
+          t.assert.strictEqual(warningCalls.length, 1)
           const [warningMessage, warningOptions] = warningCalls[0].arguments
-          t.assert.equal(
+          t.assert.strictEqual(
             warningMessage,
             `The ${optionName} option is not a finite number, so it is ignored and does not set the ${claimName} claim. ` +
               'This will throw an error in the next major version.'
           )
           t.assert.deepStrictEqual(warningOptions, { code: 'FAST_JWT_NON_FINITE_TIME_OPTION' })
-          t.assert.equal(firstDecodedPayload[claimName], undefined)
-          t.assert.equal(secondDecodedPayload[claimName], undefined)
+          t.assert.strictEqual(firstDecodedPayload[claimName], undefined)
+          t.assert.strictEqual(secondDecodedPayload[claimName], undefined)
         })
 
         test(`keeps a ${claimName} claim from the payload when ${optionName} is Infinity`, t => {
@@ -826,7 +826,7 @@ describe('createSigner', () => {
           const signer = createSigner({ key: 'secret', [optionName]: Infinity })
           const decodedPayload = createDecoder()(signer({ sub: 'alice', [claimName]: payloadClaimValue }))
 
-          t.assert.equal(decodedPayload[claimName], payloadClaimValue)
+          t.assert.strictEqual(decodedPayload[claimName], payloadClaimValue)
         })
 
         test(`does not warn when ${optionName} is finite`, t => {
@@ -834,7 +834,7 @@ describe('createSigner', () => {
 
           createSigner({ key: 'secret', [optionName]: 1000 })
 
-          t.assert.equal(nonFiniteTimeWarningCalls(emitWarning).length, 0)
+          t.assert.strictEqual(nonFiniteTimeWarningCalls(emitWarning).length, 0)
         })
       }
 
@@ -843,7 +843,7 @@ describe('createSigner', () => {
 
         createSigner({ key: 'secret', expiresIn: -Infinity })
 
-        t.assert.equal(nonFiniteTimeWarningCalls(emitWarning).length, 1)
+        t.assert.strictEqual(nonFiniteTimeWarningCalls(emitWarning).length, 1)
       })
     })
 
