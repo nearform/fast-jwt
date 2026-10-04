@@ -69,15 +69,12 @@ function warnIfTimeSpanIsInfinite(timeSpan, optionName, claimName) {
 
 // NaN is treated as unset and Infinity encodes claims as null; warn until the next major
 function warnIfClockTimestampIsNotFinite(clockTimestamp) {
-  if (Number.isNaN(clockTimestamp)) {
+  if (typeof clockTimestamp === 'number' && !Number.isFinite(clockTimestamp)) {
     process.emitWarning(
-      `The clockTimestamp option is NaN, so it is ignored as if it were unset. ${nextMajorRejectionNotice}`,
-      nonFiniteTimeOptionWarning
-    )
-  } else if (clockTimestamp === Infinity) {
-    process.emitWarning(
-      'The clockTimestamp option is Infinity, so the iat, exp and nbf claims computed from it are encoded as null. ' +
-        nextMajorRejectionNotice,
+      Number.isNaN(clockTimestamp)
+        ? `The clockTimestamp option is NaN, so it is ignored as if it were unset. ${nextMajorRejectionNotice}`
+        : 'The clockTimestamp option is Infinity, so the iat, exp and nbf claims computed from it are encoded as null. ' +
+            nextMajorRejectionNotice,
       nonFiniteTimeOptionWarning
     )
   }
@@ -277,8 +274,8 @@ module.exports = function createSigner(options) {
     key = prepareKeyOrSecret(key, algorithm)
   }
 
-  // NaN is falsy, so it is checked explicitly rather than slipping past the presence check as "unset"
-  if (expiresIn || Number.isNaN(expiresIn)) {
+  const isExpiresInSet = expiresIn || Number.isNaN(expiresIn)
+  if (isExpiresInSet) {
     if (typeof expiresIn === 'string') {
       expiresIn = parseMs(expiresIn)
     }
@@ -291,7 +288,8 @@ module.exports = function createSigner(options) {
     warnIfTimeSpanIsInfinite(expiresIn, 'expiresIn', 'exp')
   }
 
-  if (notBefore || Number.isNaN(notBefore)) {
+  const isNotBeforeSet = notBefore || Number.isNaN(notBefore)
+  if (isNotBeforeSet) {
     if (typeof notBefore === 'string') {
       notBefore = parseMs(notBefore)
     }
