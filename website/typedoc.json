@@ -1,0 +1,16 @@
+{
+  "entryPoints": ["../src/index.d.ts"],
+  "entryPointStrategy": "expand",
+  "out": "docs/api",
+  "tsconfig": "./tsconfig.docs.json",
+  "plugin": ["typedoc-plugin-markdown"],
+  "entryFileName": "index.md",
+  "readme": "none",
+  "githubPages": false,
+  "hideGenerator": true,
+  "skipErrorChecking": true,
+  "excludePrivate": true,
+  "excludeInternal": true,
+  "categorizeByGroup": true,
+  "useTsLinkResolution": true
+}
