@@ -6,6 +6,13 @@ const { describe, test } = require('node:test')
 
 const { createSigner, createVerifier, TokenError, createDecoder } = require('../src')
 
+// Node 20/22 mock timers emit an ExperimentalWarning through the same mocked emitWarning
+function nonFiniteTimeWarningCalls(emitWarningMock) {
+  return emitWarningMock.mock.calls.filter(
+    warningCall => warningCall.arguments[1]?.code === 'FAST_JWT_NON_FINITE_TIME_OPTION'
+  )
+}
+
 const privateKeys = {
   HS: 'secretsecretsecret',
   ES256: readFileSync(resolve(__dirname, '../benchmarks/keys/es-256-private.key')),
@@ -585,6 +592,65 @@ describe('createSigner', () => {
     })
   })
 
+  describe('empty HMAC key', () => {
+    const emptyKeyError = {
+      code: 'FAST_JWT_INVALID_KEY',
+      message: 'The key cannot be an empty string or buffer.'
+    }
+
+    test('rejects a static empty buffer key at construction', t => {
+      t.assert.throws(() => createSigner({ key: Buffer.alloc(0) }), emptyKeyError)
+    })
+
+    for (const algorithm of ['HS256', 'HS384', 'HS512']) {
+      test(`rejects a static empty buffer key with an explicit ${algorithm} algorithm`, t => {
+        t.assert.throws(() => createSigner({ key: Buffer.alloc(0), algorithm }), emptyKeyError)
+      })
+
+      test(`rejects an empty string returned by an async key resolver with ${algorithm}`, async t => {
+        const signer = createSigner({ key: async () => '', algorithm })
+
+        await t.assert.rejects(signer({ sub: 'alice' }), emptyKeyError)
+      })
+    }
+
+    test('rejects an empty buffer returned by an async key resolver', async t => {
+      const signer = createSigner({ key: async () => Buffer.alloc(0) })
+
+      await t.assert.rejects(signer({ sub: 'alice' }), emptyKeyError)
+    })
+
+    test('rejects an empty string returned by a callback-style key resolver', async t => {
+      const signer = createSigner({ key: (_decoded, callback) => callback(null, '') })
+
+      const signingError = await new Promise(resolve => signer({ sub: 'alice' }, error => resolve(error)))
+
+      t.assert.strictEqual(signingError.code, emptyKeyError.code)
+      t.assert.strictEqual(signingError.message, emptyKeyError.message)
+    })
+
+    test('keeps rejecting a static empty string key as an invalid option', t => {
+      t.assert.throws(() => createSigner({ key: '' }), {
+        code: 'FAST_JWT_INVALID_OPTION',
+        message:
+          'The key option must be a string, a buffer, an object containing key/passphrase properties or a function returning the algorithm secret or private key.'
+      })
+    })
+
+    test('still signs with a non-empty async HMAC secret', async t => {
+      const signer = createSigner({ key: async () => 'a-real-secret', algorithm: 'HS256', noTimestamp: true })
+      const verifier = createVerifier({ key: 'a-real-secret', algorithms: ['HS256'] })
+
+      t.assert.deepStrictEqual(verifier(await signer({ sub: 'alice' })), { sub: 'alice' })
+    })
+
+    test('leaves the "none" algorithm unaffected', t => {
+      const unsignedToken = createSigner({ algorithm: 'none', noTimestamp: true })({ sub: 'alice' })
+
+      t.assert.ok(unsignedToken.endsWith('.'))
+    })
+  })
+
   describe('options validation', () => {
     test('algorithm', async t => {
       createSigner({ key: 'secret' })
@@ -624,6 +690,74 @@ describe('createSigner', () => {
       t.assert.throws(() => createSigner({ key: 'secret', clockTimestamp: -1 }), {
         message: 'The clockTimestamp option must be a positive number.'
       })
+
+      t.assert.throws(() => createSigner({ key: 'secret', clockTimestamp: -Infinity }), {
+        code: 'FAST_JWT_INVALID_OPTION',
+        message: 'The clockTimestamp option must be a positive number.'
+      })
+    })
+
+    describe('clockTimestamp values treated as unset', () => {
+      for (const unsetClockTimestamp of [null, undefined, 0]) {
+        test(`signs with the current time and does not warn when clockTimestamp is ${unsetClockTimestamp}`, t => {
+          const emitWarning = t.mock.method(process, 'emitWarning', () => {})
+          t.mock.timers.enable({ apis: ['Date'], now: 2_000_000 })
+
+          const signer = createSigner({
+            key: 'secret',
+            clockTimestamp: unsetClockTimestamp,
+            expiresIn: 1000,
+            notBefore: 1000
+          })
+          const decodedPayload = createDecoder()(signer({ sub: 'alice' }))
+
+          t.assert.deepStrictEqual(decodedPayload, { sub: 'alice', iat: 2000, exp: 2001, nbf: 2001 })
+          t.assert.strictEqual(nonFiniteTimeWarningCalls(emitWarning).length, 0)
+        })
+      }
+    })
+
+    describe('non-finite clockTimestamp', () => {
+      test('warns and treats clockTimestamp as unset when it is NaN', t => {
+        const emitWarning = t.mock.method(process, 'emitWarning', () => {})
+        t.mock.timers.enable({ apis: ['Date'], now: 2_000_000 })
+
+        const signer = createSigner({ key: 'secret', clockTimestamp: Number.NaN, expiresIn: 1000 })
+        const decodedPayload = createDecoder()(signer({ sub: 'alice' }))
+
+        t.assert.deepStrictEqual(decodedPayload, { sub: 'alice', iat: 2000, exp: 2001 })
+        const warningCalls = nonFiniteTimeWarningCalls(emitWarning)
+        t.assert.strictEqual(warningCalls.length, 1)
+        t.assert.deepStrictEqual(warningCalls[0].arguments, [
+          'The clockTimestamp option is NaN, so it is ignored as if it were unset. ' +
+            'This will throw an error in the next major version.',
+          { code: 'FAST_JWT_NON_FINITE_TIME_OPTION' }
+        ])
+      })
+
+      test('warns and keeps encoding the derived claims as null when clockTimestamp is Infinity', t => {
+        const emitWarning = t.mock.method(process, 'emitWarning', () => {})
+
+        const signer = createSigner({ key: 'secret', clockTimestamp: Infinity, expiresIn: 1000, notBefore: 1000 })
+        const decodedPayload = createDecoder()(signer({ sub: 'alice' }))
+
+        t.assert.deepStrictEqual(decodedPayload, { sub: 'alice', iat: null, exp: null, nbf: null })
+        const warningCalls = nonFiniteTimeWarningCalls(emitWarning)
+        t.assert.strictEqual(warningCalls.length, 1)
+        t.assert.deepStrictEqual(warningCalls[0].arguments, [
+          'The clockTimestamp option is Infinity, so the iat, exp and nbf claims computed from it are encoded as null. ' +
+            'This will throw an error in the next major version.',
+          { code: 'FAST_JWT_NON_FINITE_TIME_OPTION' }
+        ])
+      })
+
+      test('does not warn when clockTimestamp is finite', t => {
+        const emitWarning = t.mock.method(process, 'emitWarning', () => {})
+
+        createSigner({ key: 'secret', clockTimestamp: 123000 })
+
+        t.assert.strictEqual(nonFiniteTimeWarningCalls(emitWarning).length, 0)
+      })
     })
 
     test('expiresIn', async t => {
@@ -632,6 +766,11 @@ describe('createSigner', () => {
       })
 
       t.assert.throws(() => createSigner({ key: 'secret', expiresIn: 'invalid string' }), {
+        message: 'The expiresIn option must be a positive number or a valid string.'
+      })
+
+      t.assert.throws(() => createSigner({ key: 'secret', expiresIn: Number.NaN }), {
+        code: 'FAST_JWT_INVALID_OPTION',
         message: 'The expiresIn option must be a positive number or a valid string.'
       })
     })
@@ -647,6 +786,64 @@ describe('createSigner', () => {
 
       t.assert.throws(() => createSigner({ key: 'secret', notBefore: -1 }), {
         message: 'The notBefore option must be a positive number or a valid string.'
+      })
+
+      t.assert.throws(() => createSigner({ key: 'secret', notBefore: Number.NaN }), {
+        code: 'FAST_JWT_INVALID_OPTION',
+        message: 'The notBefore option must be a positive number or a valid string.'
+      })
+    })
+
+    describe('infinite time spans', () => {
+      for (const [optionName, claimName] of [
+        ['expiresIn', 'exp'],
+        ['notBefore', 'nbf']
+      ]) {
+        test(`warns once per signer and does not set ${claimName} when ${optionName} is Infinity`, t => {
+          const emitWarning = t.mock.method(process, 'emitWarning', () => {})
+
+          const signer = createSigner({ key: 'secret', [optionName]: Infinity })
+          const firstDecodedPayload = createDecoder()(signer({ sub: 'alice' }))
+          const secondDecodedPayload = createDecoder()(signer({ sub: 'bob' }))
+
+          const warningCalls = nonFiniteTimeWarningCalls(emitWarning)
+          t.assert.strictEqual(warningCalls.length, 1)
+          const [warningMessage, warningOptions] = warningCalls[0].arguments
+          t.assert.strictEqual(
+            warningMessage,
+            `The ${optionName} option is not a finite number, so it is ignored and does not set the ${claimName} claim. ` +
+              'This will throw an error in the next major version.'
+          )
+          t.assert.deepStrictEqual(warningOptions, { code: 'FAST_JWT_NON_FINITE_TIME_OPTION' })
+          t.assert.strictEqual(firstDecodedPayload[claimName], undefined)
+          t.assert.strictEqual(secondDecodedPayload[claimName], undefined)
+        })
+
+        test(`keeps a ${claimName} claim from the payload when ${optionName} is Infinity`, t => {
+          t.mock.method(process, 'emitWarning', () => {})
+          const payloadClaimValue = 4_000_000_000
+
+          const signer = createSigner({ key: 'secret', [optionName]: Infinity })
+          const decodedPayload = createDecoder()(signer({ sub: 'alice', [claimName]: payloadClaimValue }))
+
+          t.assert.strictEqual(decodedPayload[claimName], payloadClaimValue)
+        })
+
+        test(`does not warn when ${optionName} is finite`, t => {
+          const emitWarning = t.mock.method(process, 'emitWarning', () => {})
+
+          createSigner({ key: 'secret', [optionName]: 1000 })
+
+          t.assert.strictEqual(nonFiniteTimeWarningCalls(emitWarning).length, 0)
+        })
+      }
+
+      test('warns when expiresIn is negative Infinity', t => {
+        const emitWarning = t.mock.method(process, 'emitWarning', () => {})
+
+        createSigner({ key: 'secret', expiresIn: -Infinity })
+
+        t.assert.strictEqual(nonFiniteTimeWarningCalls(emitWarning).length, 1)
       })
     })
 

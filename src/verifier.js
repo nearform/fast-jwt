@@ -6,7 +6,7 @@ const Cache = require('mnemonist/lru-cache')
 
 const safeRegex = require('safe-regex2')
 
-const { hsAlgorithms, verifySignature, detectPublicKeyAlgorithms } = require('./crypto')
+const { hsAlgorithms, verifySignature, detectPublicKeyAlgorithms, ensureSecretIsNotEmpty } = require('./crypto')
 const createDecoder = require('./decoder')
 const { TokenError } = require('./error')
 const { getAsyncKey, ensurePromiseCallback, hashToken } = require('./utils')
@@ -36,11 +36,12 @@ function prepareKeyOrSecret(key, isSecret) {
     key = Buffer.from(key, 'utf-8')
   }
 
-  if (isSecret && key.length === 0) {
-    throw new TokenError(TokenError.codes.invalidKey, 'The key cannot be an empty string or buffer.')
+  if (isSecret) {
+    ensureSecretIsNotEmpty(key)
+    return createSecretKey(key)
   }
 
-  return isSecret ? createSecretKey(key) : createPublicKey(key)
+  return createPublicKey(key)
 }
 
 function isRegExpLike(value) {

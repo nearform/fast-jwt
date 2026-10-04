@@ -8,6 +8,7 @@ const {
   rsaAlgorithms,
   edAlgorithms,
   detectPrivateKeyAlgorithm,
+  ensureSecretIsNotEmpty,
   createSignature
 } = require('./crypto')
 const { TokenError } = require('./error')
@@ -44,7 +45,39 @@ function prepareKeyOrSecret(key, algorithm) {
     key = Buffer.from(key, 'utf-8')
   }
 
-  return algorithm[0] === 'H' ? createSecretKey(key) : createPrivateKey(key)
+  if (algorithm[0] === 'H') {
+    ensureSecretIsNotEmpty(key)
+    return createSecretKey(key)
+  }
+
+  return createPrivateKey(key)
+}
+
+const nonFiniteTimeOptionWarning = { code: 'FAST_JWT_NON_FINITE_TIME_OPTION' }
+const nextMajorRejectionNotice = 'This will throw an error in the next major version.'
+
+// Infinity can't be encoded as a claim, so it is ignored (a payload claim is kept); warn until the next major
+function warnIfTimeSpanIsInfinite(timeSpan, optionName, claimName) {
+  if (!Number.isFinite(timeSpan)) {
+    process.emitWarning(
+      `The ${optionName} option is not a finite number, so it is ignored and does not set the ${claimName} claim. ` +
+        nextMajorRejectionNotice,
+      nonFiniteTimeOptionWarning
+    )
+  }
+}
+
+// NaN is treated as unset and Infinity encodes claims as null; warn until the next major
+function warnIfClockTimestampIsNotFinite(clockTimestamp) {
+  if (typeof clockTimestamp === 'number' && !Number.isFinite(clockTimestamp)) {
+    process.emitWarning(
+      Number.isNaN(clockTimestamp)
+        ? `The clockTimestamp option is NaN, so it is ignored as if it were unset. ${nextMajorRejectionNotice}`
+        : 'The clockTimestamp option is Infinity, so the iat, exp and nbf claims computed from it are encoded as null. ' +
+            nextMajorRejectionNotice,
+      nonFiniteTimeOptionWarning
+    )
+  }
 }
 
 function sign(
@@ -241,33 +274,39 @@ module.exports = function createSigner(options) {
     key = prepareKeyOrSecret(key, algorithm)
   }
 
-  if (expiresIn) {
+  const isExpiresInSet = expiresIn || Number.isNaN(expiresIn)
+  if (isExpiresInSet) {
     if (typeof expiresIn === 'string') {
       expiresIn = parseMs(expiresIn)
     }
-    if (typeof expiresIn !== 'number') {
+    if (typeof expiresIn !== 'number' || Number.isNaN(expiresIn)) {
       throw new TokenError(
         TokenError.codes.invalidOption,
         'The expiresIn option must be a positive number or a valid string.'
       )
     }
+    warnIfTimeSpanIsInfinite(expiresIn, 'expiresIn', 'exp')
   }
 
-  if (notBefore) {
+  const isNotBeforeSet = notBefore || Number.isNaN(notBefore)
+  if (isNotBeforeSet) {
     if (typeof notBefore === 'string') {
       notBefore = parseMs(notBefore)
     }
-    if (typeof notBefore !== 'number' || notBefore < 0) {
+    if (typeof notBefore !== 'number' || Number.isNaN(notBefore) || notBefore < 0) {
       throw new TokenError(
         TokenError.codes.invalidOption,
         'The notBefore option must be a positive number or a valid string.'
       )
     }
+    warnIfTimeSpanIsInfinite(notBefore, 'notBefore', 'nbf')
   }
 
   if (clockTimestamp && (typeof clockTimestamp !== 'number' || clockTimestamp < 0)) {
     throw new TokenError(TokenError.codes.invalidOption, 'The clockTimestamp option must be a positive number.')
   }
+
+  warnIfClockTimestampIsNotFinite(clockTimestamp)
 
   if (jti && typeof jti !== 'string') {
     throw new TokenError(TokenError.codes.invalidOption, 'The jti option must be a string.')
