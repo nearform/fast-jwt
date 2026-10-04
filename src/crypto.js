@@ -77,10 +77,7 @@ function base64UrlReplacer(c) {
   return encoderMap[c]
 }
 
-/*
-  An HMAC over a zero-length key is computable by anyone, so it authenticates nothing.
-  Shared by the signer and the verifier so the two cannot drift apart.
-*/
+// An HMAC over an empty key authenticates nothing; shared so signer and verifier stay in step
 function ensureSecretIsNotEmpty(secret) {
   if (secret.length === 0) {
     throw new TokenError(TokenError.codes.invalidKey, 'The key cannot be an empty string or buffer.')

@@ -56,12 +56,7 @@ function prepareKeyOrSecret(key, algorithm) {
 const nonFiniteTimeOptionWarning = { code: 'FAST_JWT_NON_FINITE_TIME_OPTION' }
 const nextMajorRejectionNotice = 'This will throw an error in the next major version.'
 
-/*
-  An infinite time span cannot be encoded as a claim, so sign() ignores it and does not set exp
-  or nbf from it (a claim already in the payload is kept). Releases so far have accepted it for
-  both options, and expiresIn: Infinity in particular is relied on to mean "never expires", so
-  rejecting either would break existing callers in a patch release: for now this only warns.
-*/
+// Infinity can't be encoded as a claim, so it is ignored (a payload claim is kept); warn until the next major
 function warnIfTimeSpanIsInfinite(timeSpan, optionName, claimName) {
   if (!Number.isFinite(timeSpan)) {
     process.emitWarning(
@@ -72,10 +67,7 @@ function warnIfTimeSpanIsInfinite(timeSpan, optionName, claimName) {
   }
 }
 
-/*
-  NaN is falsy, so sign() falls back to the current time; Infinity propagates into the computed
-  iat, exp and nbf, which JSON encodes as null. Both are accepted today, so for now this only warns.
-*/
+// NaN falls back to the current time and Infinity encodes claims as null; warn until the next major
 function warnIfClockTimestampIsNotFinite(clockTimestamp) {
   if (Number.isNaN(clockTimestamp)) {
     process.emitWarning(

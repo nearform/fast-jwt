@@ -6,10 +6,7 @@ const { describe, test } = require('node:test')
 
 const { createSigner, createVerifier, TokenError, createDecoder } = require('../src')
 
-/*
-  Only count the signer's own warnings: on Node 20 and 22 the first use of t.mock.timers emits
-  an unrelated ExperimentalWarning through the same mocked process.emitWarning.
-*/
+// Node 20/22 mock timers emit an ExperimentalWarning through the same mocked emitWarning
 function nonFiniteTimeWarningCalls(emitWarningMock) {
   return emitWarningMock.mock.calls.filter(
     warningCall => warningCall.arguments[1]?.code === 'FAST_JWT_NON_FINITE_TIME_OPTION'
