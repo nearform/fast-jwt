@@ -29,6 +29,8 @@ const targets = [
   }
 ]
 
+fs.mkdirSync(docsDir, { recursive: true })
+
 for (const { source, destination, title, slug, rewriteLinks } of targets) {
   if (!fs.existsSync(source)) {
     continue

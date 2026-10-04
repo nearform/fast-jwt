@@ -20,12 +20,12 @@ cd website
 npm run build
 ```
 
-The build regenerates `docs/index.md` from the project `README.md` and the API
-reference from `src/index.d.ts`, then writes the static site to
-`website/build/`.
+The build regenerates `docs/index.md` from the project `README.md`, the
+benchmarks page from `benchmarks/README.md`, and the API reference from
+`src/index.d.ts`, then writes the static site to `website/build/`.
 
 ## Deployment
 
 The site is deployed automatically by the
-[`deploy-docs`](../../.github/workflows/deploy-docs.yml) workflow whenever a
+[`deploy-docs`](../.github/workflows/deploy-docs.yml) workflow whenever a
 GitHub Release is published, or manually via the Actions tab.
