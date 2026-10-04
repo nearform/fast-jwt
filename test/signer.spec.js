@@ -718,7 +718,7 @@ describe('createSigner', () => {
     })
 
     describe('non-finite clockTimestamp', () => {
-      test('warns and falls back to the current time when clockTimestamp is NaN', t => {
+      test('warns and treats clockTimestamp as unset when it is NaN', t => {
         const emitWarning = t.mock.method(process, 'emitWarning', () => {})
         t.mock.timers.enable({ apis: ['Date'], now: 2_000_000 })
 
@@ -729,7 +729,7 @@ describe('createSigner', () => {
         const warningCalls = nonFiniteTimeWarningCalls(emitWarning)
         t.assert.equal(warningCalls.length, 1)
         t.assert.deepStrictEqual(warningCalls[0].arguments, [
-          'The clockTimestamp option is NaN, so it is ignored and the current time is used. ' +
+          'The clockTimestamp option is NaN, so it is ignored as if it were unset. ' +
             'This will throw an error in the next major version.',
           { code: 'FAST_JWT_NON_FINITE_TIME_OPTION' }
         ])

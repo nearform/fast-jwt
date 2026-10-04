@@ -51,7 +51,7 @@ Create a signer function by calling `createSigner` and providing one or more of 
 
 - `noTimestamp`: If set to `true`, the `iat` claim should not be added to the token. Default is `false`.
 
-- `clockTimestamp`: The timestamp in milliseconds (like the output of `Date.now()`) that should be used as the current time for all necessary time comparisons. Default is the system time. `NaN` is ignored and the current time is used, while `Infinity` makes the computed `iat`, `exp` and `nbf` claims encode as `null`; both emit a `FAST_JWT_NON_FINITE_TIME_OPTION` warning and will be rejected in the next major version.
+- `clockTimestamp`: The timestamp in milliseconds (like the output of `Date.now()`) that should be used as the current time for all necessary time comparisons. Default is the system time. `NaN` is ignored as if the option were unset, while `Infinity` makes the computed `iat`, `exp` and `nbf` claims encode as `null`; both emit a `FAST_JWT_NON_FINITE_TIME_OPTION` warning and will be rejected in the next major version.
 
 The signer is a function which accepts a payload and returns the token.
 

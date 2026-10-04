@@ -67,11 +67,11 @@ function warnIfTimeSpanIsInfinite(timeSpan, optionName, claimName) {
   }
 }
 
-// NaN falls back to the current time and Infinity encodes claims as null; warn until the next major
+// NaN is treated as unset and Infinity encodes claims as null; warn until the next major
 function warnIfClockTimestampIsNotFinite(clockTimestamp) {
   if (Number.isNaN(clockTimestamp)) {
     process.emitWarning(
-      `The clockTimestamp option is NaN, so it is ignored and the current time is used. ${nextMajorRejectionNotice}`,
+      `The clockTimestamp option is NaN, so it is ignored as if it were unset. ${nextMajorRejectionNotice}`,
       nonFiniteTimeOptionWarning
     )
   } else if (clockTimestamp === Infinity) {
