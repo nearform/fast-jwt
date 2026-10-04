@@ -4,6 +4,15 @@ const globals = require('globals')
 const tseslint = require('typescript-eslint')
 
 module.exports = tseslint.config(
+  {
+    ignores: [
+      'website/node_modules/**',
+      'website/build/**',
+      'website/.docusaurus/**',
+      'website/docs/api/**',
+      'website/docs/index.md'
+    ]
+  },
   js.configs.recommended,
   prettierRecommended,
   {
