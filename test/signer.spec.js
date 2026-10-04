@@ -585,6 +585,65 @@ describe('createSigner', () => {
     })
   })
 
+  describe('empty HMAC key', () => {
+    const emptyKeyError = {
+      code: 'FAST_JWT_INVALID_KEY',
+      message: 'The key cannot be an empty string or buffer.'
+    }
+
+    test('rejects a static empty buffer key at construction', t => {
+      t.assert.throws(() => createSigner({ key: Buffer.alloc(0) }), emptyKeyError)
+    })
+
+    for (const algorithm of ['HS256', 'HS384', 'HS512']) {
+      test(`rejects a static empty buffer key with an explicit ${algorithm} algorithm`, t => {
+        t.assert.throws(() => createSigner({ key: Buffer.alloc(0), algorithm }), emptyKeyError)
+      })
+
+      test(`rejects an empty string returned by an async key resolver with ${algorithm}`, async t => {
+        const signer = createSigner({ key: async () => '', algorithm })
+
+        await t.assert.rejects(signer({ sub: 'alice' }), emptyKeyError)
+      })
+    }
+
+    test('rejects an empty buffer returned by an async key resolver', async t => {
+      const signer = createSigner({ key: async () => Buffer.alloc(0) })
+
+      await t.assert.rejects(signer({ sub: 'alice' }), emptyKeyError)
+    })
+
+    test('rejects an empty string returned by a callback-style key resolver', async t => {
+      const signer = createSigner({ key: (_decoded, callback) => callback(null, '') })
+
+      const signingError = await new Promise(resolve => signer({ sub: 'alice' }, error => resolve(error)))
+
+      t.assert.equal(signingError.code, emptyKeyError.code)
+      t.assert.equal(signingError.message, emptyKeyError.message)
+    })
+
+    test('keeps rejecting a static empty string key as an invalid option', t => {
+      t.assert.throws(() => createSigner({ key: '' }), {
+        code: 'FAST_JWT_INVALID_OPTION',
+        message:
+          'The key option must be a string, a buffer, an object containing key/passphrase properties or a function returning the algorithm secret or private key.'
+      })
+    })
+
+    test('still signs with a non-empty async HMAC secret', async t => {
+      const signer = createSigner({ key: async () => 'a-real-secret', algorithm: 'HS256', noTimestamp: true })
+      const verifier = createVerifier({ key: 'a-real-secret', algorithms: ['HS256'] })
+
+      t.assert.deepStrictEqual(verifier(await signer({ sub: 'alice' })), { sub: 'alice' })
+    })
+
+    test('leaves the "none" algorithm unaffected', t => {
+      const unsignedToken = createSigner({ algorithm: 'none', noTimestamp: true })({ sub: 'alice' })
+
+      t.assert.ok(unsignedToken.endsWith('.'))
+    })
+  })
+
   describe('options validation', () => {
     test('algorithm', async t => {
       createSigner({ key: 'secret' })
@@ -617,13 +676,12 @@ describe('createSigner', () => {
     })
 
     test('clockTimestamp', async t => {
-      t.assert.throws(() => createSigner({ key: 'secret', clockTimestamp: '123' }), {
-        message: 'The clockTimestamp option must be a positive number.'
-      })
-
-      t.assert.throws(() => createSigner({ key: 'secret', clockTimestamp: -1 }), {
-        message: 'The clockTimestamp option must be a positive number.'
-      })
+      for (const invalidClockTimestamp of ['123', -1, Number.NaN, Infinity]) {
+        t.assert.throws(() => createSigner({ key: 'secret', clockTimestamp: invalidClockTimestamp }), {
+          code: 'FAST_JWT_INVALID_OPTION',
+          message: 'The clockTimestamp option must be a finite, non-negative number.'
+        })
+      }
     })
 
     test('expiresIn', async t => {
@@ -632,6 +690,11 @@ describe('createSigner', () => {
       })
 
       t.assert.throws(() => createSigner({ key: 'secret', expiresIn: 'invalid string' }), {
+        message: 'The expiresIn option must be a positive number or a valid string.'
+      })
+
+      t.assert.throws(() => createSigner({ key: 'secret', expiresIn: Number.NaN }), {
+        code: 'FAST_JWT_INVALID_OPTION',
         message: 'The expiresIn option must be a positive number or a valid string.'
       })
     })
@@ -647,6 +710,51 @@ describe('createSigner', () => {
 
       t.assert.throws(() => createSigner({ key: 'secret', notBefore: -1 }), {
         message: 'The notBefore option must be a positive number or a valid string.'
+      })
+
+      t.assert.throws(() => createSigner({ key: 'secret', notBefore: Number.NaN }), {
+        code: 'FAST_JWT_INVALID_OPTION',
+        message: 'The notBefore option must be a positive number or a valid string.'
+      })
+    })
+
+    describe('infinite time spans', () => {
+      for (const [optionName, claimName] of [
+        ['expiresIn', 'exp'],
+        ['notBefore', 'nbf']
+      ]) {
+        test(`warns but still signs without ${claimName} when ${optionName} is Infinity`, t => {
+          const emitWarning = t.mock.method(process, 'emitWarning', () => {})
+
+          const signer = createSigner({ key: 'secret', [optionName]: Infinity })
+          const decodedPayload = createDecoder()(signer({ sub: 'alice' }))
+
+          t.assert.equal(emitWarning.mock.callCount(), 1)
+          const [warningMessage, warningOptions] = emitWarning.mock.calls[0].arguments
+          t.assert.equal(
+            warningMessage,
+            `The ${optionName} option is not a finite number, so it is ignored and no ${claimName} claim is added. ` +
+              'This will throw an error in the next major version.'
+          )
+          t.assert.deepStrictEqual(warningOptions, { code: 'FAST_JWT_NON_FINITE_TIME_OPTION' })
+          t.assert.equal(decodedPayload[claimName], undefined)
+        })
+
+        test(`does not warn when ${optionName} is finite`, t => {
+          const emitWarning = t.mock.method(process, 'emitWarning', () => {})
+
+          createSigner({ key: 'secret', [optionName]: 1000 })
+
+          t.assert.equal(emitWarning.mock.callCount(), 0)
+        })
+      }
+
+      test('warns when expiresIn is negative Infinity', t => {
+        const emitWarning = t.mock.method(process, 'emitWarning', () => {})
+
+        createSigner({ key: 'secret', expiresIn: -Infinity })
+
+        t.assert.equal(emitWarning.mock.callCount(), 1)
       })
     })
 

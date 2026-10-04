@@ -8,6 +8,7 @@ const {
   rsaAlgorithms,
   edAlgorithms,
   detectPrivateKeyAlgorithm,
+  ensureSecretIsNotEmpty,
   createSignature
 } = require('./crypto')
 const { TokenError } = require('./error')
@@ -44,7 +45,26 @@ function prepareKeyOrSecret(key, algorithm) {
     key = Buffer.from(key, 'utf-8')
   }
 
-  return algorithm[0] === 'H' ? createSecretKey(key) : createPrivateKey(key)
+  if (algorithm[0] === 'H') {
+    ensureSecretIsNotEmpty(key)
+    return createSecretKey(key)
+  }
+
+  return createPrivateKey(key)
+}
+
+/*
+  An infinite time span cannot be encoded as a claim, so it is skipped and the token carries
+  no exp or nbf. Some callers rely on that to mean "never expires", so for now this only warns.
+*/
+function warnIfTimeSpanIsInfinite(timeSpan, optionName, claimName) {
+  if (!Number.isFinite(timeSpan)) {
+    process.emitWarning(
+      `The ${optionName} option is not a finite number, so it is ignored and no ${claimName} claim is added. ` +
+        'This will throw an error in the next major version.',
+      { code: 'FAST_JWT_NON_FINITE_TIME_OPTION' }
+    )
+  }
 }
 
 function sign(
@@ -241,32 +261,41 @@ module.exports = function createSigner(options) {
     key = prepareKeyOrSecret(key, algorithm)
   }
 
-  if (expiresIn) {
+  // NaN is falsy, so it is checked explicitly rather than slipping past the presence check as "unset"
+  if (expiresIn || Number.isNaN(expiresIn)) {
     if (typeof expiresIn === 'string') {
       expiresIn = parseMs(expiresIn)
     }
-    if (typeof expiresIn !== 'number') {
+    if (typeof expiresIn !== 'number' || Number.isNaN(expiresIn)) {
       throw new TokenError(
         TokenError.codes.invalidOption,
         'The expiresIn option must be a positive number or a valid string.'
       )
     }
+    warnIfTimeSpanIsInfinite(expiresIn, 'expiresIn', 'exp')
   }
 
-  if (notBefore) {
+  if (notBefore || Number.isNaN(notBefore)) {
     if (typeof notBefore === 'string') {
       notBefore = parseMs(notBefore)
     }
-    if (typeof notBefore !== 'number' || notBefore < 0) {
+    if (typeof notBefore !== 'number' || Number.isNaN(notBefore) || notBefore < 0) {
       throw new TokenError(
         TokenError.codes.invalidOption,
         'The notBefore option must be a positive number or a valid string.'
       )
     }
+    warnIfTimeSpanIsInfinite(notBefore, 'notBefore', 'nbf')
   }
 
-  if (clockTimestamp && (typeof clockTimestamp !== 'number' || clockTimestamp < 0)) {
-    throw new TokenError(TokenError.codes.invalidOption, 'The clockTimestamp option must be a positive number.')
+  if (
+    clockTimestamp !== undefined &&
+    (typeof clockTimestamp !== 'number' || !Number.isFinite(clockTimestamp) || clockTimestamp < 0)
+  ) {
+    throw new TokenError(
+      TokenError.codes.invalidOption,
+      'The clockTimestamp option must be a finite, non-negative number.'
+    )
   }
 
   if (jti && typeof jti !== 'string') {
