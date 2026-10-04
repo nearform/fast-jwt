@@ -150,7 +150,7 @@ Create a verifier function by calling `createVerifier` and providing one or more
 
 - `cache`: A positive number specifying the size of the verified tokens cache (using LRU strategy). Setting to `true` is equivalent to provide the size `1000`. When enabled, as you can see in the benchmarks section below, performances dramatically improve. By default the cache is disabled.
 
-- `cacheTTL`: The maximum time to live of a cache entry (in milliseconds). If the token has a earlier expiration or the verifier has a shorter `maxAge`, the earlier takes precedence. Accepts `Infinity`, which means no cap beyond the token's own expiry. The default is `600000`, which is 10 minutes.
+- `cacheTTL`: The maximum time to live of a cache entry (in milliseconds). If the token expires earlier, through its `exp` claim or by reaching the verifier's `maxAge`, the earlier time takes precedence. Accepts `Infinity`, which means no cap beyond the token's own expiry. The default is `600000`, which is 10 minutes.
 
 - `errorCacheTTL`: A number or function `function (tokenError) => number` that represents the maximum time to live of a cache error entry (in milliseconds). Example: the `key` function fails or does not return a secret or public key. By default **errors are not cached**, the `errorCacheTTL` default value is `-1`.
 
@@ -274,7 +274,7 @@ The cache layer, powered by [mnemonist](https://www.npmjs.com/package/mnemonist)
 
 When caching is enabled, verified tokens are always stored in cache. If the verification fails once, the error is cached as well for the time set by `errorCacheTTL` and the operation is not retried.
 
-For verified tokens, caching considers the time sensitive claims of the token (`iat`, `nbf` and `exp`) and make sure the verification is retried after a token becomes valid or after a token becomes expired.
+For verified tokens, caching considers the time sensitive claims of the token (`iat`, `nbf` and `exp`) exactly as verification does, including `maxAge` and `clockTolerance`, and makes sure the verification is retried after a token becomes valid or after a token becomes expired.
 
 Performances improvements varies by uses cases and by the type of the operation performed and the algorithm used.
 

@@ -125,24 +125,21 @@ function cacheSet(
     return value
   }
 
-  const hasIat = payload && typeof payload.iat === 'number'
+  // Each bound mirrors its validator in createVerifier
+  cacheValue[1] = !ignoreNotBefore && typeof payload.nbf === 'number' ? payload.nbf * 1000 - clockTolerance : 0
 
-  // Add time range of the token
-  if (hasIat) {
-    cacheValue[1] = !ignoreNotBefore && typeof payload.nbf === 'number' ? payload.nbf * 1000 - clockTolerance : 0
+  let expiresAt = clockTimestamp + clockTolerance + cacheTTL
 
-    if (!ignoreExpiration) {
-      if (typeof payload.exp === 'number') {
-        cacheValue[2] = payload.exp * 1000 + clockTolerance
-      } else if (maxAge) {
-        cacheValue[2] = payload.iat * 1000 + maxAge + clockTolerance
-      }
-    }
+  if (!ignoreExpiration && typeof payload.exp === 'number') {
+    expiresAt = Math.min(expiresAt, payload.exp * 1000 + clockTolerance)
   }
 
-  // The maximum TTL for the token cannot exceed the configured cacheTTL
-  const maxTTL = clockTimestamp + clockTolerance + cacheTTL
-  cacheValue[2] = cacheValue[2] === 0 ? maxTTL : Math.min(cacheValue[2], maxTTL)
+  // As in its validator, maxAge counts from iat and ignores clockTolerance
+  if (typeof maxAge === 'number' && typeof payload.iat === 'number') {
+    expiresAt = Math.min(expiresAt, payload.iat * 1000 + maxAge)
+  }
+
+  cacheValue[2] = expiresAt
 
   cache.set(cacheKeyBuilder(token), cacheValue)
 
@@ -375,14 +372,12 @@ function verify(
     const [value, min, max] = cache.get(cacheKeyBuilder(token)) || [undefined, 0, 0]
     const now = clockTimestamp || Date.now()
 
-    // Validate time range
+    // Every entry has a real upper bound, so 0 is a time, not "no expiry"
     if (
       /* istanbul ignore next */
       typeof value !== 'undefined' &&
-      (min === 0 ||
-        (now < min && value.code === 'FAST_JWT_INACTIVE') ||
-        (now >= min && value.code !== 'FAST_JWT_INACTIVE')) &&
-      (max === 0 || now <= max)
+      now >= min &&
+      now <= max
     ) {
       // Cache hit
       return handleCachedResult(value, callback, promise)

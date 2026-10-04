@@ -1799,6 +1799,266 @@ describe('createVerifier', () => {
       t.mock.timers.reset()
     })
 
+    for (const cacheTTL of [undefined, Infinity]) {
+      const cacheTTLLabel = cacheTTL === undefined ? 'the default cacheTTL' : `cacheTTL ${cacheTTL}`
+
+      test(`should expire cached token using the exp claim when iat is absent, with ${cacheTTLLabel}`, t => {
+        t.mock.timers.enable({ now: 100000 })
+
+        const signer = createSigner({ key: 'secret', expiresIn: 100000, noTimestamp: true })
+        const verifier = createVerifier({ key: 'secret', cache: true, ...(cacheTTL === undefined ? {} : { cacheTTL }) })
+        const token = signer({ a: 1 })
+
+        t.assert.deepStrictEqual(verifier(token), { a: 1, exp: 200 })
+        t.assert.strictEqual(verifier.cache.size, 1)
+        t.assert.deepStrictEqual(verifier.cache.get(hashToken(token)), [{ a: 1, exp: 200 }, 0, 200000])
+
+        // Still served from the cache before expiry
+        t.mock.timers.tick(99000)
+        t.assert.deepStrictEqual(verifier(token), { a: 1, exp: 200 })
+
+        // Just after expiry, well within cacheTTL
+        t.mock.timers.tick(2000)
+        t.assert.throws(() => verifier(token), {
+          code: 'FAST_JWT_EXPIRED',
+          message: 'The token has expired at 1970-01-01T00:03:20.000Z.'
+        })
+
+        // Much later, the token is still rejected
+        t.mock.timers.tick(1000000000)
+        t.assert.throws(() => verifier(token), { code: 'FAST_JWT_EXPIRED' })
+
+        t.mock.timers.reset()
+      })
+    }
+
+    test('should consider the nbf claim and clockTolerance in the cache when iat is absent', t => {
+      t.mock.timers.enable({ now: 100000 })
+
+      const signer = createSigner({ key: 'secret', expiresIn: 400000, notBefore: 200000, noTimestamp: true })
+      const verifier = createVerifier({ key: 'secret', cache: true, clockTolerance: 60000 })
+      const token = signer({ a: 1 })
+
+      // Not active yet
+      t.assert.throws(() => verifier(token), {
+        code: 'FAST_JWT_INACTIVE',
+        message: 'The token will be active at 1970-01-01T00:04:00.000Z.'
+      })
+
+      // Active once inside the clockTolerance window before nbf
+      t.mock.timers.tick(140000)
+      t.assert.deepStrictEqual(verifier(token), { a: 1, nbf: 300, exp: 500 })
+      t.assert.deepStrictEqual(verifier.cache.get(hashToken(token)), [{ a: 1, nbf: 300, exp: 500 }, 240000, 560000])
+      t.assert.deepStrictEqual(verifier(token), { a: 1, nbf: 300, exp: 500 })
+
+      // Still accepted inside the clockTolerance window after exp
+      t.mock.timers.tick(310000)
+      t.assert.deepStrictEqual(verifier(token), { a: 1, nbf: 300, exp: 500 })
+
+      // Rejected once past exp plus clockTolerance
+      t.mock.timers.tick(20000)
+      t.assert.throws(() => verifier(token), {
+        code: 'FAST_JWT_EXPIRED',
+        message: 'The token has expired at 1970-01-01T00:09:20.000Z.'
+      })
+
+      t.mock.timers.reset()
+    })
+
+    function signHs256WithoutClaimChecks(payload) {
+      const encodedHeader = Buffer.from(JSON.stringify({ alg: 'HS256', typ: 'JWT' })).toString('base64url')
+      const encodedPayload = Buffer.from(JSON.stringify(payload)).toString('base64url')
+      const signature = createHmac('sha256', 'secret').update(`${encodedHeader}.${encodedPayload}`).digest('base64url')
+      return `${encodedHeader}.${encodedPayload}.${signature}`
+    }
+
+    // Populates the cache, then checks cached and uncached verifiers agree at each later time
+    function assertCacheMatchesUncached(
+      t,
+      { signerOptions, payload, rawPayload, verifierOptions, startTime, laterTimes }
+    ) {
+      t.mock.timers.enable({ now: startTime })
+
+      const cachedVerifier = createVerifier({ key: 'secret', ...verifierOptions, cache: true })
+      const uncachedVerifier = createVerifier({ key: 'secret', ...verifierOptions })
+      // Signed by hand for claim values the signer refuses to produce
+      const token = rawPayload
+        ? signHs256WithoutClaimChecks(rawPayload)
+        : createSigner({ key: 'secret', ...signerOptions })(payload)
+
+      t.assert.deepStrictEqual(cachedVerifier(token), uncachedVerifier(token))
+
+      for (const laterTime of laterTimes) {
+        t.mock.timers.setTime(laterTime)
+
+        let uncachedResult
+        let uncachedError
+        try {
+          uncachedResult = uncachedVerifier(token)
+        } catch (error) {
+          uncachedError = error
+        }
+
+        if (uncachedError) {
+          t.assert.throws(() => cachedVerifier(token), { code: uncachedError.code, message: uncachedError.message })
+        } else {
+          t.assert.deepStrictEqual(cachedVerifier(token), uncachedResult)
+        }
+      }
+
+      t.mock.timers.reset()
+
+      return { token, cachedVerifier }
+    }
+
+    test('should expire cached tokens at maxAge when it is earlier than exp', t => {
+      const { token, cachedVerifier } = assertCacheMatchesUncached(t, {
+        signerOptions: { expiresIn: 100000 },
+        payload: { a: 1 },
+        verifierOptions: { maxAge: 50000 },
+        startTime: 100000,
+        laterTimes: [150000, 150001, 170000]
+      })
+
+      t.assert.throws(() => cachedVerifier(token), { code: 'FAST_JWT_EXPIRED' })
+    })
+
+    test('should store the earlier of exp and maxAge as the cache expiry', t => {
+      t.mock.timers.enable({ now: 100000 })
+
+      const signer = createSigner({ key: 'secret', expiresIn: 100000 })
+      const maxAgeFirstVerifier = createVerifier({ key: 'secret', cache: true, maxAge: 50000 })
+      const expFirstVerifier = createVerifier({ key: 'secret', cache: true, maxAge: 500000 })
+      const token = signer({ a: 1 })
+
+      t.assert.deepStrictEqual(maxAgeFirstVerifier(token), { a: 1, iat: 100, exp: 200 })
+      t.assert.deepStrictEqual(maxAgeFirstVerifier.cache.get(hashToken(token)), [
+        { a: 1, iat: 100, exp: 200 },
+        0,
+        150000
+      ])
+
+      t.assert.deepStrictEqual(expFirstVerifier(token), { a: 1, iat: 100, exp: 200 })
+      t.assert.deepStrictEqual(expFirstVerifier.cache.get(hashToken(token)), [{ a: 1, iat: 100, exp: 200 }, 0, 200000])
+
+      t.mock.timers.reset()
+    })
+
+    test('should enforce maxAge on cached tokens when ignoreExpiration is set', t => {
+      assertCacheMatchesUncached(t, {
+        signerOptions: { expiresIn: 100000 },
+        payload: { a: 1 },
+        verifierOptions: { maxAge: 50000, ignoreExpiration: true },
+        startTime: 100000,
+        laterTimes: [150000, 150001, 170000, 250000]
+      })
+    })
+
+    test('should not extend maxAge on cached tokens by clockTolerance', t => {
+      assertCacheMatchesUncached(t, {
+        signerOptions: {},
+        payload: { a: 1 },
+        verifierOptions: { maxAge: 50000, clockTolerance: 10000 },
+        startTime: 100000,
+        laterTimes: [150000, 150001, 155000, 160000]
+      })
+    })
+
+    test('should enforce a maxAge of 0 on cached tokens', t => {
+      assertCacheMatchesUncached(t, {
+        signerOptions: {},
+        payload: { a: 1 },
+        verifierOptions: { maxAge: 0 },
+        startTime: 100000,
+        laterTimes: [100000, 100001, 200000]
+      })
+    })
+
+    const twoHours = 2 * 60 * 60 * 1000
+
+    // A cache expiry of exactly 0 is a time, not "no expiry"
+    test('should expire a cached token whose exp is 0', t => {
+      assertCacheMatchesUncached(t, {
+        rawPayload: { a: 1, exp: 0 },
+        verifierOptions: {},
+        startTime: 0,
+        laterTimes: [0, 1, twoHours]
+      })
+    })
+
+    test('should expire a cached token whose iat is 0 with a maxAge of 0', t => {
+      assertCacheMatchesUncached(t, {
+        rawPayload: { a: 1, iat: 0 },
+        verifierOptions: { maxAge: 0 },
+        startTime: 0,
+        laterTimes: [0, 1, twoHours]
+      })
+    })
+
+    test('should expire a cached token whose exp plus clockTolerance is 0', t => {
+      assertCacheMatchesUncached(t, {
+        rawPayload: { a: 1, exp: -1 },
+        verifierOptions: { clockTolerance: 1000 },
+        startTime: 0,
+        laterTimes: [0, 1, twoHours]
+      })
+    })
+
+    // Verification treats clockTimestamp: 0 as unset, so a cache hit must not outlive exp
+    test('should expire a cached token with a clockTimestamp of 0 and a cacheTTL of 0', t => {
+      assertCacheMatchesUncached(t, {
+        signerOptions: { expiresIn: 100000 },
+        payload: { a: 1 },
+        verifierOptions: { clockTimestamp: 0, cacheTTL: 0 },
+        startTime: 100000,
+        laterTimes: [150000, 200000, 200001, twoHours]
+      })
+    })
+
+    test('should store a cached token with a clockTimestamp of 0 under a bound the current time has passed', t => {
+      const { token, cachedVerifier } = assertCacheMatchesUncached(t, {
+        signerOptions: { noTimestamp: true },
+        payload: { a: 1 },
+        verifierOptions: { clockTimestamp: 0, cacheTTL: 5000 },
+        startTime: 100000,
+        laterTimes: [100001, 200000, twoHours]
+      })
+
+      t.assert.deepStrictEqual(cachedVerifier.cache.get(hashToken(token)), [{ a: 1 }, 0, 5000])
+    })
+
+    test('should not treat a code claim in a cached payload as a cached error', t => {
+      assertCacheMatchesUncached(t, {
+        signerOptions: { noTimestamp: true },
+        payload: { a: 1, code: 'FAST_JWT_INACTIVE', nbf: 200 },
+        verifierOptions: {},
+        startTime: 200000,
+        // Moving the clock back before nbf must not serve the cached payload
+        laterTimes: [100000, 199999, 200000, 300000]
+      })
+    })
+
+    test('should not enforce maxAge on cached tokens when iat is absent', t => {
+      t.mock.timers.enable({ now: 100000 })
+
+      const signer = createSigner({ key: 'secret', noTimestamp: true })
+      const verifier = createVerifier({ key: 'secret', cache: true, maxAge: 100000 })
+      const token = signer({ a: 1 })
+
+      t.assert.deepStrictEqual(verifier(token), { a: 1 })
+      t.assert.deepStrictEqual(verifier.cache.get(hashToken(token)), [{ a: 1 }, 0, 700000])
+
+      // Past maxAge but still accepted: maxAge needs iat
+      t.mock.timers.tick(300000)
+      t.assert.deepStrictEqual(verifier(token), { a: 1 })
+
+      // Also accepted by a fresh lookup once the cacheTTL bound has passed
+      t.mock.timers.tick(400000)
+      t.assert.deepStrictEqual(verifier(token), { a: 1 })
+
+      t.mock.timers.reset()
+    })
+
     test('default errorCacheTTL should not cache errors', async t => {
       t.mock.timers.enable({ now: 0 })
       const token = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxfQ.57TF7smP9XDhIexBqPC-F1toZReYZLWb_YRU5tv0sxM'
