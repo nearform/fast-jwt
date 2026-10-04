@@ -27,11 +27,11 @@ Create a signer function by calling `createSigner` and providing one or more of 
 
 - `mutatePayload`: If set to `true`, the original payload will be modified in place (via `Object.assign`) by the signing function. This is useful if you need a raw reference to the payload after claims have been applied to it but before it has been encoded into a token. Default is `false`.
 
-- `expiresIn`: Time span (in milliseconds or text describing time) after which the token expires, added as the `exp` claim in the payload as defined by the [section 4.1.4 of RFC 7519](https://datatracker.ietf.org/doc/html/rfc7519#section-4.1.4). This will override any existing value in the claim. `NaN` is rejected. `Infinity` adds no `exp` claim and emits a `FAST_JWT_NON_FINITE_TIME_OPTION` warning; it will be rejected in the next major version.
+- `expiresIn`: Time span (in milliseconds or text describing time) after which the token expires, added as the `exp` claim in the payload as defined by the [section 4.1.4 of RFC 7519](https://datatracker.ietf.org/doc/html/rfc7519#section-4.1.4). This will override any existing value in the claim. `NaN` is rejected. `Infinity` is ignored and does not set the `exp` claim (an `exp` already in the payload is kept), and emits a `FAST_JWT_NON_FINITE_TIME_OPTION` warning; it will be rejected in the next major version.
   > Eg: `60`, `"2 days"`, `"10h"`, `"7d"`. A numeric value is interpreted as a seconds count. If you use a string be sure you provide the time units (days, hours, etc), otherwise milliseconds unit is used by default (`"120"` is equal to `"120ms"`).
   For more info look into [@lukeed/ms](https://www.npmjs.com/package/@lukeed/ms).
 
-- `notBefore`: Time span (in milliseconds or text describing time) before the token is active, added as the `nbf` claim in the payload as defined by the [section 4.1.5 of RFC 7519](https://datatracker.ietf.org/doc/html/rfc7519#section-4.1.5). This will override any existing value in the claim. `NaN` is rejected. `Infinity` adds no `nbf` claim and emits a `FAST_JWT_NON_FINITE_TIME_OPTION` warning; it will be rejected in the next major version.
+- `notBefore`: Time span (in milliseconds or text describing time) before the token is active, added as the `nbf` claim in the payload as defined by the [section 4.1.5 of RFC 7519](https://datatracker.ietf.org/doc/html/rfc7519#section-4.1.5). This will override any existing value in the claim. `NaN` is rejected. `Infinity` is ignored and does not set the `nbf` claim (an `nbf` already in the payload is kept), and emits a `FAST_JWT_NON_FINITE_TIME_OPTION` warning; it will be rejected in the next major version.
   > Eg: `60`, `"2 days"`, `"10h"`, `"7d"`. A numeric value is interpreted as a seconds count. If you use a string be sure you provide the time units (days, hours, etc), otherwise milliseconds unit is used by default (`"120"` is equal to `"120ms"`).
   For more info look into [@lukeed/ms](https://www.npmjs.com/package/@lukeed/ms).
 
@@ -51,7 +51,7 @@ Create a signer function by calling `createSigner` and providing one or more of 
 
 - `noTimestamp`: If set to `true`, the `iat` claim should not be added to the token. Default is `false`.
 
-- `clockTimestamp`: The timestamp in milliseconds (like the output of `Date.now()`) that should be used as the current time for all necessary time comparisons. It must be a finite, non-negative number. Default is the system time.
+- `clockTimestamp`: The timestamp in milliseconds (like the output of `Date.now()`) that should be used as the current time for all necessary time comparisons. Default is the system time. `NaN` is ignored and the current time is used, while `Infinity` makes the computed `iat`, `exp` and `nbf` claims encode as `null`; both emit a `FAST_JWT_NON_FINITE_TIME_OPTION` warning and will be rejected in the next major version.
 
 The signer is a function which accepts a payload and returns the token.
 

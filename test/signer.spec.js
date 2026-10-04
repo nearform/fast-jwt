@@ -676,12 +676,79 @@ describe('createSigner', () => {
     })
 
     test('clockTimestamp', async t => {
-      for (const invalidClockTimestamp of ['123', -1, Number.NaN, Infinity]) {
-        t.assert.throws(() => createSigner({ key: 'secret', clockTimestamp: invalidClockTimestamp }), {
-          code: 'FAST_JWT_INVALID_OPTION',
-          message: 'The clockTimestamp option must be a finite, non-negative number.'
+      t.assert.throws(() => createSigner({ key: 'secret', clockTimestamp: '123' }), {
+        message: 'The clockTimestamp option must be a positive number.'
+      })
+
+      t.assert.throws(() => createSigner({ key: 'secret', clockTimestamp: -1 }), {
+        message: 'The clockTimestamp option must be a positive number.'
+      })
+
+      t.assert.throws(() => createSigner({ key: 'secret', clockTimestamp: -Infinity }), {
+        code: 'FAST_JWT_INVALID_OPTION',
+        message: 'The clockTimestamp option must be a positive number.'
+      })
+    })
+
+    describe('clockTimestamp values treated as unset', () => {
+      for (const unsetClockTimestamp of [null, undefined, 0]) {
+        test(`signs with the current time and does not warn when clockTimestamp is ${unsetClockTimestamp}`, t => {
+          const emitWarning = t.mock.method(process, 'emitWarning', () => {})
+          t.mock.timers.enable({ apis: ['Date'], now: 2_000_000 })
+
+          const signer = createSigner({
+            key: 'secret',
+            clockTimestamp: unsetClockTimestamp,
+            expiresIn: 1000,
+            notBefore: 1000
+          })
+          const decodedPayload = createDecoder()(signer({ sub: 'alice' }))
+
+          t.assert.deepStrictEqual(decodedPayload, { sub: 'alice', iat: 2000, exp: 2001, nbf: 2001 })
+          t.assert.equal(emitWarning.mock.callCount(), 0)
         })
       }
+    })
+
+    describe('non-finite clockTimestamp', () => {
+      test('warns and falls back to the current time when clockTimestamp is NaN', t => {
+        const emitWarning = t.mock.method(process, 'emitWarning', () => {})
+        t.mock.timers.enable({ apis: ['Date'], now: 2_000_000 })
+
+        const signer = createSigner({ key: 'secret', clockTimestamp: Number.NaN, expiresIn: 1000 })
+        const decodedPayload = createDecoder()(signer({ sub: 'alice' }))
+
+        t.assert.deepStrictEqual(decodedPayload, { sub: 'alice', iat: 2000, exp: 2001 })
+        t.assert.equal(emitWarning.mock.callCount(), 1)
+        t.assert.deepStrictEqual(emitWarning.mock.calls[0].arguments, [
+          'The clockTimestamp option is NaN, so it is ignored and the current time is used. ' +
+            'This will throw an error in the next major version.',
+          { code: 'FAST_JWT_NON_FINITE_TIME_OPTION' }
+        ])
+      })
+
+      test('warns and keeps encoding the derived claims as null when clockTimestamp is Infinity', t => {
+        const emitWarning = t.mock.method(process, 'emitWarning', () => {})
+
+        const signer = createSigner({ key: 'secret', clockTimestamp: Infinity, expiresIn: 1000, notBefore: 1000 })
+        const decodedPayload = createDecoder()(signer({ sub: 'alice' }))
+
+        t.assert.deepStrictEqual(decodedPayload, { sub: 'alice', iat: null, exp: null, nbf: null })
+        t.assert.equal(emitWarning.mock.callCount(), 1)
+        t.assert.deepStrictEqual(emitWarning.mock.calls[0].arguments, [
+          'The clockTimestamp option is Infinity, so the iat, exp and nbf claims computed from it are encoded as null. ' +
+            'This will throw an error in the next major version.',
+          { code: 'FAST_JWT_NON_FINITE_TIME_OPTION' }
+        ])
+      })
+
+      test('does not warn when clockTimestamp is finite', t => {
+        const emitWarning = t.mock.method(process, 'emitWarning', () => {})
+
+        createSigner({ key: 'secret', clockTimestamp: 123000 })
+
+        t.assert.equal(emitWarning.mock.callCount(), 0)
+      })
     })
 
     test('expiresIn', async t => {
@@ -723,21 +790,33 @@ describe('createSigner', () => {
         ['expiresIn', 'exp'],
         ['notBefore', 'nbf']
       ]) {
-        test(`warns but still signs without ${claimName} when ${optionName} is Infinity`, t => {
+        test(`warns once per signer and does not set ${claimName} when ${optionName} is Infinity`, t => {
           const emitWarning = t.mock.method(process, 'emitWarning', () => {})
 
           const signer = createSigner({ key: 'secret', [optionName]: Infinity })
-          const decodedPayload = createDecoder()(signer({ sub: 'alice' }))
+          const firstDecodedPayload = createDecoder()(signer({ sub: 'alice' }))
+          const secondDecodedPayload = createDecoder()(signer({ sub: 'bob' }))
 
           t.assert.equal(emitWarning.mock.callCount(), 1)
           const [warningMessage, warningOptions] = emitWarning.mock.calls[0].arguments
           t.assert.equal(
             warningMessage,
-            `The ${optionName} option is not a finite number, so it is ignored and no ${claimName} claim is added. ` +
+            `The ${optionName} option is not a finite number, so it is ignored and does not set the ${claimName} claim. ` +
               'This will throw an error in the next major version.'
           )
           t.assert.deepStrictEqual(warningOptions, { code: 'FAST_JWT_NON_FINITE_TIME_OPTION' })
-          t.assert.equal(decodedPayload[claimName], undefined)
+          t.assert.equal(firstDecodedPayload[claimName], undefined)
+          t.assert.equal(secondDecodedPayload[claimName], undefined)
+        })
+
+        test(`keeps a ${claimName} claim from the payload when ${optionName} is Infinity`, t => {
+          t.mock.method(process, 'emitWarning', () => {})
+          const payloadClaimValue = 4_000_000_000
+
+          const signer = createSigner({ key: 'secret', [optionName]: Infinity })
+          const decodedPayload = createDecoder()(signer({ sub: 'alice', [claimName]: payloadClaimValue }))
+
+          t.assert.equal(decodedPayload[claimName], payloadClaimValue)
         })
 
         test(`does not warn when ${optionName} is finite`, t => {

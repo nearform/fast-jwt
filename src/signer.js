@@ -53,16 +53,40 @@ function prepareKeyOrSecret(key, algorithm) {
   return createPrivateKey(key)
 }
 
+const nonFiniteTimeOptionWarning = { code: 'FAST_JWT_NON_FINITE_TIME_OPTION' }
+const nextMajorRejectionNotice = 'This will throw an error in the next major version.'
+
 /*
-  An infinite time span cannot be encoded as a claim, so it is skipped and the token carries
-  no exp or nbf. Some callers rely on that to mean "never expires", so for now this only warns.
+  An infinite time span cannot be encoded as a claim, so sign() ignores it and does not set exp
+  or nbf from it (a claim already in the payload is kept). Releases so far have accepted it for
+  both options, and expiresIn: Infinity in particular is relied on to mean "never expires", so
+  rejecting either would break existing callers in a patch release: for now this only warns.
 */
 function warnIfTimeSpanIsInfinite(timeSpan, optionName, claimName) {
   if (!Number.isFinite(timeSpan)) {
     process.emitWarning(
-      `The ${optionName} option is not a finite number, so it is ignored and no ${claimName} claim is added. ` +
-        'This will throw an error in the next major version.',
-      { code: 'FAST_JWT_NON_FINITE_TIME_OPTION' }
+      `The ${optionName} option is not a finite number, so it is ignored and does not set the ${claimName} claim. ` +
+        nextMajorRejectionNotice,
+      nonFiniteTimeOptionWarning
+    )
+  }
+}
+
+/*
+  NaN is falsy, so sign() falls back to the current time; Infinity propagates into the computed
+  iat, exp and nbf, which JSON encodes as null. Both are accepted today, so for now this only warns.
+*/
+function warnIfClockTimestampIsNotFinite(clockTimestamp) {
+  if (Number.isNaN(clockTimestamp)) {
+    process.emitWarning(
+      `The clockTimestamp option is NaN, so it is ignored and the current time is used. ${nextMajorRejectionNotice}`,
+      nonFiniteTimeOptionWarning
+    )
+  } else if (clockTimestamp === Infinity) {
+    process.emitWarning(
+      'The clockTimestamp option is Infinity, so the iat, exp and nbf claims computed from it are encoded as null. ' +
+        nextMajorRejectionNotice,
+      nonFiniteTimeOptionWarning
     )
   }
 }
@@ -288,15 +312,11 @@ module.exports = function createSigner(options) {
     warnIfTimeSpanIsInfinite(notBefore, 'notBefore', 'nbf')
   }
 
-  if (
-    clockTimestamp !== undefined &&
-    (typeof clockTimestamp !== 'number' || !Number.isFinite(clockTimestamp) || clockTimestamp < 0)
-  ) {
-    throw new TokenError(
-      TokenError.codes.invalidOption,
-      'The clockTimestamp option must be a finite, non-negative number.'
-    )
+  if (clockTimestamp && (typeof clockTimestamp !== 'number' || clockTimestamp < 0)) {
+    throw new TokenError(TokenError.codes.invalidOption, 'The clockTimestamp option must be a positive number.')
   }
+
+  warnIfClockTimestampIsNotFinite(clockTimestamp)
 
   if (jti && typeof jti !== 'string') {
     throw new TokenError(TokenError.codes.invalidOption, 'The jti option must be a string.')
