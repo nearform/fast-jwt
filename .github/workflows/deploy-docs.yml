@@ -6,12 +6,14 @@ on:
     types:
       - published
 
+defaults:
+  run:
+    working-directory: website
+
 jobs:
   build:
     name: Build website
     runs-on: ubuntu-latest
-    defaults:
-      working-directory: website
     steps:
       - uses: actions/checkout@v4
         with:
