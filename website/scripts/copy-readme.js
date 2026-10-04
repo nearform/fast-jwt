@@ -3,12 +3,14 @@
 const fs = require('node:fs')
 const path = require('node:path')
 
+const repoRoot = path.join(__dirname, '..', '..')
+const docsDir = path.join(__dirname, '..', 'docs')
 const repoUrl = 'https://github.com/nearform/fast-jwt/blob/master'
 
 const targets = [
   {
-    source: path.join(__dirname, '..', '..', 'README.md'),
-    destination: path.join(__dirname, '..', 'docs', 'index.md'),
+    source: path.join(repoRoot, 'README.md'),
+    destination: path.join(docsDir, 'index.md'),
     title: 'fast-jwt',
     slug: '/',
     rewriteLinks: relativePath => {
@@ -19,8 +21,8 @@ const targets = [
     }
   },
   {
-    source: path.join(__dirname, '..', '..', 'benchmarks', 'README.md'),
-    destination: path.join(__dirname, '..', 'docs', 'benchmarks.md'),
+    source: path.join(repoRoot, 'benchmarks', 'README.md'),
+    destination: path.join(docsDir, 'benchmarks.md'),
     title: 'Benchmarks',
     slug: '/benchmarks',
     rewriteLinks: relativePath => `${repoUrl}/${relativePath}`
