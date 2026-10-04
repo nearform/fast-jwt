@@ -96,7 +96,7 @@ const config: Config = {
           ],
         },
       ],
-      copyright: `Copyright © ${new Date().getFullYear()} NearForm Ltd. Built with Docusaurus.`,
+      copyright: `Copyright © ${new Date().getFullYear()} Nearform Ltd. Built with Docusaurus.`,
     },
     prism: {
       theme: prismThemes.github,
