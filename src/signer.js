@@ -121,7 +121,12 @@ function sign(
   let encodedPayload = ''
 
   // Add claims
-  const iat = payload.iat * 1000 || clockTimestamp || Date.now()
+  const iat =
+    typeof payload.iat === 'number' && !Number.isNaN(payload.iat)
+      ? payload.iat * 1000
+      : clockTimestamp !== undefined && !Number.isNaN(clockTimestamp)
+        ? clockTimestamp
+        : Date.now()
 
   const finalPayload = {
     ...payload,
@@ -225,7 +230,7 @@ module.exports = function createSigner(options) {
     kid,
     typ,
     header: additionalHeader
-  } = { clockTimestamp: 0, ...options }
+  } = { ...options }
 
   // Validate options
   if (algorithm && !supportedAlgorithms.has(algorithm)) {
@@ -302,8 +307,11 @@ module.exports = function createSigner(options) {
     warnIfTimeSpanIsInfinite(notBefore, 'notBefore', 'nbf')
   }
 
-  if (clockTimestamp && (typeof clockTimestamp !== 'number' || clockTimestamp < 0)) {
-    throw new TokenError(TokenError.codes.invalidOption, 'The clockTimestamp option must be a positive number.')
+  if (clockTimestamp !== undefined && (typeof clockTimestamp !== 'number' || clockTimestamp < 0)) {
+    throw new TokenError(
+      TokenError.codes.invalidOption,
+      'The clockTimestamp option must be a finite, non-negative number.'
+    )
   }
 
   warnIfClockTimestampIsNotFinite(clockTimestamp)

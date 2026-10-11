@@ -684,21 +684,35 @@ describe('createSigner', () => {
 
     test('clockTimestamp', async t => {
       t.assert.throws(() => createSigner({ key: 'secret', clockTimestamp: '123' }), {
-        message: 'The clockTimestamp option must be a positive number.'
+        message: 'The clockTimestamp option must be a finite, non-negative number.'
       })
 
       t.assert.throws(() => createSigner({ key: 'secret', clockTimestamp: -1 }), {
-        message: 'The clockTimestamp option must be a positive number.'
+        message: 'The clockTimestamp option must be a finite, non-negative number.'
       })
 
       t.assert.throws(() => createSigner({ key: 'secret', clockTimestamp: -Infinity }), {
         code: 'FAST_JWT_INVALID_OPTION',
-        message: 'The clockTimestamp option must be a positive number.'
+        message: 'The clockTimestamp option must be a finite, non-negative number.'
       })
+
+      t.assert.throws(() => createSigner({ key: 'secret', clockTimestamp: null }), {
+        message: 'The clockTimestamp option must be a finite, non-negative number.'
+      })
+
+      const epochSigner = createSigner({ key: 'secret', clockTimestamp: 0, expiresIn: 0, notBefore: 0 })
+      const decoded = createDecoder()(epochSigner({ a: 1 }))
+      t.assert.strictEqual(decoded.iat, 0)
+      t.assert.strictEqual(decoded.exp, 0)
+      t.assert.strictEqual(decoded.nbf, 0)
+
+      const payloadIatSigner = createSigner({ key: 'secret' })
+      const payloadIatDecoded = createDecoder()(payloadIatSigner({ a: 1, iat: 0 }))
+      t.assert.strictEqual(payloadIatDecoded.iat, 0)
     })
 
     describe('clockTimestamp values treated as unset', () => {
-      for (const unsetClockTimestamp of [null, undefined, 0]) {
+      for (const unsetClockTimestamp of [undefined]) {
         test(`signs with the current time and does not warn when clockTimestamp is ${unsetClockTimestamp}`, t => {
           const emitWarning = t.mock.method(process, 'emitWarning', () => {})
           t.mock.timers.enable({ apis: ['Date'], now: 2_000_000 })
