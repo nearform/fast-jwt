@@ -9,7 +9,7 @@ const safeRegex = require('safe-regex2')
 const { hsAlgorithms, verifySignature, detectPublicKeyAlgorithms, ensureSecretIsNotEmpty } = require('./crypto')
 const createDecoder = require('./decoder')
 const { TokenError } = require('./error')
-const { getAsyncKey, ensurePromiseCallback, hashToken } = require('./utils')
+const { getAsyncKey, ensurePromiseCallback, hashToken, assertFiniteNonNegativeNumber } = require('./utils')
 
 const defaultCacheSize = 1000
 
@@ -556,25 +556,9 @@ module.exports = function createVerifier(options) {
     key = prepareKeyOrSecret(key, hsAlgorithms.includes(availableAlgorithms[0]))
   }
 
-  if (
-    clockTimestamp !== undefined &&
-    (typeof clockTimestamp !== 'number' || !Number.isFinite(clockTimestamp) || clockTimestamp < 0)
-  ) {
-    throw new TokenError(
-      TokenError.codes.invalidOption,
-      'The clockTimestamp option must be a finite, non-negative number.'
-    )
-  }
+  assertFiniteNonNegativeNumber(clockTimestamp, 'clockTimestamp')
 
-  if (
-    clockTolerance !== undefined &&
-    (typeof clockTolerance !== 'number' || !Number.isFinite(clockTolerance) || clockTolerance < 0)
-  ) {
-    throw new TokenError(
-      TokenError.codes.invalidOption,
-      'The clockTolerance option must be a finite, non-negative number.'
-    )
-  }
+  assertFiniteNonNegativeNumber(clockTolerance, 'clockTolerance')
 
   if (cacheTTL !== undefined && (typeof cacheTTL !== 'number' || Number.isNaN(cacheTTL) || cacheTTL < 0)) {
     throw new TokenError(TokenError.codes.invalidOption, 'The cacheTTL option must be a non-negative number.')

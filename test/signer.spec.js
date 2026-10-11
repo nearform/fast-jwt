@@ -696,6 +696,14 @@ describe('createSigner', () => {
         message: 'The clockTimestamp option must be a finite, non-negative number.'
       })
 
+      t.assert.throws(() => createSigner({ key: 'secret', clockTimestamp: NaN }), {
+        message: 'The clockTimestamp option must be a finite, non-negative number.'
+      })
+
+      t.assert.throws(() => createSigner({ key: 'secret', clockTimestamp: Infinity }), {
+        message: 'The clockTimestamp option must be a finite, non-negative number.'
+      })
+
       t.assert.throws(() => createSigner({ key: 'secret', clockTimestamp: null }), {
         message: 'The clockTimestamp option must be a finite, non-negative number.'
       })
@@ -732,37 +740,21 @@ describe('createSigner', () => {
     })
 
     describe('non-finite clockTimestamp', () => {
-      test('warns and treats clockTimestamp as unset when it is NaN', t => {
-        const emitWarning = t.mock.method(process, 'emitWarning', () => {})
-        t.mock.timers.enable({ apis: ['Date'], now: 2_000_000 })
-
-        const signer = createSigner({ key: 'secret', clockTimestamp: Number.NaN, expiresIn: 1000 })
-        const decodedPayload = createDecoder()(signer({ sub: 'alice' }))
-
-        t.assert.deepStrictEqual(decodedPayload, { sub: 'alice', iat: 2000, exp: 2001 })
-        const warningCalls = nonFiniteTimeWarningCalls(emitWarning)
-        t.assert.strictEqual(warningCalls.length, 1)
-        t.assert.deepStrictEqual(warningCalls[0].arguments, [
-          'The clockTimestamp option is NaN, so it is ignored as if it were unset. ' +
-            'This will throw an error in the next major version.',
-          { code: 'FAST_JWT_NON_FINITE_TIME_OPTION' }
-        ])
+      test('throws when clockTimestamp is NaN', t => {
+        t.assert.throws(() => createSigner({ key: 'secret', clockTimestamp: Number.NaN, expiresIn: 1000 }), {
+          code: 'FAST_JWT_INVALID_OPTION',
+          message: 'The clockTimestamp option must be a finite, non-negative number.'
+        })
       })
 
-      test('warns and keeps encoding the derived claims as null when clockTimestamp is Infinity', t => {
-        const emitWarning = t.mock.method(process, 'emitWarning', () => {})
-
-        const signer = createSigner({ key: 'secret', clockTimestamp: Infinity, expiresIn: 1000, notBefore: 1000 })
-        const decodedPayload = createDecoder()(signer({ sub: 'alice' }))
-
-        t.assert.deepStrictEqual(decodedPayload, { sub: 'alice', iat: null, exp: null, nbf: null })
-        const warningCalls = nonFiniteTimeWarningCalls(emitWarning)
-        t.assert.strictEqual(warningCalls.length, 1)
-        t.assert.deepStrictEqual(warningCalls[0].arguments, [
-          'The clockTimestamp option is Infinity, so the iat, exp and nbf claims computed from it are encoded as null. ' +
-            'This will throw an error in the next major version.',
-          { code: 'FAST_JWT_NON_FINITE_TIME_OPTION' }
-        ])
+      test('throws when clockTimestamp is Infinity', t => {
+        t.assert.throws(
+          () => createSigner({ key: 'secret', clockTimestamp: Infinity, expiresIn: 1000, notBefore: 1000 }),
+          {
+            code: 'FAST_JWT_INVALID_OPTION',
+            message: 'The clockTimestamp option must be a finite, non-negative number.'
+          }
+        )
       })
 
       test('does not warn when clockTimestamp is finite', t => {

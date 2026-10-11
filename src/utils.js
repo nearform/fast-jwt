@@ -1,6 +1,7 @@
 'use strict'
 
 const { createHash } = require('node:crypto')
+const { TokenError } = require('./error')
 const algorithmMatcher = /"alg"\s*:\s*"[HERP]S(256|384)"/m
 const edAlgorithmMatcher = /"alg"\s*:\s*"EdDSA"/m
 const ed448CurveMatcher = /"crv"\s*:\s*"Ed448"/m
@@ -58,8 +59,18 @@ function hashToken(token) {
   return hasher.update(token).digest('hex')
 }
 
+function assertFiniteNonNegativeNumber(value, optionName) {
+  if (value !== undefined && (typeof value !== 'number' || !Number.isFinite(value) || value < 0)) {
+    throw new TokenError(
+      TokenError.codes.invalidOption,
+      `The ${optionName} option must be a finite, non-negative number.`
+    )
+  }
+}
+
 module.exports = {
   getAsyncKey,
   ensurePromiseCallback,
-  hashToken
+  hashToken,
+  assertFiniteNonNegativeNumber
 }
