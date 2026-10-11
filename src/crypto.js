@@ -400,13 +400,7 @@ function verifySignature(algorithm, key, input, signature) {
         return false
       }
     } else if (type === 'Ed') {
-      // Check if supported on Node 10
-      /* istanbul ignore next */
-      if (typeof directVerify === 'function') {
-        return directVerify(undefined, Buffer.from(input, 'utf-8'), key, signature)
-      } else {
-        throw new TokenError(TokenError.codes.signError, 'EdDSA algorithms are not supported by your Node.js version.')
-      }
+      return directVerify(undefined, Buffer.from(input, 'utf-8'), key, signature)
     }
 
     const options = { key, padding: RSA_PKCS1_PADDING, saltLength: RSA_PSS_SALTLEN_AUTO }
