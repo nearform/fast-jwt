@@ -12,7 +12,7 @@ const {
   createSignature
 } = require('./crypto')
 const { TokenError } = require('./error')
-const { getAsyncKey, ensurePromiseCallback } = require('./utils')
+const { getAsyncKey, ensurePromiseCallback, assertFiniteNonNegativeNumber } = require('./utils')
 const { createPrivateKey, createSecretKey } = require('node:crypto')
 const { parse: parseMs } = require('@lukeed/ms')
 
@@ -121,7 +121,7 @@ function sign(
   let encodedPayload = ''
 
   // Add claims
-  const iat = payload.iat * 1000 || clockTimestamp || Date.now()
+  const iat = payload.iat !== undefined ? payload.iat * 1000 : (clockTimestamp ?? Date.now())
 
   const finalPayload = {
     ...payload,
@@ -225,7 +225,7 @@ module.exports = function createSigner(options) {
     kid,
     typ,
     header: additionalHeader
-  } = { clockTimestamp: 0, ...options }
+  } = { ...options }
 
   // Validate options
   if (algorithm && !supportedAlgorithms.has(algorithm)) {
@@ -302,9 +302,7 @@ module.exports = function createSigner(options) {
     warnIfTimeSpanIsInfinite(notBefore, 'notBefore', 'nbf')
   }
 
-  if (clockTimestamp && (typeof clockTimestamp !== 'number' || clockTimestamp < 0)) {
-    throw new TokenError(TokenError.codes.invalidOption, 'The clockTimestamp option must be a positive number.')
-  }
+  assertFiniteNonNegativeNumber(clockTimestamp, 'clockTimestamp')
 
   warnIfClockTimestampIsNotFinite(clockTimestamp)
 
