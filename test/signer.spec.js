@@ -592,6 +592,26 @@ describe('createSigner', () => {
     })
   })
 
+  test('nbf claim validation', async t => {
+    t.assert.throws(() => createSigner({ key: 'secret' })({ nbf: '123' }), {
+      message: 'The nbf claim must be a positive integer.'
+    })
+
+    t.assert.throws(() => createSigner({ key: 'secret' })({ nbf: -1 }), {
+      message: 'The nbf claim must be a positive integer.'
+    })
+
+    t.assert.throws(() => createSigner({ key: 'secret' })({ nbf: 1.5 }), {
+      message: 'The nbf claim must be a positive integer.'
+    })
+
+    t.assert.doesNotThrow(() => createSigner({ key: 'secret' })({ nbf: Number.NaN }))
+
+    t.assert.doesNotThrow(() => createSigner({ key: 'secret' })({ nbf: undefined }))
+
+    t.assert.doesNotThrow(() => createSigner({ key: 'secret' })({ nbf: 1700000000 }))
+  })
+
   describe('empty HMAC key', () => {
     const emptyKeyError = {
       code: 'FAST_JWT_INVALID_KEY',

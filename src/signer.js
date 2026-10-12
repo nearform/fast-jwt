@@ -109,6 +109,10 @@ function sign(
     throw new TokenError(TokenError.codes.invalidClaimValue, 'The exp claim must be a positive integer.')
   }
 
+  if (payload.nbf && (!Number.isInteger(payload.nbf) || payload.nbf < 0)) {
+    throw new TokenError(TokenError.codes.invalidClaimValue, 'The nbf claim must be a positive integer.')
+  }
+
   // Prepare the header
   const header = {
     alg: algorithm,
