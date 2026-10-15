@@ -1307,6 +1307,47 @@ describe('createVerifier', () => {
   })
 
   describe('cache option', () => {
+    for (const mode of ['sync', 'promise', 'callback']) {
+      for (const customCacheKeyBuilder of [false, true]) {
+        test(`${mode} - caches Buffer tokens${customCacheKeyBuilder ? ' with a custom cacheKeyBuilder' : ''}`, async t => {
+          const token = createSigner({ key: 'secret', noTimestamp: true })({ a: 1 })
+          const options = { key: mode === 'sync' ? 'secret' : async () => 'secret', cache: true }
+          if (customCacheKeyBuilder) {
+            options.cacheKeyBuilder = token => {
+              t.assert.equal(typeof token, 'string')
+              return token
+            }
+          }
+
+          const verifier = createVerifier(options)
+          const verify =
+            mode === 'callback'
+              ? token =>
+                  new Promise((resolve, reject) => {
+                    verifier(token, (error, payload) => (error ? reject(error) : resolve(payload)))
+                  })
+              : token => verifier(token)
+
+          const payload = await verify(Buffer.from(token))
+          t.assert.deepStrictEqual(payload, { a: 1 })
+          t.assert.strictEqual(await verify(token), payload)
+          t.assert.strictEqual(await verify(Buffer.from(token)), payload)
+          t.assert.equal(verifier.cache.size, 1)
+
+          const invalidToken = `${token.slice(0, token.lastIndexOf('.') + 1)}aaa`
+          for (const input of [Buffer.from(invalidToken), invalidToken, Buffer.from(invalidToken)]) {
+            const expected = { code: TokenError.codes.invalidSignature }
+            if (mode === 'sync') {
+              t.assert.throws(() => verify(input), expected)
+            } else {
+              await t.assert.rejects(() => verify(input), expected)
+            }
+          }
+          t.assert.equal(verifier.cache.size, 2)
+        })
+      }
+    }
+
     test('sync', t => {
       const token = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxfQ.57TF7smP9XDhIexBqPC-F1toZReYZLWb_YRU5tv0sxM'
       const invalidToken = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxfQ.aaa'
