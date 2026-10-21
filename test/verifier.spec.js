@@ -1311,7 +1311,12 @@ describe('createVerifier', () => {
       for (const customCacheKeyBuilder of [false, true]) {
         test(`${mode} - caches Buffer tokens${customCacheKeyBuilder ? ' with a custom cacheKeyBuilder' : ''}`, async t => {
           const token = createSigner({ key: 'secret', noTimestamp: true })({ a: 1 })
-          const options = { key: mode === 'sync' ? 'secret' : async () => 'secret', cache: true }
+          const options = {
+            key: mode === 'sync' ? 'secret' : async () => 'secret',
+            cache: true,
+            errorCacheTTL: 60_000,
+            clockTimestamp: 1000
+          }
           if (customCacheKeyBuilder) {
             options.cacheKeyBuilder = token => {
               t.assert.equal(typeof token, 'string')
