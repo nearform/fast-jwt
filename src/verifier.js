@@ -357,8 +357,10 @@ function verify(
 ) {
   const [callback, promise] = isAsync ? ensurePromiseCallback(cb) : []
 
-  // Validate token type before any processing
-  if (!(token instanceof Buffer) && typeof token !== 'string') {
+  // Validate and normalize the token before any processing
+  if (token instanceof Buffer) {
+    token = token.toString('utf-8')
+  } else if (typeof token !== 'string') {
     const error = new TokenError(TokenError.codes.invalidType, 'The token must be a string or a buffer.')
     if (callback) {
       callback(error)
