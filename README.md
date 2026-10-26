@@ -347,6 +347,10 @@ JWKS is supported via [get-jwks](https://github.com/nearform/get-jwks). Check ou
 
 See [benchmarks](./benchmarks/README.md)
 
+## Security
+
+See [SECURITY.md](./SECURITY.md) for how to report a vulnerability and what to check before you do.
+
 ## Contributing
 
 See [CONTRIBUTING.md](./CONTRIBUTING.md)
