@@ -11,6 +11,7 @@ The entry that comes up most often, and the reason this section is first:
 - **fast-jwt does not support JWK or JWKS keys and does not own JWKS handling.** Convert keys to PEM, use [get-jwks](https://github.com/nearform/get-jwks) for JWKS, and pin `algorithms`.
 - The check in `src/crypto.js` that rejects serialized asymmetric JWK/JWKS input is a guard against a common misconfiguration. It is deliberately not exhaustive.
 - Reports that the check can be bypassed, including wrapping, decoration, control or zero-width bytes, unlisted key types, or "incomplete fix" reports, are out of scope. They are closed as duplicates of the decision in #687.
+- That exclusion covers only JWK/JWKS input. Leading content before a PEM key (whitespace, BOM, zero-width bytes, comment lines) is supported and is in scope: reports that such a key is mishandled are treated as vulnerabilities. See the boundary note in #687.
 
 Do not open a public issue for an unfixed vulnerability. A non-vulnerability observation about hardening, validation or documentation can be a regular issue or pull request.
 
@@ -33,16 +34,16 @@ npm run test:ci   # what CI runs
 ## Conventions
 
 - Match the surrounding code. Prettier settings are in `prettier.config.js`: no semicolons, single quotes, 120 columns.
-- Write the test first. Add or change the smallest test in the matching `test/*.spec.js` before changing `src/`.
-- Public API or option changes need a README update and a matching update to `src/index.d.ts`.
+- Write the test first. Add or change the smallest test in the relevant `test/*.spec.js` before changing `src/`.
+- Public API or option changes need a README update and a matching update to `src/index.d.ts`. Type changes also need coverage in `test/types.tst.ts`.
 - Keep keys as PEM. Do not broaden supported key formats without a documented reason; JWK and JWKS handling belongs in get-jwks.
 - Do not add dependencies unless the task needs one. Ask a maintainer before adding a runtime dependency.
-- Error codes and messages are public surface. Add new codes to `TokenError.codes` and document them.
+- Error codes and messages are public surface. Add new codes to `TOKEN_ERROR_CODES` in `src/error.js` with a comment, and to the `TOKEN_ERROR_CODES` type in `src/index.d.ts`.
 
 ## Commits and pull requests
 
 - Use conventional commit subjects, for example `fix: ...`, `docs: ...` or `chore: ...`.
-- Sign commits with GPG.
+- GPG signing is not required by CI. Sign commits if your environment is already set up for it, and never change a contributor's git signing configuration to make a commit go through.
 - Link the issue in the pull request body. CI checks for a linked issue.
 - Run `npm run test:ci` before committing and make sure it passes.
 - Do not merge pull requests. A maintainer merges after review.
